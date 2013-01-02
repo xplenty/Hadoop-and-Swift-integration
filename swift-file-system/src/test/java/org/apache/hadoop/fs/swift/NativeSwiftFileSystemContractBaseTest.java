@@ -15,50 +15,60 @@ import java.net.URI;
  */
 public class NativeSwiftFileSystemContractBaseTest extends FileSystemContractBaseTest {
 
-  private SwiftNativeFileSystem swiftFileSystem;
 
   @Override
   protected void setUp() throws Exception {
-    swiftFileSystem = new SwiftNativeFileSystem();
     final URI uri = new URI("swift://localhost:8080");
     final Configuration conf = new Configuration();
 
-    swiftFileSystem = new SwiftNativeFileSystem(uri, conf, new InMemorySwiftNativeStore());
+    fs = new SwiftNativeFileSystem(new InMemorySwiftNativeStore());
+    fs.initialize(uri, conf);
+    super.setUp();
   }
 
   @Override
   public void tearDown() throws Exception {
+    super.tearDown();
   }
 
+  @Override
+  public void testMkdirsWithUmask() {
+    //overriding to disable
+  }
+
+  public void testHasURI() throws Throwable {
+    assertNotNull(fs.getUri());
+  }
+  
   public void testCreateFile() throws Exception {
     final Path f = new Path("/home/user");
-    final FSDataOutputStream fsDataOutputStream = swiftFileSystem.create(f);
+    final FSDataOutputStream fsDataOutputStream = fs.create(f);
     fsDataOutputStream.close();
 
-    assertTrue(swiftFileSystem.exists(f));
+    assertTrue(fs.exists(f));
   }
 
   public void testDeleteFile() throws IOException {
     final Path f = new Path("/home/user");
-    final FSDataOutputStream fsDataOutputStream = swiftFileSystem.create(f);
+    final FSDataOutputStream fsDataOutputStream = fs.create(f);
     fsDataOutputStream.close();
 
-    assertTrue(swiftFileSystem.exists(f));
+    assertTrue(fs.exists(f));
 
-    swiftFileSystem.delete(f, true);
-    final boolean exists = swiftFileSystem.exists(f);
+    fs.delete(f, true);
+    final boolean exists = fs.exists(f);
     assertFalse(exists);
   }
 
   public void testWriteReadFile() throws Exception {
     final Path f = new Path("/home/user");
-    final FSDataOutputStream fsDataOutputStream = swiftFileSystem.create(f);
+    final FSDataOutputStream fsDataOutputStream = fs.create(f);
     final String message = "Test string";
     fsDataOutputStream.write(message.getBytes());
     fsDataOutputStream.close();
 
-    assertTrue(swiftFileSystem.exists(f));
-    final FSDataInputStream open = swiftFileSystem.open(f);
+    assertTrue(fs.exists(f));
+    final FSDataInputStream open = fs.open(f);
     final byte[] bytes = new byte[512];
     final int read = open.read(bytes);
     final byte[] buffer = new byte[read];
@@ -69,16 +79,16 @@ public class NativeSwiftFileSystemContractBaseTest extends FileSystemContractBas
   public void testRenameFile() throws Exception {
     final Path old = new Path("/home/user/file");
     final Path newPath = new Path("/home/bob/file");
-    final FSDataOutputStream fsDataOutputStream = swiftFileSystem.create(old);
+    final FSDataOutputStream fsDataOutputStream = fs.create(old);
     final byte[] message = "Some data".getBytes();
     fsDataOutputStream.write(message);
     fsDataOutputStream.close();
 
-    assertTrue(swiftFileSystem.exists(old));
-    assertTrue(swiftFileSystem.rename(old, newPath));
-    assertTrue(swiftFileSystem.exists(newPath));
+    assertTrue(fs.exists(old));
+    assertTrue(fs.rename(old, newPath));
+    assertTrue(fs.exists(newPath));
 
-    final FSDataInputStream open = swiftFileSystem.open(newPath);
+    final FSDataInputStream open = fs.open(newPath);
     final byte[] bytes = new byte[512];
     final int read = open.read(bytes);
     final byte[] buffer = new byte[read];
@@ -89,19 +99,19 @@ public class NativeSwiftFileSystemContractBaseTest extends FileSystemContractBas
   public void testRenameDirectory() throws Exception {
     final Path old = new Path("/data/logs");
     final Path newPath = new Path("/var/logs");
-    swiftFileSystem.mkdirs(old);
+    fs.mkdirs(old);
 
-    assertTrue(swiftFileSystem.exists(old));
-    assertTrue(swiftFileSystem.rename(old, newPath));
-    assertTrue(swiftFileSystem.exists(newPath));
+    assertTrue(fs.exists(old));
+    assertTrue(fs.rename(old, newPath));
+    assertTrue(fs.exists(newPath));
   }
 
   public void testRenameTheSameDirectory() throws Exception {
     final Path old = new Path("/usr/data");
-    swiftFileSystem.mkdirs(old);
+    fs.mkdirs(old);
 
-    assertTrue(swiftFileSystem.exists(old));
-    assertFalse(swiftFileSystem.rename(old, old));
-    assertTrue(swiftFileSystem.exists(old));
+    assertTrue(fs.exists(old));
+    assertFalse(fs.rename(old, old));
+    assertTrue(fs.exists(old));
   }
 }

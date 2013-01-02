@@ -9,7 +9,7 @@ import org.junit.Test;
  */
 public class TestSwiftConfig {
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test(expected = org.apache.hadoop.fs.swift.exceptions.SwiftException.class)
   public void emptyUrl() throws Exception {
     final Configuration configuration = new Configuration();
     configuration.set("swift.tenant", "tenant");
@@ -19,7 +19,7 @@ public class TestSwiftConfig {
     SwiftRestClient.getInstance(configuration);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test(expected = org.apache.hadoop.fs.swift.exceptions.SwiftException.class)
   public void emptyTenant() throws Exception {
     final Configuration configuration = new Configuration();
     configuration.set("swift.auth.url", "http://localhost:8080");
@@ -29,7 +29,7 @@ public class TestSwiftConfig {
     SwiftRestClient.getInstance(configuration);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test(expected = org.apache.hadoop.fs.swift.exceptions.SwiftException.class)
   public void emptyUsername() throws Exception {
     final Configuration configuration = new Configuration();
     configuration.set("swift.tenant", "tenant");
@@ -39,7 +39,7 @@ public class TestSwiftConfig {
     SwiftRestClient.getInstance(configuration);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test(expected = org.apache.hadoop.fs.swift.exceptions.SwiftException.class)
   public void emptyPassword() throws Exception {
     final Configuration configuration = new Configuration();
     configuration.set("swift.tenant", "tenant");

@@ -1,8 +1,35 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.hadoop.fs.swift.snative;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.BlockLocation;
+import org.apache.hadoop.fs.BufferedFSInputStream;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.fs.swift.exceptions.SwiftException;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
 import org.apache.hadoop.util.Progressable;
 
@@ -16,6 +43,12 @@ import java.util.List;
  * Swift file system implementation. Extends Hadoop FileSystem
  */
 public class SwiftNativeFileSystem extends FileSystem {
+
+
+  private static final Log LOG =
+    LogFactory.getLog(SwiftNativeFileSystem.class);
+
+  public static final String SWIFT = "swift";
   /**
    * path to user work directory for storing temporary files
    */
@@ -29,28 +62,21 @@ public class SwiftNativeFileSystem extends FileSystem {
   /**
    * reference to swiftFileSystemStore
    */
-  private SwiftNativeFileSystemStore nativeStore;
-
-  /**
-   * Hadoop configuration
-   */
-  private Configuration conf;
+  private SwiftNativeFileSystemStore store;
 
   /**
    * Default constructor for Hadoop
    */
   public SwiftNativeFileSystem() {
+    // set client in initialize()
   }
 
   /**
    * This construstor used for testing purposes
    */
-  public SwiftNativeFileSystem(URI uri, Configuration conf, SwiftNativeFileSystemStore nativeStore)
+  public SwiftNativeFileSystem(SwiftNativeFileSystemStore store)
           throws IOException {
-    super.initialize(uri, conf);
-    setConf(conf);
-    this.conf = conf;
-    this.nativeStore = nativeStore;
+    this.store = store;
   }
 
   /**
@@ -64,12 +90,16 @@ public class SwiftNativeFileSystem extends FileSystem {
   public void initialize(URI uri, Configuration conf) throws IOException {
     super.initialize(uri, conf);
     setConf(conf);
+    if (store == null) {
+      store = new SwiftNativeFileSystemStore();
+    }
+    this.uri= URI.create(String.format("%s://%s:%d/", uri.getScheme(),uri.getHost(), uri.getPort()));
+    this.workingDir =
+      new Path("/user", System.getProperty("user.name")).makeQualified(this);
 
-    this.uri = URI.create(String.format("swift://%s:%d", uri.getHost(), uri.getPort()));
-    this.workingDir = new Path("/user", System.getProperty("user.name"));
-    this.conf = conf;
-    this.nativeStore = new SwiftNativeFileSystemStore();
-    this.nativeStore.initialize(this.uri, conf);
+    store.initialize(this.uri, conf);
+    LOG.debug("SwiftFileSystem initialized");
+
   }
 
   /**
@@ -95,6 +125,10 @@ public class SwiftNativeFileSystem extends FileSystem {
    */
   @Override
   public void setWorkingDirectory(Path dir) {
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("SwiftFileSystem.setWorkingDirectory to " + dir);
+    }
+
     workingDir = dir;
   }
 
@@ -106,7 +140,7 @@ public class SwiftNativeFileSystem extends FileSystem {
    */
   @Override
   public FileStatus getFileStatus(Path f) throws IOException {
-    final FileStatus objectMetadata = nativeStore.getObjectMetadata(f);
+    final FileStatus objectMetadata = store.getObjectMetadata(f);
     if (objectMetadata == null)
       throw new FileNotFoundException("file " + f + " doesn't exist");
 
@@ -128,17 +162,17 @@ public class SwiftNativeFileSystem extends FileSystem {
     // Check if requested file in Swift is more than 5Gb. In this case
     // each block has its own locality.
 
-    final FileStatus[] listOfFileBlocks = nativeStore.listSubPaths(file.getPath());
+    final FileStatus[] listOfFileBlocks = store.listSubPaths(file.getPath());
     List<URI> locations = new ArrayList<URI>();
     if (listOfFileBlocks.length > 1) {
       for (FileStatus fileStatus : listOfFileBlocks) {
         if (SwiftObjectPath.fromPath(uri, fileStatus.getPath()).equals(SwiftObjectPath.fromPath(uri, file.getPath()))) {
           continue;
         }
-        locations.addAll(nativeStore.getObjectLocation(fileStatus.getPath()));
+        locations.addAll(store.getObjectLocation(fileStatus.getPath()));
       }
     } else {
-      locations = nativeStore.getObjectLocation(file.getPath());
+      locations = store.getObjectLocation(file.getPath());
     }
 
     final String[] names = new String[locations.size()];
@@ -152,13 +186,14 @@ public class SwiftNativeFileSystem extends FileSystem {
     return new BlockLocation[]{new BlockLocation(names, hosts, 0, file.getLen())};
   }
 
-  /**
-   * Make the given file and all non-existent parents into
-   * directories.Existence of the directory hierarchy is not an error.
-   */
   @Override
   public boolean mkdirs(Path path, FsPermission permission) throws IOException {
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("SwiftFileSystem.mkdirs: " + path);
+    }
     Path absolutePath = makeAbsolute(path);
+    //build a list of paths to create, with shortest one at the front
     List<Path> paths = new ArrayList<Path>();
     do {
       paths.add(0, absolutePath);
@@ -167,9 +202,9 @@ public class SwiftNativeFileSystem extends FileSystem {
 
     boolean result = true;
     for (Path p : paths) {
-      if (p.getParent() == null)
-        continue;
-      result &= mkdir(p);
+      if (p.getParent() != null) {
+        result &= mkdir(p);
+      }
     }
     return result;
   }
@@ -183,10 +218,26 @@ public class SwiftNativeFileSystem extends FileSystem {
    */
   private boolean mkdir(Path path) throws IOException {
     Path absolutePath = makeAbsolute(path);
-
-    if (!nativeStore.objectExists(absolutePath)) {
-      nativeStore.createDirectory(absolutePath);
+    if (!store.objectExists(absolutePath)) {
+      store.createDirectory(absolutePath);
     }
+/*
+    FileStatus fileStatus;
+    try {
+      fileStatus = getFileStatus(absolutePath);
+      if (!fileStatus.isDir()) {
+        throw new SwiftException(String.format(
+          "Can't make directory for path '%s' since it exists and is not a directory: %s", 
+          path, fileStatus));
+      }
+    } catch (FileNotFoundException e) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Making dir '" + path + "' in Swift");
+      }
+      //file is not found: it must be created
+      store.createDirectory(absolutePath);
+    }
+*/
 
     return true;
   }
@@ -201,14 +252,18 @@ public class SwiftNativeFileSystem extends FileSystem {
    */
   @Override
   public FileStatus[] listStatus(Path f) throws IOException {
-    return nativeStore.listSubPaths(f);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("SwiftFileSystem.listStatus for: " + f);
+    }
+    return store.listSubPaths(f);
   }
 
   /**
    * This optional operation is not supported yet
    */
   public FSDataOutputStream append(Path f, int bufferSize, Progressable progress) throws IOException {
-    throw new UnsupportedOperationException("Not supported for Swift file system");
+    LOG.debug("SwiftFileSystem.append");
+    throw new IOException("Not supported for Swift file system");
   }
 
   /**
@@ -220,6 +275,7 @@ public class SwiftNativeFileSystem extends FileSystem {
                                    short replication, long blockSize, Progressable progress)
           throws IOException {
 
+    LOG.debug("SwiftFileSystem.create");
     FileStatus fileStatus = null;
     try {
       fileStatus = getFileStatus(makeAbsolute(file));
@@ -241,7 +297,10 @@ public class SwiftNativeFileSystem extends FileSystem {
       }
     }
 
-    return new FSDataOutputStream(new SwiftNativeOutputStream(conf, nativeStore, file.toUri().toString()), statistics);
+    return new FSDataOutputStream(new SwiftNativeOutputStream(getConf(),
+                                                              store, 
+                                                              file.toUri().toString()), 
+                                                              statistics);
   }
 
   /**
@@ -253,48 +312,65 @@ public class SwiftNativeFileSystem extends FileSystem {
   @Override
   public FSDataInputStream open(Path path, int bufferSize) throws IOException {
     return new FSDataInputStream(
-            new BufferedFSInputStream(new SwiftNativeInputStream(nativeStore, statistics, path), bufferSize));
+            new BufferedFSInputStream(new SwiftNativeInputStream(store, statistics, path), bufferSize));
   }
 
   /**
-   * Renames Path src to Path dst.  Can take place on local fs
-   * or remote DFS.
+   * Renames Path src to Path dst. On swift this uses copy-and-delete
+   * and <i>is not atomic</i>.
    *
    * @param src path
    * @param dst path
    * @return true if directory renamed, false otherwise
-   * @throws IOException
+   * @throws IOException on problems
    */
   @Override
   public boolean rename(Path src, Path dst) throws IOException {
 
-    return nativeStore.renameDirectory(src, dst);
+    return store.renameDirectory(src, dst);
   }
 
 
   /**
-   * Delete a file.
+   * Delete a file or directory
    *
    * @param path      the path to delete.
    * @param recursive if path is a directory and set to
-   *                  true, the directory is deleted else throws an exception. In
+   *                  true, the directory is deleted else throws an exception if the
+   *                  directory is not empty
    *                  case of a file the recursive can be set to either true or false.
-   * @return true if delete is successful else false.
+   * @return true if a file was found and deleted 
    * @throws IOException
    */
+  @Override
   public boolean delete(Path path, boolean recursive) throws IOException {
+    LOG.debug("SwiftFileSystem.delete");
     Path absolutePath = makeAbsolute(path);
     final FileStatus fileStatus;
     try {
       fileStatus = getFileStatus(path);
     } catch (FileNotFoundException e) {
+      if (LOG.isDebugEnabled()) { 
+        LOG.debug("Delete called for '" + path +
+                  "' but file does not exist, so returning false");
+      }
       return false;
     }
     if (!fileStatus.isDir()) {
-      nativeStore.deleteObject(absolutePath);
+      //simple file: delete it
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Deleting file '" + path + "'");
+      }
+      store.deleteObject(absolutePath);
     } else {
+      //it's a directory
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Deleting directory '" + path + "'");
+      }
       FileStatus[] contents = listStatus(absolutePath);
       if (contents == null) {
+        //the directory went away during the non-atomic stages of the operation. Return
+        //false as it was not this thread doing the deletion.
         return false;
       }
       if ((contents.length != 0) && (!recursive)) {
@@ -309,15 +385,6 @@ public class SwiftNativeFileSystem extends FileSystem {
     }
 
     return true;
-  }
-
-  /**
-   * Delete a file.
-   */
-  @Override
-  @Deprecated
-  public boolean delete(Path path) throws IOException {
-    return delete(path, true);
   }
 
   /**
