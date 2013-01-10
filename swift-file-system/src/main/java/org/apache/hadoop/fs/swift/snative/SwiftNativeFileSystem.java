@@ -29,7 +29,6 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
-import org.apache.hadoop.fs.swift.exceptions.SwiftException;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
 import org.apache.hadoop.util.Progressable;
 
@@ -48,7 +47,10 @@ public class SwiftNativeFileSystem extends FileSystem {
   private static final Log LOG =
     LogFactory.getLog(SwiftNativeFileSystem.class);
 
-  public static final String SWIFT = "swift";
+  /**
+   * URI constant for this filesystem: {@value}
+   */
+  public static final String SWIFT_FS = "swift";
   /**
    * path to user work directory for storing temporary files
    */
@@ -75,7 +77,7 @@ public class SwiftNativeFileSystem extends FileSystem {
    * This construstor used for testing purposes
    */
   public SwiftNativeFileSystem(SwiftNativeFileSystemStore store)
-          throws IOException {
+    throws IOException {
     this.store = store;
   }
 
@@ -93,7 +95,10 @@ public class SwiftNativeFileSystem extends FileSystem {
     if (store == null) {
       store = new SwiftNativeFileSystemStore();
     }
-    this.uri= URI.create(String.format("%s://%s:%d/", uri.getScheme(),uri.getHost(), uri.getPort()));
+    this.uri = URI.create(String.format("%s://%s:%d/",
+                                        uri.getScheme(),
+                                        uri.getHost(),
+                                        uri.getPort()));
     this.workingDir =
       new Path("/user", System.getProperty("user.name")).makeQualified(this);
 
@@ -141,8 +146,9 @@ public class SwiftNativeFileSystem extends FileSystem {
   @Override
   public FileStatus getFileStatus(Path f) throws IOException {
     final FileStatus objectMetadata = store.getObjectMetadata(f);
-    if (objectMetadata == null)
+    if (objectMetadata == null) {
       throw new FileNotFoundException("file " + f + " doesn't exist");
+    }
 
     return objectMetadata;
   }
@@ -158,15 +164,19 @@ public class SwiftNativeFileSystem extends FileSystem {
    * The FileSystem will simply return an elt containing 'localhost'.
    */
   @Override
-  public BlockLocation[] getFileBlockLocations(FileStatus file, long start, long len) throws IOException {
+  public BlockLocation[] getFileBlockLocations(FileStatus file,
+                                               long start,
+                                               long len) throws IOException {
     // Check if requested file in Swift is more than 5Gb. In this case
-    // each block has its own locality.
+    // each block has its own location -which may be determinable
+    // from the Swift client API, depending on the remote server
 
     final FileStatus[] listOfFileBlocks = store.listSubPaths(file.getPath());
     List<URI> locations = new ArrayList<URI>();
     if (listOfFileBlocks.length > 1) {
       for (FileStatus fileStatus : listOfFileBlocks) {
-        if (SwiftObjectPath.fromPath(uri, fileStatus.getPath()).equals(SwiftObjectPath.fromPath(uri, file.getPath()))) {
+        if (SwiftObjectPath.fromPath(uri, fileStatus.getPath()).
+          equals(SwiftObjectPath.fromPath(uri, file.getPath()))) {
           continue;
         }
         locations.addAll(store.getObjectLocation(fileStatus.getPath()));
@@ -178,12 +188,14 @@ public class SwiftNativeFileSystem extends FileSystem {
     final String[] names = new String[locations.size()];
     final String[] hosts = new String[locations.size()];
     int i = 0;
-    for (URI uri : locations) {
-      hosts[i] = uri.getHost();
-      names[i] = uri.getAuthority();
+    for (URI location : locations) {
+      hosts[i] = location.getHost();
+      names[i] = location.getAuthority();
       i++;
     }
-    return new BlockLocation[]{new BlockLocation(names, hosts, 0, file.getLen())};
+    return new BlockLocation[]{
+      new BlockLocation(names, hosts, 0, file.getLen())
+    };
   }
 
   @Override
@@ -221,6 +233,11 @@ public class SwiftNativeFileSystem extends FileSystem {
     if (!store.objectExists(absolutePath)) {
       store.createDirectory(absolutePath);
     }
+    //TODO: define a consistent semantic for a directory/subdirectory
+    //in the hadoop:swift bridge. Hadoop FS assumes that there
+    //are files and directories, whereas SwiftFS assumes
+    //that there are just "objects"
+
 /*
     FileStatus fileStatus;
     try {
@@ -261,7 +278,8 @@ public class SwiftNativeFileSystem extends FileSystem {
   /**
    * This optional operation is not supported yet
    */
-  public FSDataOutputStream append(Path f, int bufferSize, Progressable progress) throws IOException {
+  public FSDataOutputStream append(Path f, int bufferSize, Progressable progress) throws
+                                                                                  IOException {
     LOG.debug("SwiftFileSystem.append");
     throw new IOException("Not supported for Swift file system");
   }
@@ -273,7 +291,7 @@ public class SwiftNativeFileSystem extends FileSystem {
   public FSDataOutputStream create(Path file, FsPermission permission,
                                    boolean overwrite, int bufferSize,
                                    short replication, long blockSize, Progressable progress)
-          throws IOException {
+    throws IOException {
 
     LOG.debug("SwiftFileSystem.create");
     FileStatus fileStatus = null;
@@ -297,10 +315,11 @@ public class SwiftNativeFileSystem extends FileSystem {
       }
     }
 
-    return new FSDataOutputStream(new SwiftNativeOutputStream(getConf(),
-                                                              store, 
-                                                              file.toUri().toString()), 
-                                                              statistics);
+    SwiftNativeOutputStream out = new SwiftNativeOutputStream(getConf(),
+                                                              store,
+                                                              file.toUri()
+                                                                  .toString());
+    return new FSDataOutputStream(out, statistics);
   }
 
   /**
@@ -312,7 +331,8 @@ public class SwiftNativeFileSystem extends FileSystem {
   @Override
   public FSDataInputStream open(Path path, int bufferSize) throws IOException {
     return new FSDataInputStream(
-            new BufferedFSInputStream(new SwiftNativeInputStream(store, statistics, path), bufferSize));
+      new BufferedFSInputStream(
+        new SwiftNativeInputStream(store, statistics, path), bufferSize));
   }
 
   /**
@@ -350,7 +370,7 @@ public class SwiftNativeFileSystem extends FileSystem {
     try {
       fileStatus = getFileStatus(path);
     } catch (FileNotFoundException e) {
-      if (LOG.isDebugEnabled()) { 
+      if (LOG.isDebugEnabled()) {
         LOG.debug("Delete called for '" + path +
                   "' but file does not exist, so returning false");
       }
@@ -369,13 +389,13 @@ public class SwiftNativeFileSystem extends FileSystem {
       }
       FileStatus[] contents = listStatus(absolutePath);
       if (contents == null) {
-        //the directory went away during the non-atomic stages of the operation. Return
-        //false as it was not this thread doing the deletion.
+        //the directory went away during the non-atomic stages of the operation.
+        // Return false as it was not this thread doing the deletion.
         return false;
       }
       if ((contents.length != 0) && (!recursive)) {
         throw new IOException("Directory " + path.toString()
-                + " is not empty.");
+                              + " is not empty.");
       }
       for (FileStatus p : contents) {
         if (!delete(p.getPath(), recursive)) {

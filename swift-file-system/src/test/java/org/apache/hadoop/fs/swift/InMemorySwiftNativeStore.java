@@ -1,5 +1,7 @@
 package org.apache.hadoop.fs.swift;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
@@ -18,6 +20,7 @@ import java.util.TreeMap;
  * In-memory Swift emulator for tests
  */
 public class InMemorySwiftNativeStore extends SwiftNativeFileSystemStore {
+  private static final Log LOG = LogFactory.getLog(InMemorySwiftNativeStore.class);
   private SortedMap<String, FileStatus> metadataMap =
           new TreeMap<String, FileStatus>();
   private SortedMap<String, byte[]> dataMap = new TreeMap<String, byte[]>();
@@ -44,7 +47,7 @@ public class InMemorySwiftNativeStore extends SwiftNativeFileSystemStore {
         try {
           inputStream.close();
         } catch (IOException e) {
-          e.printStackTrace();
+          LOG.warn("closing input stream", e);
         }
       }
     }

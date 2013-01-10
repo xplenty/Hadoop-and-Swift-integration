@@ -13,7 +13,7 @@ import java.net.URI;
 /**
  * Tests for NativeSwiftFS using in-memory Swift emulator
  */
-public class NativeSwiftFileSystemContractBaseTest extends FileSystemContractBaseTest {
+public abstract class NativeSwiftFileSystemContractBaseTest extends FileSystemContractBaseTest {
 
 
   @Override
@@ -21,10 +21,18 @@ public class NativeSwiftFileSystemContractBaseTest extends FileSystemContractBas
     final URI uri = new URI("swift://localhost:8080");
     final Configuration conf = new Configuration();
 
-    fs = new SwiftNativeFileSystem(new InMemorySwiftNativeStore());
+    SwiftNativeFileSystem swiftFS = createSwiftFS();
+    fs = swiftFS;
     fs.initialize(uri, conf);
     super.setUp();
   }
+
+  /**
+   * Create a basic SwiftFS. This can be done differently for
+   * the different implementations (memory vs. live)
+   * @throws IOException
+   */
+  protected abstract SwiftNativeFileSystem createSwiftFS() throws IOException;
 
   @Override
   public void tearDown() throws Exception {

@@ -79,15 +79,16 @@ public class SwiftNativeFileSystemStore {
     long length = 0;
     long lastModified = System.currentTimeMillis();
     for (Header header : headers) {
-      if (header.getName().equals(SwiftProtocolConstants.X_CONTAINER_OBJECT_COUNT) ||
-          header.getName().equals(SwiftProtocolConstants.X_CONTAINER_BYTES_USED)) {
+      String headerName = header.getName();
+      if (headerName.equals(SwiftProtocolConstants.X_CONTAINER_OBJECT_COUNT) ||
+          headerName.equals(SwiftProtocolConstants.X_CONTAINER_BYTES_USED)) {
         length = 0;
         isDir = true;
       }
-      if (HttpHeaders.CONTENT_LENGTH.equals(header.getName())) {
+      if (HttpHeaders.CONTENT_LENGTH.equals(headerName)) {
         length = Long.parseLong(header.getValue());
       }
-      if (HttpHeaders.LAST_MODIFIED.equals(header.getName())) {
+      if (HttpHeaders.LAST_MODIFIED.equals(headerName)) {
         final SimpleDateFormat simpleDateFormat = new SimpleDateFormat(PATTERN);
         try {
           lastModified = simpleDateFormat.parse(header.getValue()).getTime();
@@ -164,42 +165,65 @@ public class SwiftNativeFileSystemStore {
   public boolean renameDirectory(Path src, Path dst) throws IOException {
     final FileStatus srcMetadata = getObjectMetadata(src);
     final FileStatus dstMetadata = getObjectMetadata(dst);
-    if (srcMetadata != null && !srcMetadata.isDir()) {
-      if (dstMetadata != null && !dstMetadata.isDir()) {
+
+    boolean srcExists = srcMetadata != null;
+    boolean destExists = dstMetadata != null;
+    if (srcExists && !srcMetadata.isDir()) {
+      //source exists and is not a directory
+      
+      if (destExists && !dstMetadata.isDir()) {
+        //if the dest file exists: fail
         throw new SwiftException("file already exists: " + dst);
       }
 
-      if (dstMetadata != null && dstMetadata.isDir()) {
-        return swiftRestClient.copyObject(SwiftObjectPath.fromPath(uri, src),
-                                          SwiftObjectPath.fromPath(uri, new Path(dst.getParent(), src.getName())));
+      //calculate the destination
+      SwiftObjectPath destPath;
+      if (destExists && dstMetadata.isDir()) {
+        //destination id a directory: create a path from the destination
+        //and the source name
+        
+        //REVISIT: this uses dst.getParent(), and not dst itself. Why?
+        destPath = SwiftObjectPath.fromPath(uri,
+                                            new Path(dst.getParent(),
+                                                     src.getName()));
       } else {
-        return swiftRestClient.copyObject(SwiftObjectPath.fromPath(uri, src), SwiftObjectPath.fromPath(uri, dst));
+        //destination is a simple file
+        destPath = SwiftObjectPath.fromPath(uri, dst);
       }
-    }
-    final List<FileStatus> fileStatuses = listDirectory(SwiftObjectPath.fromPath(uri, src.getParent()));
-    final List<FileStatus> dstPath = listDirectory(SwiftObjectPath.fromPath(uri, dst.getParent()));
+      //do the copy
+      return swiftRestClient.copyObject(SwiftObjectPath.fromPath(uri, src),
+                                        destPath);
+    } else {
 
-    if (dstPath.size() == 1 && !dstPath.get(0).isDir()) {
-      throw new SwiftException("Cannot rename to: " + dst.toString());
-    }
+      //here the source exists and is a directory
+      List<FileStatus> fileStatuses =
+        listDirectory(SwiftObjectPath.fromPath(uri, src.getParent()));
+      List<FileStatus> dstPath =
+        listDirectory(SwiftObjectPath.fromPath(uri, dst.getParent()));
 
-    boolean result = true;
-    for (FileStatus fileStatus : fileStatuses) {
-      if (!fileStatus.isDir()) {
-        result &= swiftRestClient.copyObject(SwiftObjectPath.fromPath(uri, fileStatus.getPath()),
-                                             SwiftObjectPath.fromPath(uri, dst));
-
-        swiftRestClient.delete(SwiftObjectPath.fromPath(uri, fileStatus.getPath()));
+      if (dstPath.size() == 1 && !dstPath.get(0).isDir()) {
+        throw new SwiftException("Cannot rename to: " + dst.toString());
       }
-    }
 
-    return result;
+      boolean result = true;
+      for (FileStatus fileStatus : fileStatuses) {
+        if (!fileStatus.isDir()) {
+          result &=
+            swiftRestClient.copyObject(SwiftObjectPath.fromPath(uri, fileStatus.getPath()),
+                                       SwiftObjectPath.fromPath(uri, dst));
+
+          swiftRestClient.delete(SwiftObjectPath.fromPath(uri, fileStatus.getPath()));
+        }
+      }
+
+      return result;
+    }
   }
 
   private List<FileStatus> listDirectory(SwiftObjectPath path) throws IOException {
-    String uri = path.toUriPath();
-    if (!uri.endsWith(Path.SEPARATOR)) {
-      uri += Path.SEPARATOR;
+    String pathURI = path.toUriPath();
+    if (!pathURI.endsWith(Path.SEPARATOR)) {
+      pathURI += Path.SEPARATOR;
     }
 
     final byte[] bytes;

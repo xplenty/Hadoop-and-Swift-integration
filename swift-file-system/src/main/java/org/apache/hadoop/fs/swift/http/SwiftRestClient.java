@@ -52,6 +52,9 @@ import org.apache.hadoop.fs.swift.exceptions.SwiftIllegalDataLocalityRequest;
 import org.apache.hadoop.fs.swift.ssl.EasySSLProtocolSocketFactory;
 import org.apache.hadoop.fs.swift.util.JSONUtil;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
+
+import static org.apache.hadoop.fs.swift.http.SwiftProtocolConstants.*;
+
 import org.jets3t.service.impl.rest.httpclient.HttpMethodReleaseInputStream;
 
 import java.io.IOException;
@@ -61,16 +64,11 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 
-public class SwiftRestClient extends SwiftProtocolConstants {
+/**
+ * This implements the client-side of the Swift REST API
+ */
+public class SwiftRestClient {
   private static final Log LOG = LogFactory.getLog(SwiftRestClient.class);
-
-  public static final String SWIFT_AUTH_PROPERTY = "swift.auth.url";
-  public static final String SWIFT_TENANT_PROPERTY = "swift.tenant";
-  public static final String SWIFT_USERNAME_PROPERTY = "swift.username";
-  public static final String SWIFT_PASSWORD_PROPERTY = "swift.password";
-  public static final String SWIFT_HTTP_PROTOCOL = "swift.http.port";
-  public static final String SWIFT_HTTPS_PROTOCOL = "swift.https.port";
-  public static final String SWIFT_REGION_PROPERTY = "swift.region";
 
   /**
    * authentication endpoint
@@ -181,10 +179,10 @@ public class SwiftRestClient extends SwiftProtocolConstants {
 
   private SwiftRestClient(Configuration configuration) throws IOException {
       Protocol.registerProtocol("http", new Protocol("http", new DefaultProtocolSocketFactory(),
-              configuration.getInt(SWIFT_HTTP_PROTOCOL, SWIFT_HTTP_PORT)));
+              configuration.getInt(SWIFT_HTTP_PORT_PROPERTY, SWIFT_HTTP_PORT)));
       Protocol.registerProtocol("https",
               new Protocol("https", (ProtocolSocketFactory) new EasySSLProtocolSocketFactory(),
-                      configuration.getInt(SWIFT_HTTPS_PROTOCOL, SWIFT_HTTPS_PORT)));
+                      configuration.getInt(SWIFT_HTTPS_PORT_PROPERTY, SWIFT_HTTPS_PORT)));
 
       final String stringAuthUri = getConfigOption(configuration, SWIFT_AUTH_PROPERTY);
       this.tenant = getConfigOption(configuration, SWIFT_TENANT_PROPERTY);
@@ -576,11 +574,11 @@ public class SwiftRestClient extends SwiftProtocolConstants {
     if (!configuration.get(SWIFT_AUTH_PROPERTY, "default-unset-property").
             equals(current.get(SWIFT_AUTH_PROPERTY, "default-unset-property")))
       return false;
-    if (!configuration.get(SWIFT_HTTP_PROTOCOL, "default-unset-property").
-            equals(current.get(SWIFT_HTTP_PROTOCOL, "default-unset-property")))
+    if (!configuration.get(SWIFT_HTTP_PORT_PROPERTY, "default-unset-property").
+            equals(current.get(SWIFT_HTTP_PORT_PROPERTY, "default-unset-property")))
       return false;
-    if (!configuration.get(SWIFT_HTTPS_PROTOCOL, "default-unset-property").
-            equals(current.get(SWIFT_HTTPS_PROTOCOL, "default-unset-property")))
+    if (!configuration.get(SWIFT_HTTPS_PORT_PROPERTY, "default-unset-property").
+            equals(current.get(SWIFT_HTTPS_PORT_PROPERTY, "default-unset-property")))
       return false;
     if (!configuration.get(SWIFT_USERNAME_PROPERTY, "default-unset-property").
             equals(current.get(SWIFT_USERNAME_PROPERTY, "default-unset-property")))

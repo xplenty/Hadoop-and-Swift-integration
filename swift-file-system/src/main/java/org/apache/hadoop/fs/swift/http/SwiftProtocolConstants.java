@@ -21,10 +21,11 @@ package org.apache.hadoop.fs.swift.http;
 import org.apache.http.HttpHeaders;
 
 /**
- * Constants used in the Swift REST protocol
+ * Constants used in the Swift REST protocol,
+ * and in the properties used to configure the {@link SwiftRestClient}.
  */
 public class SwiftProtocolConstants {
-  protected static final String HEADER_AUTH_KEY = "X-Auth-Token";
+  public static final String HEADER_AUTH_KEY = "X-Auth-Token";
   public static final int SWIFT_HTTP_PORT = 8080;
   public static final int SWIFT_HTTPS_PORT = 443;
   public static final String HEADER_RANGE = HttpHeaders.RANGE;
@@ -33,9 +34,38 @@ public class SwiftProtocolConstants {
   public static final String SERVICE_CATALOG_SWIFT = "swift";
   public static final String SERVICE_CATALOG_CLOUD_FILES = "cloudFiles";
   public static final String SERVICE_CATALOG_OBJECT_STORE = "object-store";
-  public static final String SWIFT_OBJECT_AUTH_ENDPOINT = "/object_endpoint/AUTH_";
+  public static final String SWIFT_OBJECT_AUTH_ENDPOINT =
+    "/object_endpoint/AUTH_";
   public static final String X_OBJECT_MANIFEST = "X-Object-Manifest";
-  public static final String X_CONTAINER_OBJECT_COUNT = "X-Container-Object-Count";
+  public static final String X_CONTAINER_OBJECT_COUNT =
+    "X-Container-Object-Count";
   public static final String X_CONTAINER_BYTES_USED = "X-Container-Bytes-Used";
-  public static final String X_NEWEST="X-Newest";
+
+  /**
+   * Header to set when requesting the latest version of a file
+   */
+  public static final String X_NEWEST = "X-Newest";
+
+  /**
+   * Prefix for all instance-specific values in the configuration: {@value}
+   */
+  public static final String SWIFT_INSTANCE_PREFIX = "fs.swift.instance.";
+  
+  public static final String DOT_AUTH_URL = ".auth.url";
+  public static final String DOT_TENANT = ".tenant";
+  public static final String DOT_USERNAME = ".username";
+  public static final String DOT_PASSWORD = ".password";
+  public static final String DOT_HTTP_PORT = ".http.port";
+  public static final String DOT_HTTPS_PORT = ".https.port";
+  public static final String DOT_REGION = ".region";
+
+  public static final String SWIFT_AUTH_PROPERTY = "swift" + DOT_AUTH_URL;
+  public static final String SWIFT_TENANT_PROPERTY = "swift" + DOT_TENANT;
+  public static final String SWIFT_USERNAME_PROPERTY = "swift" + DOT_USERNAME;
+  public static final String SWIFT_PASSWORD_PROPERTY = "swift" + DOT_PASSWORD;
+  public static final String SWIFT_HTTP_PORT_PROPERTY = "swift" + DOT_HTTP_PORT;
+  public static final String SWIFT_HTTPS_PORT_PROPERTY = "swift" 
+                                                         + DOT_HTTPS_PORT;
+  public static final String SWIFT_REGION_PROPERTY = "swift" + DOT_REGION;
+
 }
