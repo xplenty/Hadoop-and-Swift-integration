@@ -62,7 +62,7 @@ public class SwiftBlockFileSystemStore implements FileSystemStore {
   public void initialize(URI uri, Configuration conf) throws IOException {
     this.conf = conf;
     this.uri = uri;
-    this.swiftRestClient = SwiftRestClient.getInstance(conf);
+    this.swiftRestClient = SwiftRestClient.getInstance(uri, conf);
     this.bufferSize = conf.getInt(IO_FILE_BUFFER_SIZE, DEFAULT_BUFFER_SIZE);
   }
 

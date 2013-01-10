@@ -26,4 +26,8 @@ public class SwiftConfigurationException extends SwiftException {
   public SwiftConfigurationException(String message) {
     super(message);
   }
+
+  public SwiftConfigurationException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

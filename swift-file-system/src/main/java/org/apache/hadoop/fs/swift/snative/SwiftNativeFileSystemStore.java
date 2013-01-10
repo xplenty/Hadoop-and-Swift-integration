@@ -35,15 +35,37 @@ public class SwiftNativeFileSystemStore {
   private URI uri;
   private SwiftRestClient swiftRestClient;
 
-  public void initialize(URI uri, Configuration configuration) throws IOException {
-    this.uri = uri;
-    this.swiftRestClient = SwiftRestClient.getInstance(configuration);
+  /**
+   * Initalize the filesystem store -this creates the REST client binding.
+   * @param fsURI URI of the filesystem, which is used to map to the filesystem-specific
+   * options in the configuration file
+   * @param configuration configuration
+   * @throws IOException on any failure.
+   */
+  public void initialize(URI fsURI, Configuration configuration) throws IOException {
+    this.uri = fsURI;
+    this.swiftRestClient = SwiftRestClient.getInstance(fsURI, configuration);
   }
 
+  /**
+   * Upload a file
+   * @param path destination path in the swift filesystem
+   * @param inputStream input data
+   * @param length length of the data
+   * @throws IOException on a problem
+   */
   public void uploadFile(Path path, InputStream inputStream, long length) throws IOException {
     swiftRestClient.upload(SwiftObjectPath.fromPath(uri, path), inputStream, length);
   }
 
+  /**
+   * Upload part of a larger file.
+   * @param path destination path
+   * @param partNumber item number in the path
+   * @param inputStream input data
+   * @param length length of the data
+   * @throws IOException on a problem
+   */
   public void uploadFilePart(Path path, int partNumber, InputStream inputStream, long length) throws IOException {
     String stringPath = path.toUri().toString();
     if (stringPath.endsWith("/")) {
@@ -55,6 +77,12 @@ public class SwiftNativeFileSystemStore {
     swiftRestClient.upload(new SwiftObjectPath(uri.getHost(), stringPath), inputStream, length);
   }
 
+  /**
+   * Tell the Swift server to expect a multi-part upload by submitting
+   * a 0-byte file with the X-Object-Manifest header
+   * @param path path of final final
+   * @throws IOException
+   */
   public void createManifestForPartUpload(Path path) throws IOException {
     String pathString = SwiftObjectPath.fromPath(uri, path).toString();
     if (!pathString.endsWith("/")) {
@@ -64,10 +92,18 @@ public class SwiftNativeFileSystemStore {
       pathString = pathString.substring(1);
     }
 
-    swiftRestClient.upload(SwiftObjectPath.fromPath(uri, path), new ByteArrayInputStream(new byte[0]),
-                           0, new Header(SwiftProtocolConstants.X_OBJECT_MANIFEST, pathString));
+    swiftRestClient.upload(SwiftObjectPath.fromPath(uri, path),
+                           new ByteArrayInputStream(new byte[0]),
+                           0,
+                           new Header(SwiftProtocolConstants.X_OBJECT_MANIFEST, pathString));
   }
 
+  /**
+   * Get the metadata of an object
+   * @param path path
+   * @return file metadata. -or null if no headers were received back from the server.
+   * @throws IOException on a problem
+   */
   public FileStatus getObjectMetadata(Path path) throws IOException {
     final Header[] headers;
     headers = swiftRestClient.headRequest(SwiftObjectPath.fromPath(uri, path));
@@ -123,22 +159,25 @@ public class SwiftNativeFileSystemStore {
   }
 
   public void createDirectory(Path path) throws IOException {
-
     swiftRestClient.putRequest(SwiftObjectPath.fromPath(uri, path));
   }
 
   public List<URI> getObjectLocation(Path path) throws IOException {
     final byte[] objectLocation;
-    objectLocation = swiftRestClient.getObjectLocation(SwiftObjectPath.fromPath(uri, path));
+    objectLocation = swiftRestClient.getObjectLocation(
+      SwiftObjectPath.fromPath(uri, path));
     return extractUris(new String(objectLocation));
   }
 
   /**
    * deletes object from Swift
+   *
+   * @param path path to delete
+   * @return true if the path was deleted by this specific operation.
+   * @throws IOException on a failure
    */
-  public void deleteObject(Path path) throws IOException {
-
-    swiftRestClient.delete(SwiftObjectPath.fromPath(uri, path));
+  public boolean deleteObject(Path path) throws IOException {
+    return swiftRestClient.delete(SwiftObjectPath.fromPath(uri, path));
   }
 
   /**
@@ -170,10 +209,10 @@ public class SwiftNativeFileSystemStore {
     boolean destExists = dstMetadata != null;
     if (srcExists && !srcMetadata.isDir()) {
       //source exists and is not a directory
-      
+
       if (destExists && !dstMetadata.isDir()) {
         //if the dest file exists: fail
-        throw new SwiftException("file already exists: " + dst);
+        throw new SwiftException("A file already exists at the destination: " + dst);
       }
 
       //calculate the destination
@@ -181,7 +220,7 @@ public class SwiftNativeFileSystemStore {
       if (destExists && dstMetadata.isDir()) {
         //destination id a directory: create a path from the destination
         //and the source name
-        
+
         //REVISIT: this uses dst.getParent(), and not dst itself. Why?
         destPath = SwiftObjectPath.fromPath(uri,
                                             new Path(dst.getParent(),
@@ -220,6 +259,13 @@ public class SwiftNativeFileSystemStore {
     }
   }
 
+  /**
+   * List a directory
+   * @param path path to list
+   * @return the filestats of all the entities in the directory -or null if
+   * no objects were found listed under that prefix
+   * @throws IOException
+   */
   private List<FileStatus> listDirectory(SwiftObjectPath path) throws IOException {
     String pathURI = path.toUriPath();
     if (!pathURI.endsWith(Path.SEPARATOR)) {
@@ -250,7 +296,11 @@ public class SwiftNativeFileSystemStore {
   }
 
   private Path getCorrectSwiftPath(Path path) throws URISyntaxException {
-    final URI fullUri = new URI(uri.getScheme(), uri.getAuthority(), path.toUri().getPath(), null, null);
+    final URI fullUri = new URI(uri.getScheme(),
+                                uri.getAuthority(),
+                                path.toUri().getPath(),
+                                null,
+                                null);
 
     return new Path(fullUri);
   }

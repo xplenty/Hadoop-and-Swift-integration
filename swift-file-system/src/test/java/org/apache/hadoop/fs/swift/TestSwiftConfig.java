@@ -16,7 +16,7 @@ public class TestSwiftConfig {
     configuration.set("swift.username", "username");
     configuration.set("swift.password", "password");
 
-    SwiftRestClient.getInstance(configuration);
+    SwiftRestClient.getInstance(null, configuration);
   }
 
   @Test(expected = org.apache.hadoop.fs.swift.exceptions.SwiftException.class)
@@ -26,7 +26,7 @@ public class TestSwiftConfig {
     configuration.set("swift.username", "username");
     configuration.set("swift.password", "password");
 
-    SwiftRestClient.getInstance(configuration);
+    SwiftRestClient.getInstance(null, configuration);
   }
 
   @Test(expected = org.apache.hadoop.fs.swift.exceptions.SwiftException.class)
@@ -36,7 +36,7 @@ public class TestSwiftConfig {
     configuration.set("swift.auth.url", "http://localhost:8080");
     configuration.set("swift.password", "password");
 
-    SwiftRestClient.getInstance(configuration);
+    SwiftRestClient.getInstance(null, configuration);
   }
 
   @Test(expected = org.apache.hadoop.fs.swift.exceptions.SwiftException.class)
@@ -46,6 +46,6 @@ public class TestSwiftConfig {
     configuration.set("swift.username", "username");
     configuration.set("swift.auth.url", "http://localhost:8080");
 
-    SwiftRestClient.getInstance(configuration);
+    SwiftRestClient.getInstance(null, configuration);
   }
 }

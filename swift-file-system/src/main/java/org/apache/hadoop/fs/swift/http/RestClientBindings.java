@@ -6,9 +6,9 @@
  *  to you under the Apache License, Version 2.0 (the
  *  "License"); you may not use this file except in compliance
  *  with the License.  You may obtain a copy of the License at
- *  
+ *
  *       http://www.apache.org/licenses/LICENSE-2.0
- *  
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,7 +22,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
-import org.apache.hadoop.fs.swift.exceptions.SwiftException;
 
 import java.net.URI;
 import java.util.Properties;
@@ -31,7 +30,7 @@ import static org.apache.hadoop.fs.swift.http.SwiftProtocolConstants.*;
 
 /**
  * This class implements the binding logic between Hadoop configurations
- * and the swift rest client. 
+ * and the swift rest client.
  *
  * The swift rest client takes a Properties instance containing
  * the string values it uses to bind to a swift endpoint.
@@ -42,30 +41,9 @@ import static org.apache.hadoop.fs.swift.http.SwiftProtocolConstants.*;
 public final class RestClientBindings {
   private static final Log LOG = LogFactory.getLog(RestClientBindings.class);
 
-  /**
-   * Build an initial binding. No validation is performed
-   * @param authURL authentication URL
-   * @param tenant tenant: may be null
-   * @param username username
-   * @param authKey key/pass for auth
-   * @return a Properties instance. 
-   */
-  public static Properties bind(
-    String authURL,
-    String tenant,
-    String username,
-    String authKey) {
-
-    Properties props = new Properties();
-    props.setProperty(SWIFT_AUTH_PROPERTY, authURL);
-    props.setProperty(SWIFT_USERNAME_PROPERTY, username);
-    props.setProperty(SWIFT_PASSWORD_PROPERTY, authKey);
-    set(props, SWIFT_TENANT_PROPERTY, tenant);
-    return props;
-  }
 
   public static String buildSwiftInstancePrefix(String hostname) {
-    return SWIFT_INSTANCE_PREFIX + hostname;
+    return SWIFT_SERVICE_PREFIX + hostname;
   }
 
   /**
@@ -78,21 +56,22 @@ public final class RestClientBindings {
    * @throws SwiftConfigurationException if the configuration is invalid
    */
   public static Properties bind(URI fsURI, Configuration conf) throws
-                                                   SwiftConfigurationException {
-    String host = fsURI.getHost();
-    if (host.contains(".")) {
+                                                               SwiftConfigurationException {
+    String service = fsURI.getHost();
+    if (service == null || service.isEmpty() || service.contains(".")) {
       //expect shortnames -> conf names
       throw new SwiftConfigurationException("Only short hostnames mapping to" +
-                               " a binding in the configuration are supported," +
-                               " not " + host);
+                                            " a service binding are supported," +
+                                            " not " + service);
     }
     //build filename schema
-    String prefix = buildSwiftInstancePrefix(host);
+    String prefix = buildSwiftInstancePrefix(service);
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Filesystem " + fsURI 
+      LOG.debug("Filesystem " + fsURI
                 + " is using configuration keys " + prefix);
     }
     Properties props = new Properties();
+    props.setProperty(SWIFT_SERVICE_PROPERTY, service);
     copy(conf, prefix + DOT_AUTH_URL, props, SWIFT_AUTH_PROPERTY, true);
     copy(conf, prefix + DOT_USERNAME, props, SWIFT_USERNAME_PROPERTY, true);
     copy(conf, prefix + DOT_PASSWORD, props, SWIFT_PASSWORD_PROPERTY, true);
@@ -112,10 +91,10 @@ public final class RestClientBindings {
   }
 
   /**
-   * Copy a property from the configuration file to the properties file.
+   * Copy a (trimmed) property from the configuration file to the properties file.
    *
    * If marked as required and not found in the configuration, an
-   * exception is raised. 
+   * exception is raised.
    * If not required -and missing- then the property will not be set.
    * In this case, if the property is already in the Properties instance,
    * it will remain untouched.
@@ -124,13 +103,13 @@ public final class RestClientBindings {
    * @param props destination property set
    * @param propsKey key in the property set
    * @param required is the property required
-   * @throws SwiftConfigurationException if the property is required but was 
+   * @throws SwiftConfigurationException if the property is required but was
    * not found in the configuration instance.
    */
   public static void copy(Configuration conf, String confkey, Properties props,
                           String propsKey,
                           boolean required) throws SwiftConfigurationException {
-    String val = conf.get(confkey);
+    String val = conf.getTrimmed(confkey);
     if (required && val == null) {
       throw new SwiftConfigurationException(
         "Missing mandatory configuration option: "

@@ -49,8 +49,9 @@ public class SwiftProtocolConstants {
   /**
    * Prefix for all instance-specific values in the configuration: {@value}
    */
-  public static final String SWIFT_INSTANCE_PREFIX = "fs.swift.instance.";
-  
+  public static final String SWIFT_SERVICE_PREFIX = "fs.swift.service.";
+
+  public static final String DOT_SERVICE = ".service";
   public static final String DOT_AUTH_URL = ".auth.url";
   public static final String DOT_TENANT = ".tenant";
   public static final String DOT_USERNAME = ".username";
@@ -59,12 +60,13 @@ public class SwiftProtocolConstants {
   public static final String DOT_HTTPS_PORT = ".https.port";
   public static final String DOT_REGION = ".region";
 
+  public static final String SWIFT_SERVICE_PROPERTY = "swift" + DOT_SERVICE;
   public static final String SWIFT_AUTH_PROPERTY = "swift" + DOT_AUTH_URL;
   public static final String SWIFT_TENANT_PROPERTY = "swift" + DOT_TENANT;
   public static final String SWIFT_USERNAME_PROPERTY = "swift" + DOT_USERNAME;
   public static final String SWIFT_PASSWORD_PROPERTY = "swift" + DOT_PASSWORD;
   public static final String SWIFT_HTTP_PORT_PROPERTY = "swift" + DOT_HTTP_PORT;
-  public static final String SWIFT_HTTPS_PORT_PROPERTY = "swift" 
+  public static final String SWIFT_HTTPS_PORT_PROPERTY = "swift"
                                                          + DOT_HTTPS_PORT;
   public static final String SWIFT_REGION_PROPERTY = "swift" + DOT_REGION;
 

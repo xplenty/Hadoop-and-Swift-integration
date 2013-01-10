@@ -6,9 +6,9 @@
  *  to you under the Apache License, Version 2.0 (the
  *  "License"); you may not use this file except in compliance
  *  with the License.  You may obtain a copy of the License at
- *  
+ *
  *       http://www.apache.org/licenses/LICENSE-2.0
- *  
+ *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,6 +19,7 @@
 package org.apache.hadoop.fs.swift.http;
 
 import static org.apache.hadoop.fs.swift.http.SwiftProtocolConstants.*;
+import static org.apache.hadoop.fs.swift.SwiftTestUtils.*;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
@@ -50,20 +51,6 @@ public class TestRestClientBindings extends Assert {
     setInstanceVal(conf, HOSTNAME, DOT_PASSWORD, PASS);
   }
 
-  private void assertPropertyEquals(Properties props,
-                                    String key,
-                                    String expected) {
-    String val = props.getProperty(key);
-    if (expected == null) {
-      assertNull("Non null property " + key + " = " + val, val);
-    }
-    else {
-      assertEquals("property " + key + " = " + val,
-                   expected,
-                   val);
-    }
-  }
-
   private void setInstanceVal(Configuration conf,
                               String host,
                               String key,
@@ -75,18 +62,9 @@ public class TestRestClientBindings extends Assert {
   }
 
   @Test
-  public void testBind() throws Exception {
-    Properties props = RestClientBindings.bind(AUTH_URL, TENANT, USER, PASS);
-    assertPropertyEquals(props, SWIFT_AUTH_PROPERTY, AUTH_URL);
-    assertPropertyEquals(props, SWIFT_TENANT_PROPERTY, TENANT);
-    assertPropertyEquals(props, SWIFT_USERNAME_PROPERTY, USER);
-    assertPropertyEquals(props, SWIFT_PASSWORD_PROPERTY, PASS);
-  }
-
-  @Test
   public void testPrefixBuilder() throws Throwable {
     String built = RestClientBindings.buildSwiftInstancePrefix(HOSTNAME);
-    assertEquals("fs.swift.instance.hostname", built);
+    assertEquals("fs.swift.service.hostname", built);
   }
 
   @Test
@@ -116,5 +94,5 @@ public class TestRestClientBindings extends Assert {
     RestClientBindings.bind(filesysURI, conf );
   }
 
-  
+
 }

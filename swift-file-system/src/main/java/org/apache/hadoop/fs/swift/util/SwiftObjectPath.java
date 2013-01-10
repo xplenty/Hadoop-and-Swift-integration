@@ -68,12 +68,15 @@ public class SwiftObjectPath {
   }
 
   public String toUriPath() {
-    if (container.endsWith("/"))
+    if (container.endsWith("/")) {
       return container + object;
-    else if (object.startsWith("/"))
+    }
+    else if (object.startsWith("/")) {
       return container + object;
-    else
+    }
+    else {
       return container + "/" + object;
+    }
   }
 
   @Override

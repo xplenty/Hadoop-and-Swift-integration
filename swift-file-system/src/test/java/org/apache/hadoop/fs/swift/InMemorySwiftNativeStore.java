@@ -25,7 +25,8 @@ public class InMemorySwiftNativeStore extends SwiftNativeFileSystemStore {
           new TreeMap<String, FileStatus>();
   private SortedMap<String, byte[]> dataMap = new TreeMap<String, byte[]>();
 
-  public void initialize(URI uri, Configuration conf) {
+  @Override
+  public void initialize(URI fsURI, Configuration conf) {
     //nothing to do
   }
 
@@ -88,9 +89,10 @@ public class InMemorySwiftNativeStore extends SwiftNativeFileSystemStore {
   }
 
   @Override
-  public void deleteObject(Path path) throws IOException {
-    metadataMap.remove(path.toUri().toString());
+  public boolean deleteObject(Path path) throws IOException {
+    boolean found = null!= metadataMap.remove(path.toUri().toString());
     dataMap.remove(path.toUri().toString());
+    return found;
   }
 
   @Override

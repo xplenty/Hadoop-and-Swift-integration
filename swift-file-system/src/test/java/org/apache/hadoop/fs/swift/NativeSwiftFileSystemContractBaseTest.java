@@ -5,10 +5,12 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystemContractBaseTest;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 
 /**
  * Tests for NativeSwiftFS using in-memory Swift emulator
@@ -18,13 +20,17 @@ public abstract class NativeSwiftFileSystemContractBaseTest extends FileSystemCo
 
   @Override
   protected void setUp() throws Exception {
-    final URI uri = new URI("swift://localhost:8080");
+    final URI uri = getFilesystemURI();
     final Configuration conf = new Configuration();
 
     SwiftNativeFileSystem swiftFS = createSwiftFS();
     fs = swiftFS;
     fs.initialize(uri, conf);
     super.setUp();
+  }
+
+  protected URI getFilesystemURI() throws URISyntaxException, IOException {
+    return new URI("swift://localhost:8080");
   }
 
   /**
