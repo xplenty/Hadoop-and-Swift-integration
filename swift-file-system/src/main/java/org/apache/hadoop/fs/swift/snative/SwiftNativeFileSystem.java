@@ -84,25 +84,29 @@ public class SwiftNativeFileSystem extends FileSystem {
   /**
    * default class initialization
    *
-   * @param uri  path to Swift
+   * @param fsuri  path to Swift
    * @param conf Hadoop configuration
    * @throws IOException
    */
   @Override
-  public void initialize(URI uri, Configuration conf) throws IOException {
-    super.initialize(uri, conf);
+  public void initialize(URI fsuri, Configuration conf) throws IOException {
+    super.initialize(fsuri, conf);
     setConf(conf);
     if (store == null) {
       store = new SwiftNativeFileSystemStore();
     }
-    this.uri = URI.create(String.format("%s://%s:%d/",
-                                        uri.getScheme(),
-                                        uri.getHost(),
-                                        uri.getPort()));
+    this.uri = fsuri;
+    URI.create(String.format("%s://%s:%d/",
+                             fsuri.getScheme(),
+                             fsuri.getHost(),
+                             fsuri.getPort()));
     this.workingDir =
       new Path("/user", System.getProperty("user.name")).makeQualified(this);
-
-    store.initialize(this.uri, conf);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Initializing SwiftNativeFileSystem against URI "+ uri
+               + " and working dir " + workingDir);
+    }
+    store.initialize(uri, conf);
     LOG.debug("SwiftFileSystem initialized");
 
   }

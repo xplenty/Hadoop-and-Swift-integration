@@ -44,7 +44,7 @@ public class TestRestClientBindings extends Assert {
 
   @Before
   public void setup() throws URISyntaxException {
-    filesysURI = new URI("swift://" + HOSTNAME + "/");
+    filesysURI = new URI(FS_URI);
     conf = new Configuration(true);
     setInstanceVal(conf, HOSTNAME, DOT_AUTH_URL, AUTH_URL);
     setInstanceVal(conf, HOSTNAME, DOT_USERNAME, USER);
@@ -83,15 +83,15 @@ public class TestRestClientBindings extends Assert {
   @Test(expected = SwiftConfigurationException.class)
   public void testBindAgainstConfMissingInstance() throws Exception {
     Configuration badConf = new Configuration();
-    RestClientBindings.bind(filesysURI, badConf );
+    RestClientBindings.bind(filesysURI, badConf);
   }
 
 
   @Test(expected = SwiftConfigurationException.class)
   public void testBindAgainstConfIncompleteInstance() throws Exception {
     String instance = RestClientBindings.buildSwiftInstancePrefix(HOSTNAME);
-    conf.unset(instance+DOT_PASSWORD);
-    RestClientBindings.bind(filesysURI, conf );
+    conf.unset(instance + DOT_PASSWORD);
+    RestClientBindings.bind(filesysURI, conf);
   }
 
   @Test(expected = SwiftConfigurationException.class)

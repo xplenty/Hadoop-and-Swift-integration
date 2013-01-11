@@ -20,6 +20,8 @@ package org.apache.hadoop.fs.swift.http;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.classification.InterfaceAudience;
+import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
 
@@ -38,6 +40,8 @@ import static org.apache.hadoop.fs.swift.http.SwiftProtocolConstants.*;
  * This class extracts the values for a specific filesystem endpoint
  * and then builds an appropriate Properties file.
  */
+@InterfaceAudience.Private
+@InterfaceStability.Evolving
 public final class RestClientBindings {
   private static final Log LOG = LogFactory.getLog(RestClientBindings.class);
 
@@ -62,7 +66,8 @@ public final class RestClientBindings {
       //expect shortnames -> conf names
       throw new SwiftConfigurationException("Only short hostnames mapping to" +
                                             " a service binding are supported," +
-                                            " not " + service);
+                                            " not " + service
+                                            + " (from) " + fsURI );
     }
     //build filename schema
     String prefix = buildSwiftInstancePrefix(service);

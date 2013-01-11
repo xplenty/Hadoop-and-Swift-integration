@@ -24,7 +24,7 @@ import java.net.URI;
 import java.util.regex.Pattern;
 
 /**
- * Swift hierarchy mapping
+ * Swift hierarchy mapping of (container, path)
  */
 public class SwiftObjectPath {
   private static final Pattern PATH_PART_PATTERN = Pattern.compile(".*/AUTH_\\w*/");
@@ -84,6 +84,14 @@ public class SwiftObjectPath {
     return toUriPath();
   }
 
+
+  /**
+   * Create a path tuple of (container, path), where the container is
+   * chosen from the host of the URI.
+   * @param uri uri to start from
+   * @param path path underneath
+   * @return a new instance.
+   */
   public static SwiftObjectPath fromPath(URI uri, Path path) {
     final String url = path.toUri().getPath().replaceAll(PATH_PART_PATTERN.pattern(), "");
 

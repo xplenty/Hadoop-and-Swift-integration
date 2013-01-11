@@ -38,6 +38,8 @@ import org.apache.commons.httpclient.protocol.Protocol;
 import org.apache.commons.httpclient.protocol.ProtocolSocketFactory;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.classification.InterfaceAudience;
+import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.swift.auth.AuthenticationRequest;
 import org.apache.hadoop.fs.swift.auth.AuthenticationRequestWrapper;
@@ -47,7 +49,6 @@ import org.apache.hadoop.fs.swift.auth.PasswordCredentials;
 import org.apache.hadoop.fs.swift.auth.entities.AccessToken;
 import org.apache.hadoop.fs.swift.auth.entities.Catalog;
 import org.apache.hadoop.fs.swift.auth.entities.Endpoint;
-import org.apache.hadoop.fs.swift.auth.entities.Tenant;
 import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftConnectionException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftException;
@@ -72,6 +73,8 @@ import java.util.Properties;
 /**
  * This implements the client-side of the Swift REST API
  */
+@InterfaceAudience.Private
+@InterfaceStability.Evolving
 public class SwiftRestClient {
   private static final Log LOG = LogFactory.getLog(SwiftRestClient.class);
   private static final int RETRY_COUNT = 3;
@@ -394,22 +397,20 @@ public class SwiftRestClient {
    *
    * @param uri file URI
    * @return object length
+   * @throws SwiftException on swift-related issues
+   * @throws IOException on network/IO problems
    */
   public long getContentLength(URI uri) throws IOException {
     return perform(uri, new HeadMethodProcessor<Long>() {
       @Override
       public Long extractResult(HeadMethod method) throws IOException {
-        if (method.getStatusCode() == SC_NOT_FOUND) {
-          return 0L;
-        }
-
         return method.getResponseContentLength();
       }
     });
   }
 
   public long getContentLength(SwiftObjectPath path) throws IOException {
-    return getContentLength(pathToURI(path, getEndpointURI().toString()));
+    return getContentLength(pathToURI(path, endpointURI));
   }
 
   /**
@@ -424,7 +425,7 @@ public class SwiftRestClient {
                                           final Header... requestHeaders)
       throws IOException {
 
-    return executeRequest(pathToURI(path, getEndpointURI().toString()),
+    return executeRequest(pathToURI(path, endpointURI),
                           requestHeaders);
   }
 
@@ -438,7 +439,7 @@ public class SwiftRestClient {
    */
   public byte[] getObjectLocation(SwiftObjectPath path,
                                   final Header... requestHeaders) throws IOException {
-    return perform(pathToURI(path, getObjectLocationURI().toString()),
+    return perform(pathToURI(path, endpointURI),
                    new GetMethodProcessor<byte[]>() {
                      @Override
                      public byte[] extractResult(GetMethod method) throws
@@ -465,6 +466,7 @@ public class SwiftRestClient {
    */
   public byte[] findObjectsByPrefix(SwiftObjectPath path,
                                     final Header... requestHeaders) throws IOException {
+    authIfNeeded();
     URI uri;
     String dataLocationURI = getEndpointURI().toString();
     try {
@@ -509,7 +511,7 @@ public class SwiftRestClient {
    */
   public boolean copyObject(SwiftObjectPath src, final SwiftObjectPath dst, final Header... headers)
     throws IOException {
-    return perform(pathToURI(src, getEndpointURI().toString()), new CopyMethodProcessor<Boolean>() {
+    return perform(pathToURI(src, endpointURI), new CopyMethodProcessor<Boolean>() {
       @Override
       public Boolean extractResult(CopyMethod method) throws IOException {
         return method.getStatusCode() != SC_NOT_FOUND;
@@ -538,7 +540,7 @@ public class SwiftRestClient {
                      final Header... requestHeaders)
     throws IOException {
 
-    perform(pathToURI(path, getEndpointURI().toString()), new PutMethodProcessor<byte[]>() {
+    perform(pathToURI(path, endpointURI), new PutMethodProcessor<byte[]>() {
       @Override
       public byte[] extractResult(PutMethod method) throws IOException {
         return method.getResponseBody();
@@ -554,15 +556,14 @@ public class SwiftRestClient {
 
   /**
    * Deletes object from swift.
-   * The result is true if this operation did the deletion (and got a status code of
-   * {@link HttpStatus#SC_NO_CONTENT}.
+   * The result is true if this operation did the deletion.
    * @param path           path to file
    * @param requestHeaders http headers
    * @throws IOException on IO Faults
    */
   public boolean delete(SwiftObjectPath path, final Header... requestHeaders) throws IOException {
 
-    return perform(pathToURI(path, getEndpointURI().toString()), new DeleteMethodProcessor<Boolean>() {
+    return perform(pathToURI(path, endpointURI), new DeleteMethodProcessor<Boolean>() {
       @Override
       public Boolean extractResult(DeleteMethod method) throws IOException {
         return method.getStatusCode() == SC_NO_CONTENT;
@@ -576,7 +577,7 @@ public class SwiftRestClient {
   }
 
   public Header[] headRequest(SwiftObjectPath path, final Header... requestHeaders) throws IOException {
-    return perform(pathToURI(path, getEndpointURI().toString()), new HeadMethodProcessor<Header[]>() {
+    return perform(pathToURI(path, endpointURI), new HeadMethodProcessor<Header[]>() {
       @Override
       public Header[] extractResult(HeadMethod method) throws IOException {
         if (method.getStatusCode() == SC_NOT_FOUND) {
@@ -594,7 +595,7 @@ public class SwiftRestClient {
   }
 
   public int putRequest(SwiftObjectPath path, final Header... requestHeaders) throws IOException {
-    return perform(pathToURI(path, getEndpointURI().toString()), new PutMethodProcessor<Integer>() {
+    return perform(pathToURI(path, endpointURI), new PutMethodProcessor<Integer>() {
 
       @Override
       public Integer extractResult(PutMethod method) throws IOException {
@@ -727,16 +728,17 @@ public class SwiftRestClient {
   }
 
   /**
-   * create default container if it doesn't exist for Hadoop Swift integration
+   * create default container if it doesn't exist for Hadoop Swift integration.
+   * non-reentrant, as this should only be needed once.
    * @param host host object path
-   * @throws IOException
+   * @throws IOException IO problems.
    */
-  private void createDefaultContainer(String host) throws IOException {
+  private synchronized void createDefaultContainer(String host) throws IOException {
     SwiftObjectPath objectPath = new SwiftObjectPath(host, "");
     try {
       getDataAsInputStream(objectPath);
-    } catch (SwiftInvalidResponseException e) {
-      if (e.statusCode == SC_NOT_FOUND) {
+    } catch (SwiftInvalidResponseException ex) {
+      if (ex.statusCode == SC_NOT_FOUND) {
         final int status = putRequest(objectPath);
         if (!isStatusCodeExpected(status,
                                   SC_OK,
@@ -752,9 +754,20 @@ public class SwiftRestClient {
                                                   "PUT",
                                                   null);
         } else {
-          throw e;
+          throw ex;
         }
       }
+    }
+  }
+
+  /**
+   * Trigger an initial auth operation if some of the needed
+   * fields are missing
+   * @throws IOException on problems
+   */
+  private void authIfNeeded() throws IOException {
+    if (getEndpointURI()==null) {
+      authenticate();
     }
   }
 
@@ -873,16 +886,19 @@ public class SwiftRestClient {
   }
 
   /**
-   * Converts Swift path to URI to make request
+   * Converts Swift path to URI to make request.
+   * This is public for unit testing
+   *
    *
    * @param path            path to object
-   * @param dataLocationURI damain url e.g. http://domain.com
+   * @param endpointURI damain url e.g. http://domain.com
    * @return valid URI for object
    */
-  private URI pathToURI(SwiftObjectPath path, String dataLocationURI) throws
-                                                                      SwiftException {
+  public static URI pathToURI(SwiftObjectPath path,
+                              URI endpointURI) throws  SwiftException {
+    String dataLocationURI = endpointURI.toString();
     try {
-      if (path.toString().startsWith("/")) {
+      if (path.toUriPath().startsWith("/")) {
         dataLocationURI = dataLocationURI.concat(path.toUriPath());
       } else {
         dataLocationURI = dataLocationURI.concat("/").concat(path.toUriPath());

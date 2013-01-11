@@ -18,16 +18,21 @@
 
 package org.apache.hadoop.fs.swift;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
-import org.apache.hadoop.fs.swift.http.SwiftRestClient;
+import org.apache.hadoop.fs.LocatedFileStatus;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.net.URI;
 
-public class TestBasicSwiftOperations {
+public class TestSwiftFileSystemBasic {
+  private static final Log LOG = LogFactory.getLog(TestSwiftFileSystemBasic.class);
 
   private Configuration conf;
   private boolean runTests;
@@ -42,25 +47,30 @@ public class TestBasicSwiftOperations {
     }
   }
 
+
   @Test
   public void testCreate() throws Throwable {
-    if (runTests) {
-      SwiftRestClient client = createClient();
+    if (!runTests) {
+      return;
     }
+    createInitedFS();
   }
 
-  private SwiftRestClient createClient() throws IOException {
-    return SwiftRestClient.getInstance(serviceURI, conf);
+  private SwiftNativeFileSystem createInitedFS() throws IOException {
+    SwiftNativeFileSystem fs = new SwiftNativeFileSystem();
+    fs.initialize(serviceURI, conf);
+    return fs;
   }
 
 
   @Test
-  public void testAuthenticate() throws Throwable {
-    if (runTests) {
-      SwiftRestClient client = createClient();
-      client.authenticate();
+  public void testListRoot() throws Throwable {
+    SwiftNativeFileSystem fs = createInitedFS();
+    RemoteIterator<LocatedFileStatus> files =
+      fs.listFiles(new Path("/"), true);
+    while (files.hasNext()) {
+      LocatedFileStatus status = files.next();
+      LOG.info(status.toString());
     }
   }
-
-
 }

@@ -18,12 +18,16 @@
 
 package org.apache.hadoop.fs.swift.http;
 
+import org.apache.hadoop.classification.InterfaceAudience;
+import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.http.HttpHeaders;
 
 /**
  * Constants used in the Swift REST protocol,
  * and in the properties used to configure the {@link SwiftRestClient}.
  */
+@InterfaceAudience.Public
+@InterfaceStability.Evolving
 public class SwiftProtocolConstants {
   public static final String HEADER_AUTH_KEY = "X-Auth-Token";
   public static final int SWIFT_HTTP_PORT = 8080;
