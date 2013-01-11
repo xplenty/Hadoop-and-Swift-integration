@@ -77,4 +77,13 @@ public class AccessToken {
   public void setTenant(Tenant tenant) {
     this.tenant = tenant;
   }
+
+  @Override
+  public String toString() {
+    return "AccessToken{" +
+           "id='" + id + '\'' +
+           ", tenant=" + tenant +
+           ", expires='" + expires + '\'' +
+           '}';
+  }
 }
