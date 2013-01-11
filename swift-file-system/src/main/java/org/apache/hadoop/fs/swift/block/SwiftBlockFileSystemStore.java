@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -191,6 +192,9 @@ public class SwiftBlockFileSystemStore implements FileSystemStore {
       uriString += Path.SEPARATOR;
 
     final byte[] buffer = swiftRestClient.findObjectsByPrefix(SwiftObjectPath.fromPath(uri, path));
+    if (buffer == null) {
+      return Collections.emptySet();
+    }
     final StringTokenizer tokenizer = new StringTokenizer(new String(buffer), "\n");
 
     final Set<Path> paths = new HashSet<Path>();

@@ -492,6 +492,14 @@ public class SwiftRestClient {
       }
 
       @Override
+      protected int[] getAllowedStatusCodes() {
+        return new int[] {
+          SC_OK,
+          SC_NOT_FOUND
+        };
+      }
+
+      @Override
       protected void setup(GetMethod method) {
         setHeaders(method, requestHeaders);
       }
