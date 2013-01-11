@@ -94,5 +94,15 @@ public class TestRestClientBindings extends Assert {
     RestClientBindings.bind(filesysURI, conf );
   }
 
+  @Test(expected = SwiftConfigurationException.class)
+  public void testDottedServiceURL() throws Exception {
+    RestClientBindings.bind(new URI("swift://hadoop.apache.org/"), conf);
+  }
+
+  @Test(expected = SwiftConfigurationException.class)
+  public void testMissingServiceURL() throws Exception {
+    RestClientBindings.bind(new URI("swift:///"), conf);
+  }
+
 
 }

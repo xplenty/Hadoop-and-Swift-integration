@@ -80,16 +80,6 @@ public class SwiftRestClient {
   private final URI authUri;
 
   /**
-   * objects query endpoint
-   */
-  private URI endpointURI;
-
-  /**
-   * object location endpoint
-   */
-  private URI objectLocationURI;
-
-  /**
    * Swift region. Some OpenStack installations has more than one region.
    * In this case user can specify region with which Hadoop will be working
    */
@@ -110,10 +100,51 @@ public class SwiftRestClient {
    */
   private final String password;
 
+
+  private URI endpointURI;
+
+  private URI objectLocationURI;
+
+  private volatile AccessToken token;
+
+  /**
+   * objects query endpoint
+   */
+  private synchronized URI getEndpointURI() {
+    return endpointURI;
+  }
+
+  /**
+   * object location endpoint
+   */
+  private synchronized URI getObjectLocationURI() {
+    return objectLocationURI;
+  }
+
   /**
    * token for Swift communication
    */
-  private AccessToken token;
+  private synchronized AccessToken getToken() {
+    return token;
+  }
+
+  /**
+   * Setter of authentication and endpoint details.
+   * Being synchronized guarantees that all three fields are set up together.
+   * It is up to the reader to read all three fields in their own
+   * synchronized block to be sure that they are all consistent.
+   * @param endpoint endpoint URI
+   * @param objectLocation object location URI
+   * @param authToken auth token
+   */
+  private synchronized void setAuthDetails(URI endpoint,
+                                           URI objectLocation,
+                                           AccessToken authToken) {
+    endpointURI = endpoint;
+    objectLocationURI = objectLocation;
+    token = authToken;
+  }
+
 
   /**
    * Base class for all Swift REST operations
@@ -190,6 +221,12 @@ public class SwiftRestClient {
   }
 
 
+  /**
+   * Create a Swift Rest Client instance.
+   * @param filesystemURI filesystem URI
+   * @param conf The URI
+   * @throws IOException
+   */
   private SwiftRestClient(URI filesystemURI,
                           Configuration conf)
     throws IOException {
@@ -197,16 +234,19 @@ public class SwiftRestClient {
 
     Properties props = RestClientBindings.bind(filesystemURI, conf);
     String stringAuthUri = getOption(props, SWIFT_AUTH_PROPERTY);
-    this.tenant = getOption(props, SWIFT_TENANT_PROPERTY);
     this.username = getOption(props, SWIFT_USERNAME_PROPERTY);
     this.password = getOption(props, SWIFT_PASSWORD_PROPERTY);
-    this.region = getOption(props, SWIFT_REGION_PROPERTY);
+    //optional
+    this.region = props.getProperty(SWIFT_REGION_PROPERTY);
+    //tenant is optional
+    this.tenant = props.getProperty(SWIFT_TENANT_PROPERTY);
+    //service is used for diagnostics
     String service = props.getProperty(SWIFT_SERVICE_PROPERTY);
 
     if (LOG.isDebugEnabled()) {
       //everything you need for diagnostics. The password is omitted.
       LOG.debug(String.format(
-        "Service={%s} uri={%s} tenant=${%s} user={%s} region={%s}",
+        "Service={%s} uri={%s} tenant={%s} user={%s} region={%s}",
         service,
         stringAuthUri,
         tenant,
@@ -216,14 +256,13 @@ public class SwiftRestClient {
     }
     try {
       this.authUri = new URI(stringAuthUri);
-      token = authenticate();
     } catch (URISyntaxException e) {
       throw new SwiftConfigurationException("The " + SWIFT_AUTH_PROPERTY
                                             + " property was incorrect: "
                                             + stringAuthUri, e);
     }
-
   }
+
   /**
    * Get a mandatory configuration option
    * @param props property set
@@ -310,7 +349,7 @@ public class SwiftRestClient {
   }
 
   public long getContentLength(SwiftObjectPath path) throws IOException {
-    return getContentLength(pathToURI(path, endpointURI.toString()));
+    return getContentLength(pathToURI(path, getEndpointURI().toString()));
   }
 
   /**
@@ -324,7 +363,7 @@ public class SwiftRestClient {
                                           final Header... requestHeaders)
       throws IOException {
 
-    return executeRequest(pathToURI(path, endpointURI.toString()),
+    return executeRequest(pathToURI(path, getEndpointURI().toString()),
                           requestHeaders);
   }
 
@@ -337,7 +376,7 @@ public class SwiftRestClient {
    */
   public byte[] getObjectLocation(SwiftObjectPath path,
                                   final Header... requestHeaders) throws IOException {
-    return perform(pathToURI(path, objectLocationURI.toString()),
+    return perform(pathToURI(path, getObjectLocationURI().toString()),
                    new GetMethodProcessor<byte[]>() {
                      @Override
                      public byte[] extractResult(GetMethod method) throws
@@ -359,7 +398,7 @@ public class SwiftRestClient {
   public byte[] findObjectsByPrefix(SwiftObjectPath path,
                                     final Header... requestHeaders) throws IOException {
     URI uri;
-    String dataLocationURI = endpointURI.toString();
+    String dataLocationURI = getEndpointURI().toString();
     try {
       String object = path.getObject();
       if (object.startsWith("/")) {
@@ -401,7 +440,7 @@ public class SwiftRestClient {
    */
   public boolean copyObject(SwiftObjectPath src, final SwiftObjectPath dst, final Header... headers)
     throws IOException {
-    return perform(pathToURI(src, endpointURI.toString()), new CopyMethodProcessor<Boolean>() {
+    return perform(pathToURI(src, getEndpointURI().toString()), new CopyMethodProcessor<Boolean>() {
       @Override
       public Boolean extractResult(CopyMethod method) throws IOException {
         return method.getStatusCode() != SC_NOT_FOUND;
@@ -426,7 +465,7 @@ public class SwiftRestClient {
   public void upload(SwiftObjectPath path, final InputStream data, final long length, final Header... requestHeaders)
     throws IOException {
 
-    perform(pathToURI(path, endpointURI.toString()), new PutMethodProcessor<byte[]>() {
+    perform(pathToURI(path, getEndpointURI().toString()), new PutMethodProcessor<byte[]>() {
       @Override
       public byte[] extractResult(PutMethod method) throws IOException {
         return method.getResponseBody();
@@ -448,7 +487,7 @@ public class SwiftRestClient {
    */
   public boolean delete(SwiftObjectPath path, final Header... requestHeaders) throws IOException {
 
-    return perform(pathToURI(path, endpointURI.toString()), new DeleteMethodProcessor<Boolean>() {
+    return perform(pathToURI(path, getEndpointURI().toString()), new DeleteMethodProcessor<Boolean>() {
       @Override
       public Boolean extractResult(DeleteMethod method) throws IOException {
         return method.getStatusCode() == SC_NO_CONTENT;
@@ -462,7 +501,7 @@ public class SwiftRestClient {
   }
 
   public Header[] headRequest(SwiftObjectPath path, final Header... requestHeaders) throws IOException {
-    return perform(pathToURI(path, endpointURI.toString()), new HeadMethodProcessor<Header[]>() {
+    return perform(pathToURI(path, getEndpointURI().toString()), new HeadMethodProcessor<Header[]>() {
       @Override
       public Header[] extractResult(HeadMethod method) throws IOException {
         if (method.getStatusCode() == SC_NOT_FOUND) {
@@ -480,7 +519,7 @@ public class SwiftRestClient {
   }
 
   public int putRequest(SwiftObjectPath path, final Header... requestHeaders) throws IOException {
-    return perform(pathToURI(path, endpointURI.toString()), new PutMethodProcessor<Integer>() {
+    return perform(pathToURI(path, getEndpointURI().toString()), new PutMethodProcessor<Integer>() {
 
       @Override
       public Integer extractResult(PutMethod method) throws IOException {
@@ -495,13 +534,30 @@ public class SwiftRestClient {
   }
 
   /**
-   * Makes authentication in Openstack Keystone
+   * Authenticate to Openstack Keystone
+   * As well as returning the access token, the member fields {@link #token},
+   * {@link #endpointURI} and {@link #objectLocationURI} are set up for re-use
    *
+   * This method is re-entrant -if more than one thread attempts to authenticate
+   * neither will block -but the field values with have those of the last caller
    * @return authenticated access token
    */
   public AccessToken authenticate() throws IOException {
     LOG.info("started authentication");
     return perform(authUri, new PostMethodProcessor<AccessToken>() {
+      @Override
+      protected void setup(PostMethod method) throws SwiftException {
+        AuthenticationRequest authRequest = new AuthenticationRequest(tenant, new
+                                                               PasswordCredentials(
+          username, password));
+        final String data = JSONUtil.toJSON(new AuthenticationRequestWrapper(
+          authRequest));
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Authenticating with " + authRequest + "\n" + data);
+        }
+        method.setRequestEntity(toJsonEntity(data));
+      }
+
       @Override
       public AccessToken extractResult(PostMethod method) throws IOException {
         final AuthenticationResponse access =
@@ -513,10 +569,16 @@ public class SwiftRestClient {
         boolean catalogMatch = false;
         StringBuilder catList = new StringBuilder();
         StringBuilder regionList = new StringBuilder();
+
+        //these fields are all set together at the end of the operation
+        URI endpointURI = null;
+        URI objectLocation;
+        AccessToken accessToken;
+
         for (Catalog catalog : serviceCatalog) {
           String name = catalog.getName();
           String type = catalog.getType();
-          String descr = String.format("[%s: %s] ", name, type);
+          String descr = String.format("[%s: %s]; ", name, type);
           catList.append(descr);
           if (LOG.isDebugEnabled()) {
             LOG.debug("Catalog entry " + descr);
@@ -532,7 +594,7 @@ public class SwiftRestClient {
             for (Endpoint endpoint : catalog.getEndpoints()) {
               String endpointRegion = endpoint.getRegion();
               URI endpointURL = endpoint.getPublicURL();
-              descr = String.format("[%s =>  %s] ", region, endpointURL);
+              descr = String.format("[%s =>  %s]; ", endpointRegion, endpointURL);
               regionList.append(descr);
               if (LOG.isDebugEnabled()) {
                 LOG.debug("Endpoint " + descr);
@@ -545,70 +607,68 @@ public class SwiftRestClient {
           }
         }
         if (endpointURI == null) {
-          throw new SwiftException("Could not find swift service from auth URL"
-                                   + authUri + " and region"
-                                   + authUri + "."
+          throw new SwiftException("Could not find swift service from auth URL "
+                                   + authUri
+                                   + " and region '" + region + "'. "
                                    + "Categories: " + catList
                                    + ((regionList.length() > 0) ?
-                                      ("regions" + regionList)
+                                      ("regions: " + regionList)
                                       : "No regions")
 
           );
         }
 
+
+        accessToken = access.getToken();
         String path = SWIFT_OBJECT_AUTH_ENDPOINT
-                      + access.getToken().getTenant().getId();
-        String host = endpointURI.getHost();
+                      + accessToken.getTenant().getId();
+        String host = getEndpointURI().getHost();
         try {
-          objectLocationURI = new URI(endpointURI.getScheme(),
+          objectLocation = new URI(getEndpointURI().getScheme(),
                                       null,
                                       host,
-                                      endpointURI.getPort(),
+                                      getEndpointURI().getPort(),
                                       path,
                                       null,
                                       null);
         } catch (URISyntaxException e) {
           throw new SwiftException("object endpoint URI is incorrect: "
-                                   + endpointURI
+                                   + getEndpointURI()
                                    + " + " + path,
                                    e);
         }
-        token = access.getToken();
-        //create default container if it doesn't exist for Hadoop Swift integration
-        final InputStream dataAsInputStream = getDataAsInputStream(new SwiftObjectPath(
-          host, ""));
-        if (dataAsInputStream == null) {
-          final int status = putRequest(new SwiftObjectPath(host, ""));
-          if (!isStatusCodeExpected(status,
-                                    SC_OK,
-                                    SC_CREATED,
-                                    SC_ACCEPTED,
-                                    SC_NO_CONTENT)) {
-            throw new SwiftException("Couldn't create container "
-                                     + host +
-                    " for storing data in Swift." +
-                    " Try to create container " + host + " manually ");
-          }
-        }
+        setAuthDetails(endpointURI, objectLocation, accessToken);
+
         if (LOG.isDebugEnabled()) {
           LOG.debug("authenticated against " + endpointURI);
         }
-
-        return token;
-      }
-
-      @Override
-      protected void setup(PostMethod method) {
-        final String data = JSONUtil.toJSON(new AuthenticationRequestWrapper(
-                new AuthenticationRequest(tenant, new PasswordCredentials(username, password))));
-
-        try {
-          method.setRequestEntity(new StringRequestEntity(data, "application/json", "UTF-8"));
-        } catch (UnsupportedEncodingException e) {
-          throw new RuntimeException(e);
-        }
+        createDefaultContainer(host);
+        return accessToken;
       }
     });
+  }
+
+  /**
+   * create default container if it doesn't exist for Hadoop Swift integration
+   * @param host host object path
+   * @throws IOException
+   */
+  private void createDefaultContainer(String host) throws IOException {
+    final InputStream
+      dataAsInputStream = getDataAsInputStream(new SwiftObjectPath(host, ""));
+    if (dataAsInputStream == null) {
+      final int status = putRequest(new SwiftObjectPath(host, ""));
+      if (!isStatusCodeExpected(status,
+                                SC_OK,
+                                SC_CREATED,
+                                SC_ACCEPTED,
+                                SC_NO_CONTENT)) {
+        throw new SwiftException("Couldn't create container "
+                                 + host +
+                " for storing data in Swift." +
+                " Try to create container " + host + " manually ");
+      }
+    }
   }
 
   /**
@@ -624,17 +684,16 @@ public class SwiftRestClient {
     checkNotNull(uri);
     checkNotNull(processor);
 
-    final HttpClient client = new HttpClient();
+
     final M method = processor.createMethod(uri.toString());
     
     //retry policy
-    method.getParams().setParameter(HttpMethodParams.RETRY_HANDLER, 
+    method.getParams().setParameter(HttpMethodParams.RETRY_HANDLER,
                                     new DefaultHttpMethodRetryHandler(
                                       RETRY_COUNT, false));
 
     try {
-      int statusCode = client.executeMethod(method);
-      retryIfAuthorizationFailed(client, method);
+      int statusCode = exec(method);
 
       //look at the response and see if it was valid or not.
       //Valid is more than a simple 200; even 404 "not found" is considered
@@ -707,7 +766,26 @@ public class SwiftRestClient {
     return new SwiftRestClient(filesystemURI, config);
   }
 
-/**
+
+  /**
+   * Convert the (JSON) data to a string request as UTF-8
+   * @param data data
+   * @return the data
+   * @throws SwiftException if for some very unexpected reason it's impossible
+   * to convert the data to UTF-8.
+   */
+  private static StringRequestEntity toJsonEntity(String data) throws
+                                                               SwiftException {
+    StringRequestEntity entity;
+    try {
+      entity = new StringRequestEntity(data, "application/json", "UTF-8");
+    } catch (UnsupportedEncodingException e) {
+      throw new SwiftException("Could not encode data as UTF-8", e);
+    }
+    return entity;
+  }
+
+  /**
    * Converts Swift path to URI to make request
    *
    * @param path            path to object
@@ -734,10 +812,29 @@ public class SwiftRestClient {
     for (Header header : requestHeaders) {
       method.addRequestHeader(header);
     }
-    method.addRequestHeader(HEADER_AUTH_KEY, token.getId());
+    setAuthToken(method, getToken());
   }
 
-  private <M extends HttpMethod> void retryIfAuthorizationFailed(HttpClient client, M method) throws IOException {
+  /**
+   * Set the auth key header of the method to the token ID supplied
+   * @param method method
+   * @param accessToken access token
+   */
+  private void setAuthToken(HttpMethodBase method, AccessToken accessToken) {
+    method.addRequestHeader(HEADER_AUTH_KEY, accessToken.getId());
+  }
+
+  /**
+   * Execute a method in a new HttpClient instance.
+   * If the auth failed, authenticate then retry the method.
+   * @param method methot to exec
+   * @param <M> Method type
+   * @return the status code
+   * @throws IOException on any failure
+   */
+  private <M extends HttpMethod> int exec(M method) throws IOException {
+    final HttpClient client = new HttpClient();
+    int statusCode = execWithDebugOutput(method, client);
     if (method.getStatusCode() == HttpStatus.SC_UNAUTHORIZED) {
       //unauthed -look at what raised the response
 
@@ -748,10 +845,28 @@ public class SwiftRestClient {
           + " or Openstack Keystone is configured incorrectly. URL=" + authUri);
       } else {
         //any other URL: try again
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Auth failed - authenticating");
+        }
         authenticate();
-        client.executeMethod(method);
+
+        statusCode = execWithDebugOutput(method, client);
       }
     }
+    return statusCode;
+  }
+
+  private <M extends HttpMethod> int execWithDebugOutput(M method,
+                                                         HttpClient client) throws
+                                                                            IOException {
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Executing " + method.getName() + " " + method.getURI());
+    }
+    int statusCode = client.executeMethod(method);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Status code = " + statusCode);
+    }
+    return statusCode;
   }
 
   /**

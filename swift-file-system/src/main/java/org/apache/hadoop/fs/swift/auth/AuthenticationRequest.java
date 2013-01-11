@@ -69,4 +69,12 @@ public class AuthenticationRequest {
   public void setPasswordCredentials(PasswordCredentials passwordCredentials) {
     this.passwordCredentials = passwordCredentials;
   }
+
+  @Override
+  public String toString() {
+    return "AuthenticationRequest{" +
+           "tenantName='" + tenantName + '\'' +
+           ", passwordCredentials=" + passwordCredentials +
+           '}';
+  }
 }

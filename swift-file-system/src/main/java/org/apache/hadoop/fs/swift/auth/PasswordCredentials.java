@@ -75,5 +75,12 @@ public class PasswordCredentials {
   public void setUsername(String username) {
     this.username = username;
   }
+
+  @Override
+  public String toString() {
+    return "PasswordCredentials :" +
+           "username='" + username + '\'' +
+           ", password len='" + ((password==null)?-1:password.length()) + '\'' ;
+  }
 }
 
