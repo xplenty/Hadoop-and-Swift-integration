@@ -3,6 +3,7 @@ package org.apache.hadoop.fs.swift;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.swift.http.RestClientBindings;
 import org.apache.hadoop.fs.swift.http.SwiftRestClient;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
 import org.junit.Test;
@@ -28,40 +29,45 @@ public class TestSwiftObjectPath {
   public void testParsePath() throws Exception {
     final String pathString = "/home/user/files/file1";
     final Path path = new Path(pathString);
-    final URI uri = new URI("http://localhost:35357");
+    final URI uri = new URI("http://container.localhost");
     final SwiftObjectPath expected = SwiftObjectPath.fromPath(uri, path);
-    final SwiftObjectPath actual = new SwiftObjectPath(uri.getHost(), pathString);
+    final SwiftObjectPath actual = new SwiftObjectPath(
+      RestClientBindings.extractContainerName(uri),
+      pathString);
 
     assertEquals(expected, actual);
   }
 
   @Test
   public void testParseUrlPath() throws Exception {
-    final String pathString = "swift://host1.vm.net:8090/home/user/files/file1";
+    final String pathString = "swift://container.service1/home/user/files/file1";
     final URI uri = new URI(pathString);
     final Path path = new Path(pathString);
     final SwiftObjectPath expected = SwiftObjectPath.fromPath(uri, path);
-    final SwiftObjectPath actual = new SwiftObjectPath(uri.getHost(), "/home/user/files/file1");
+    final SwiftObjectPath actual = new SwiftObjectPath(
+      RestClientBindings.extractContainerName(uri),
+       "/home/user/files/file1");
 
     assertEquals(expected, actual);
   }
 
   @Test
   public void testParseAuthenticatedUrl() throws Exception {
-    final String pathString = "swift://host1.vm.net:8090/v2/AUTH_00345h34l93459y4/home/tom/documents/finance.docx";
+    final String pathString = "swift://container.service1/v2/AUTH_00345h34l93459y4/home/tom/documents/finance.docx";
     final URI uri = new URI(pathString);
     final Path path = new Path(pathString);
     final SwiftObjectPath expected = SwiftObjectPath.fromPath(uri, path);
-    final SwiftObjectPath actual = new SwiftObjectPath(uri.getHost(), "/home/tom/documents/finance.docx");
+    final SwiftObjectPath actual = new SwiftObjectPath(
+      RestClientBindings.extractContainerName(uri),
+      "/home/tom/documents/finance.docx");
 
     assertEquals(expected, actual);
   }
 
   @Test
-  public void testConvertToPAth() throws Throwable {
-    String initialpath = "/container/dir/file1";
-    Path ipath = new Path(
-      initialpath);
+  public void testConvertToPath() throws Throwable {
+    String initialpath = "/dir/file1";
+    Path ipath = new Path(initialpath);
     SwiftObjectPath objectPath = SwiftObjectPath.fromPath(new URI(initialpath),
                                                           ipath);
     URI endpoint = new URI(ENDPOINT);

@@ -4,6 +4,7 @@ import org.apache.commons.httpclient.Header;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftException;
 import org.apache.hadoop.fs.swift.http.SwiftProtocolConstants;
 import org.apache.hadoop.fs.swift.http.SwiftRestClient;
@@ -11,6 +12,7 @@ import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
 import org.apache.http.HttpHeaders;
 
 import java.io.ByteArrayInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -47,6 +49,12 @@ public class SwiftNativeFileSystemStore {
     this.swiftRestClient = SwiftRestClient.getInstance(fsURI, configuration);
   }
 
+  @Override
+  public String toString() {
+    return "SwiftNativeFileSystemStore with "
+           + swiftRestClient;
+  }
+
   /**
    * Upload a file
    * @param path destination path in the swift filesystem
@@ -55,7 +63,7 @@ public class SwiftNativeFileSystemStore {
    * @throws IOException on a problem
    */
   public void uploadFile(Path path, InputStream inputStream, long length) throws IOException {
-    swiftRestClient.upload(SwiftObjectPath.fromPath(uri, path), inputStream, length);
+    swiftRestClient.upload(toObjectPath(path), inputStream, length);
   }
 
   /**
@@ -84,7 +92,7 @@ public class SwiftNativeFileSystemStore {
    * @throws IOException
    */
   public void createManifestForPartUpload(Path path) throws IOException {
-    String pathString = SwiftObjectPath.fromPath(uri, path).toString();
+    String pathString = toObjectPath(path).toString();
     if (!pathString.endsWith("/")) {
       pathString = pathString.concat("/");
     }
@@ -92,7 +100,7 @@ public class SwiftNativeFileSystemStore {
       pathString = pathString.substring(1);
     }
 
-    swiftRestClient.upload(SwiftObjectPath.fromPath(uri, path),
+    swiftRestClient.upload(toObjectPath(path),
                            new ByteArrayInputStream(new byte[0]),
                            0,
                            new Header(SwiftProtocolConstants.X_OBJECT_MANIFEST, pathString));
@@ -103,12 +111,14 @@ public class SwiftNativeFileSystemStore {
    * @param path path
    * @return file metadata. -or null if no headers were received back from the server.
    * @throws IOException on a problem
+   * @throws FileNotFoundException if there is nothing at the end
    */
   public FileStatus getObjectMetadata(Path path) throws IOException {
     final Header[] headers;
-    headers = swiftRestClient.headRequest(SwiftObjectPath.fromPath(uri, path));
-    if (headers == null || headers.length == 0) {
-      return null;
+    headers = swiftRestClient.headRequest(toObjectPath(path));
+    //no headers is treated as a missing file
+    if (headers.length == 0) {
+      throw new FileNotFoundException("Not Found " + path.toUri());
     }
 
     boolean isDir = false;
@@ -144,28 +154,43 @@ public class SwiftNativeFileSystemStore {
   }
 
   public InputStream getObject(Path path) throws IOException {
-    return swiftRestClient.getDataAsInputStream(SwiftObjectPath.fromPath(uri, path));
+    return swiftRestClient.getDataAsInputStream(toObjectPath(path));
   }
 
-  public InputStream getObject(Path path, long byteRangeStart, long length) throws IOException {
-    return swiftRestClient.getDataAsInputStream(SwiftObjectPath.fromPath(uri, path), byteRangeStart, length);
+  /**
+   * Get the input stream starting from a specific point.
+   * @param path path to object
+   * @param byteRangeStart starting point
+   * @param length no. of bytes
+   * @return an input stream that must be closed
+   * @throws IOException IO problems
+   */
+  public InputStream getObject(Path path, long byteRangeStart, long length)
+    throws IOException {
+    return swiftRestClient.getDataAsInputStream(
+      toObjectPath(path), byteRangeStart, length);
   }
 
   public FileStatus[] listSubPaths(Path path) throws IOException {
     final Collection<FileStatus> fileStatuses;
-    fileStatuses = listDirectory(SwiftObjectPath.fromPath(uri, path));
+    fileStatuses = listDirectory(toObjectPath(path));
 
     return fileStatuses.toArray(new FileStatus[fileStatuses.size()]);
   }
 
   public void createDirectory(Path path) throws IOException {
-    swiftRestClient.putRequest(SwiftObjectPath.fromPath(uri, path));
+    swiftRestClient.putRequest(toObjectPath(path));
+  }
+
+  private SwiftObjectPath toObjectPath(Path path) throws
+                                                  SwiftConfigurationException {
+    return SwiftObjectPath.fromPath(uri, path);
   }
 
   public List<URI> getObjectLocation(Path path) throws IOException {
     final byte[] objectLocation;
     objectLocation = swiftRestClient.getObjectLocation(
-      SwiftObjectPath.fromPath(uri, path));
+      toObjectPath(path));
     return extractUris(new String(objectLocation));
   }
 
@@ -177,7 +202,7 @@ public class SwiftNativeFileSystemStore {
    * @throws IOException on a failure
    */
   public boolean deleteObject(Path path) throws IOException {
-    return swiftRestClient.delete(SwiftObjectPath.fromPath(uri, path));
+    return swiftRestClient.delete(toObjectPath(path));
   }
 
   /**
@@ -187,7 +212,7 @@ public class SwiftNativeFileSystemStore {
    * @return true - path exists, false otherwise
    */
   public boolean objectExists(Path path) throws IOException {
-    return !listDirectory(SwiftObjectPath.fromPath(uri, path)).isEmpty();
+    return !listDirectory(toObjectPath(path)).isEmpty();
   }
 
   /**
@@ -222,23 +247,22 @@ public class SwiftNativeFileSystemStore {
         //and the source name
 
         //REVISIT: this uses dst.getParent(), and not dst itself. Why?
-        destPath = SwiftObjectPath.fromPath(uri,
-                                            new Path(dst.getParent(),
-                                                     src.getName()));
+        destPath = toObjectPath(new Path(dst.getParent(),
+                 src.getName()));
       } else {
         //destination is a simple file
-        destPath = SwiftObjectPath.fromPath(uri, dst);
+        destPath = toObjectPath(dst);
       }
       //do the copy
-      return swiftRestClient.copyObject(SwiftObjectPath.fromPath(uri, src),
+      return swiftRestClient.copyObject(toObjectPath(src),
                                         destPath);
     } else {
 
       //here the source exists and is a directory
       List<FileStatus> fileStatuses =
-        listDirectory(SwiftObjectPath.fromPath(uri, src.getParent()));
+        listDirectory(toObjectPath(src.getParent()));
       List<FileStatus> dstPath =
-        listDirectory(SwiftObjectPath.fromPath(uri, dst.getParent()));
+        listDirectory(toObjectPath(dst.getParent()));
 
       if (dstPath.size() == 1 && !dstPath.get(0).isDir()) {
         throw new SwiftException("Cannot rename to: " + dst.toString());
@@ -248,10 +272,10 @@ public class SwiftNativeFileSystemStore {
       for (FileStatus fileStatus : fileStatuses) {
         if (!fileStatus.isDir()) {
           result &=
-            swiftRestClient.copyObject(SwiftObjectPath.fromPath(uri, fileStatus.getPath()),
-                                       SwiftObjectPath.fromPath(uri, dst));
+            swiftRestClient.copyObject(toObjectPath(fileStatus.getPath()),
+                                       toObjectPath(dst));
 
-          swiftRestClient.delete(SwiftObjectPath.fromPath(uri, fileStatus.getPath()));
+          swiftRestClient.delete(toObjectPath(fileStatus.getPath()));
         }
       }
 
@@ -262,9 +286,9 @@ public class SwiftNativeFileSystemStore {
   /**
    * List a directory
    * @param path path to list
-   * @return the filestats of all the entities in the directory -or null if
-   * no objects were found listed under that prefix
-   * @throws IOException
+   * @return the filestats of all the entities in the directory -or
+   * an empty list if no objects were found listed under that prefix
+   * @throws IOException IO problems
    */
   private List<FileStatus> listDirectory(SwiftObjectPath path) throws IOException {
     String pathURI = path.toUriPath();
@@ -273,8 +297,9 @@ public class SwiftNativeFileSystemStore {
     }
 
     final byte[] bytes;
-    bytes = swiftRestClient.findObjectsByPrefix(path);
-    if (bytes == null) {
+    try {
+      bytes = swiftRestClient.findObjectsByPrefix(path);
+    } catch (FileNotFoundException e) {
       return Collections.emptyList();
     }
 

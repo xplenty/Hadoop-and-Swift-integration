@@ -51,17 +51,6 @@ public abstract class NativeSwiftFileSystemContractBaseTest
   protected abstract SwiftNativeFileSystem createSwiftFS() throws IOException;
 
   @Override
-  public void tearDown() throws Exception {
-    try {
-      if (fs != null) {
-        fs.delete(path("/test"), true);
-      }
-    } catch (IOException e) {
-      LOG.error("Error during teardown " + e, e);
-    }
-  }
-
-  @Override
   public void testMkdirsWithUmask() {
     //overriding to disable
   }

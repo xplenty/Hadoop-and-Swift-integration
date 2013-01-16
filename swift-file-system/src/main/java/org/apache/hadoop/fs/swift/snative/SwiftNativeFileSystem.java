@@ -96,6 +96,9 @@ public class SwiftNativeFileSystem extends FileSystem {
       store = new SwiftNativeFileSystemStore();
     }
     this.uri = fsuri;
+    //the URI given maps to the x-ref in the config, that is retained
+    //for visibility/comparison, but behind the scenes it is converted
+    //into the references relative
     URI.create(String.format("%s://%s:%d/",
                              fsuri.getScheme(),
                              fsuri.getHost(),
@@ -150,10 +153,6 @@ public class SwiftNativeFileSystem extends FileSystem {
   @Override
   public FileStatus getFileStatus(Path f) throws IOException {
     final FileStatus objectMetadata = store.getObjectMetadata(f);
-    if (objectMetadata == null) {
-      throw new FileNotFoundException("file " + f + " doesn't exist");
-    }
-
     return objectMetadata;
   }
 

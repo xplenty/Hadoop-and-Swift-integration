@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.apache.hadoop</groupId>
     <artifactId>hadoop-swift</artifactId>
-    <version>1.0</version>
+    <version>0.1-SNAPSHOT</version>
     <name>SwiftFileSystem</name>
     <url>http://maven.apache.org</url>
 

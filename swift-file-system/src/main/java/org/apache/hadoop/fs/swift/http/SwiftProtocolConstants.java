@@ -55,7 +55,18 @@ public class SwiftProtocolConstants {
    */
   public static final String SWIFT_SERVICE_PREFIX = "fs.swift.service.";
 
-  public static final String DOT_SERVICE = ".service";
+  /**
+   * Key for passing the service name as a property -not read from the
+   * configuration : {@value}
+   */
+  public static final String DOT_SERVICE = ".SERVICE-NAME";
+
+  /**
+   * Key for passing the container name as a property -not read from the
+   * configuration : {@value}
+   */
+  public static final String DOT_CONTAINER = ".CONTAINER-NAME";
+
   public static final String DOT_AUTH_URL = ".auth.url";
   public static final String DOT_TENANT = ".tenant";
   public static final String DOT_USERNAME = ".username";
@@ -65,6 +76,8 @@ public class SwiftProtocolConstants {
   public static final String DOT_REGION = ".region";
 
   public static final String SWIFT_SERVICE_PROPERTY = "swift" + DOT_SERVICE;
+  public static final String SWIFT_CONTAINER_PROPERTY = "swift" + DOT_CONTAINER;
+
   public static final String SWIFT_AUTH_PROPERTY = "swift" + DOT_AUTH_URL;
   public static final String SWIFT_TENANT_PROPERTY = "swift" + DOT_TENANT;
   public static final String SWIFT_USERNAME_PROPERTY = "swift" + DOT_USERNAME;

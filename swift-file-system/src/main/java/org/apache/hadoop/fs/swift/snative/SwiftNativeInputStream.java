@@ -100,15 +100,25 @@ class SwiftNativeInputStream extends FSInputStream {
     return result;
   }
 
+  /**
+   * close the stream. After this the stream is not usable.
+   * This method is thread-safe and idempotent.
+   * @throws IOException on IO problems.
+   */
   @Override
-  public void close() throws IOException {
-    if (in != null)
-      in.close();
+  public synchronized void close() throws IOException {
+    try {
+      if (in != null) {
+        in.close();
+      }
+    } finally {
+      in = null;
+    }
   }
 
   @Override
   public synchronized void seek(long pos) throws IOException {
-    in.close();
+    close();
     in = nativeStore.getObject(path, pos, pos + BUFFER_SIZE);
     this.pos = pos;
   }

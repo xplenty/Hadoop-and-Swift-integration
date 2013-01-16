@@ -33,8 +33,10 @@ import java.util.Properties;
 
 public class TestRestClientBindings extends Assert {
 
-  private static final String HOSTNAME = "hostname";
-  private static final String FS_URI = "swift://" + HOSTNAME + "/";
+  private static final String SERVICE = "sname";
+  private static final String CONTAINER = "cname";
+  private static final String FS_URI = "swift://"
+                                       + CONTAINER +"."+SERVICE + "/";
   private static final String AUTH_URL = "http://localhost:8080/auth";
   private static final String USER = "user";
   private static final String PASS = "pass";
@@ -46,9 +48,9 @@ public class TestRestClientBindings extends Assert {
   public void setup() throws URISyntaxException {
     filesysURI = new URI(FS_URI);
     conf = new Configuration(true);
-    setInstanceVal(conf, HOSTNAME, DOT_AUTH_URL, AUTH_URL);
-    setInstanceVal(conf, HOSTNAME, DOT_USERNAME, USER);
-    setInstanceVal(conf, HOSTNAME, DOT_PASSWORD, PASS);
+    setInstanceVal(conf, SERVICE, DOT_AUTH_URL, AUTH_URL);
+    setInstanceVal(conf, SERVICE, DOT_USERNAME, USER);
+    setInstanceVal(conf, SERVICE, DOT_PASSWORD, PASS);
   }
 
   private void setInstanceVal(Configuration conf,
@@ -63,13 +65,16 @@ public class TestRestClientBindings extends Assert {
 
   @Test
   public void testPrefixBuilder() throws Throwable {
-    String built = RestClientBindings.buildSwiftInstancePrefix(HOSTNAME);
-    assertEquals("fs.swift.service.hostname", built);
+    String built = RestClientBindings.buildSwiftInstancePrefix(SERVICE);
+    assertEquals("fs.swift.service."+ SERVICE, built);
   }
 
   @Test
   public void testBindAgainstConf() throws Exception {
     Properties props = RestClientBindings.bind(filesysURI, conf);
+    assertPropertyEquals(props, SWIFT_CONTAINER_PROPERTY, CONTAINER);
+    assertPropertyEquals(props, SWIFT_SERVICE_PROPERTY, SERVICE);
+    assertPropertyEquals(props, SWIFT_AUTH_PROPERTY, AUTH_URL);
     assertPropertyEquals(props, SWIFT_AUTH_PROPERTY, AUTH_URL);
     assertPropertyEquals(props, SWIFT_USERNAME_PROPERTY, USER);
     assertPropertyEquals(props, SWIFT_PASSWORD_PROPERTY, PASS);
@@ -89,7 +94,7 @@ public class TestRestClientBindings extends Assert {
 
   @Test(expected = SwiftConfigurationException.class)
   public void testBindAgainstConfIncompleteInstance() throws Exception {
-    String instance = RestClientBindings.buildSwiftInstancePrefix(HOSTNAME);
+    String instance = RestClientBindings.buildSwiftInstancePrefix(SERVICE);
     conf.unset(instance + DOT_PASSWORD);
     RestClientBindings.bind(filesysURI, conf);
   }
@@ -102,6 +107,64 @@ public class TestRestClientBindings extends Assert {
   @Test(expected = SwiftConfigurationException.class)
   public void testMissingServiceURL() throws Exception {
     RestClientBindings.bind(new URI("swift:///"), conf);
+  }
+
+  /**
+   * inner test method that expects container extraction to fail
+   * -if not prints a meaningful error message.
+   * @param hostname hostname to parse
+   */
+  private static void expectExtractContainerFail(String hostname) {
+    try {
+      String container = RestClientBindings.extractContainerName(hostname);
+      fail("Expected an error -got a container of '"+ container
+          + "' from " +hostname);
+    } catch (SwiftConfigurationException expected) {
+      //expected
+    }
+  }
+
+  /**
+   * inner test method that expects service extraction to fail
+   * -if not prints a meaningful error message.
+   * @param hostname hostname to parse
+   */
+  public static void expectExtractServiceFail(String hostname) {
+    try {
+      String service = RestClientBindings.extractServiceName(hostname);
+      fail("Expected an error -got a service of '"+ service
+          + "' from " +hostname);
+    } catch (SwiftConfigurationException expected) {
+      //expected
+    }
+  }
+
+  @Test
+  public void testEmptyHostname() throws Throwable {
+    expectExtractContainerFail("");
+    expectExtractServiceFail("");
+  }
+
+  @Test
+  public void testDot() throws Throwable {
+    expectExtractContainerFail(".");
+    expectExtractServiceFail(".");
+  }
+
+  @Test
+  public void testSimple() throws Throwable {
+    expectExtractContainerFail("simple");
+    expectExtractServiceFail("simple");
+  }
+
+  @Test
+  public void testTrailingDot() throws Throwable {
+    expectExtractServiceFail("simple.");
+  }
+
+  @Test
+  public void testLeadingDot() throws Throwable {
+    expectExtractServiceFail(".leading");
   }
 
 

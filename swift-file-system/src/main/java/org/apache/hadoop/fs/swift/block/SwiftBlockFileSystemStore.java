@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.fs.swift.block;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.s3.Block;
@@ -34,6 +35,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -102,16 +104,40 @@ public class SwiftBlockFileSystemStore implements FileSystemStore {
     return true;
   }
 
+  /**
+   * Get the data at the end of the key -on any failure the input stream
+   * is closed.
+   * @param key object in the store
+   * @return a stream to get at the object -or null if not
+   * @throws IOException IO problem
+   */
   private InputStream get(String key) throws IOException {
+    InputStream inputStream = null;
     try {
-      final InputStream inputStream = swiftRestClient.getDataAsInputStream(SwiftObjectPath.fromPath(uri, keyToPath(key)));
+      inputStream =
+        swiftRestClient.getDataAsInputStream(
+          SwiftObjectPath.fromPath(uri, keyToPath(key)));
       inputStream.available();
       return inputStream;
     } catch (NullPointerException e) {
+      IOUtils.closeQuietly(inputStream);
       return null;
+    } catch (IOException e) {
+      //cleanup
+      IOUtils.closeQuietly(inputStream);
+      //rethrow
+      throw e;
     }
   }
 
+  /**
+   * Get the input stream starting from a specific point.
+   * @param key object key
+   * @param byteRangeStart starting point
+   * @param length no. of bytes
+   * @return an input stream
+   * @throws IOException IO problems
+   */
   private InputStream get(String key, long byteRangeStart, long length) throws IOException {
 
     return swiftRestClient.getDataAsInputStream(SwiftObjectPath.fromPath(uri, keyToPath(key)), byteRangeStart, length);
@@ -161,38 +187,45 @@ public class SwiftBlockFileSystemStore implements FileSystemStore {
 
   public Set<Path> listSubPaths(Path path) throws IOException {
     String uriString = path.toString();
-    if (!uriString.endsWith(Path.SEPARATOR))
+    if (!uriString.endsWith(Path.SEPARATOR)) {
       uriString += Path.SEPARATOR;
+    }
 
-    final InputStream inputStream = swiftRestClient.getDataAsInputStream(SwiftObjectPath.fromPath(uri, path));
-    final ByteArrayOutputStream data = new ByteArrayOutputStream();
-    byte[] buffer = new byte[1024 * 1024]; // 1 mb
-
+    InputStream inputStream = null;
     try {
+      inputStream =
+        swiftRestClient.getDataAsInputStream(SwiftObjectPath.fromPath(uri, path));
+      final ByteArrayOutputStream data = new ByteArrayOutputStream();
+      byte[] buffer = new byte[1024 * 1024]; // 1 mb
+
       while (inputStream.read(buffer) > 0) {
         data.write(buffer);
       }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+
+      final StringTokenizer tokenizer = new StringTokenizer(new String(data.toByteArray()), "\n");
+
+      final Set<Path> paths = new HashSet<Path>();
+      while (tokenizer.hasMoreTokens()) {
+        paths.add(new Path(tokenizer.nextToken()));
+      }
+
+      return paths;
+    } finally {
+      IOUtils.closeQuietly(inputStream);
     }
-
-    final StringTokenizer tokenizer = new StringTokenizer(new String(data.toByteArray()), "\n");
-
-    final Set<Path> paths = new HashSet<Path>();
-    while (tokenizer.hasMoreTokens()) {
-      paths.add(new Path(tokenizer.nextToken()));
-    }
-
-    return paths;
   }
 
   public Set<Path> listDeepSubPaths(Path path) throws IOException {
     String uriString = path.toString();
-    if (!uriString.endsWith(Path.SEPARATOR))
+    if (!uriString.endsWith(Path.SEPARATOR)) {
       uriString += Path.SEPARATOR;
+    }
 
-    final byte[] buffer = swiftRestClient.findObjectsByPrefix(SwiftObjectPath.fromPath(uri, path));
-    if (buffer == null) {
+    final byte[] buffer;
+    try {
+      buffer =
+        swiftRestClient.findObjectsByPrefix(SwiftObjectPath.fromPath(uri, path));
+    } catch (FileNotFoundException e) {
       return Collections.emptySet();
     }
     final StringTokenizer tokenizer = new StringTokenizer(new String(buffer), "\n");

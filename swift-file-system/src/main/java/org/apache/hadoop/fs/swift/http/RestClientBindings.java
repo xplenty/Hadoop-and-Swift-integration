@@ -45,9 +45,73 @@ import static org.apache.hadoop.fs.swift.http.SwiftProtocolConstants.*;
 public final class RestClientBindings {
   private static final Log LOG = LogFactory.getLog(RestClientBindings.class);
 
+  public static final String E_INVALID_NAME= "Invalid swift hostname '%s':" +
+    " hostname must in form container.service";
 
-  public static String buildSwiftInstancePrefix(String hostname) {
-    return SWIFT_SERVICE_PREFIX + hostname;
+  /**
+   * Public for testing : build the full prefix for use in resolving
+   * configuration items
+   * @param service service to use
+   * @return the prefix string <i>without any trailing "."</i>
+   */
+  public static String buildSwiftInstancePrefix(String service) {
+    return SWIFT_SERVICE_PREFIX + service;
+  }
+
+  /**
+   * Raise an exception for an invalid service name
+   * @param hostname hostname that was being parsed
+   * @return an exception to throw
+   */
+  private static SwiftConfigurationException invalidName(String hostname) {
+    return new SwiftConfigurationException(
+      String.format(E_INVALID_NAME, hostname));
+  }
+
+  /**
+   * Get the container name from the hostname -the single element before the
+   * first "." in the hostname
+   * @param hostname hostname to split
+   * @return the container
+   * @throws SwiftConfigurationException
+   */
+  public static String extractContainerName(String hostname) throws
+                                                             SwiftConfigurationException {
+    int i = hostname.indexOf(".");
+    if (i <= 0) {
+      throw invalidName(hostname);
+    }
+    return hostname.substring(0, i);
+  }
+
+  public static String extractContainerName(URI uri) throws
+                                                     SwiftConfigurationException {
+    return extractContainerName(uri.getHost());
+  }
+
+  /**
+   * Get the service name from a longer hostname string
+   * @param hostname hostname
+   * @return the separated out service name
+   * @throws SwiftConfigurationException if the hostname was invalid
+   */
+  public static String extractServiceName(String hostname) throws
+                                                           SwiftConfigurationException {
+    int i = hostname.indexOf(".");
+    if (i <= 0) {
+      throw invalidName(hostname);
+    }
+    String service = hostname.substring(i + 1);
+    if (service.isEmpty() || service.contains(".")) {
+      //empty service contains dots in -not currently supported
+      throw invalidName(hostname);
+    }
+    return service;
+  }
+
+  public static String extractServiceName(URI uri) throws
+                                                   SwiftConfigurationException {
+    return extractServiceName(uri.getHost());
   }
 
   /**
@@ -61,14 +125,15 @@ public final class RestClientBindings {
    */
   public static Properties bind(URI fsURI, Configuration conf) throws
                                                                SwiftConfigurationException {
-    String service = fsURI.getHost();
-    if (service == null || service.isEmpty() || service.contains(".")) {
+    String host = fsURI.getHost();
+    if (host == null || host.isEmpty() ) {
       //expect shortnames -> conf names
-      throw new SwiftConfigurationException("Only short hostnames mapping to" +
-                                            " a service binding are supported," +
-                                            " not " + service
-                                            + " (from) " + fsURI );
+      throw invalidName(host);
     }
+
+    String container = extractContainerName(host);
+    String service = extractServiceName(host);
+
     //build filename schema
     String prefix = buildSwiftInstancePrefix(service);
     if (LOG.isDebugEnabled()) {
@@ -77,6 +142,7 @@ public final class RestClientBindings {
     }
     Properties props = new Properties();
     props.setProperty(SWIFT_SERVICE_PROPERTY, service);
+    props.setProperty(SWIFT_CONTAINER_PROPERTY, container);
     copy(conf, prefix + DOT_AUTH_URL, props, SWIFT_AUTH_PROPERTY, true);
     copy(conf, prefix + DOT_USERNAME, props, SWIFT_USERNAME_PROPERTY, true);
     copy(conf, prefix + DOT_PASSWORD, props, SWIFT_PASSWORD_PROPERTY, true);

@@ -21,6 +21,7 @@ package org.apache.hadoop.fs.swift;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
@@ -31,8 +32,8 @@ import org.junit.Test;
 import java.io.IOException;
 import java.net.URI;
 
-public class TestSwiftFileSystemBasic {
-  private static final Log LOG = LogFactory.getLog(TestSwiftFileSystemBasic.class);
+public class TestSwiftFileSystemBasicOps {
+  private static final Log LOG = LogFactory.getLog(TestSwiftFileSystemBasicOps.class);
 
   private Configuration conf;
   private boolean runTests;
@@ -73,4 +74,28 @@ public class TestSwiftFileSystemBasic {
       LOG.info(status.toString());
     }
   }
+
+  @Test
+  public void testMkDir() throws Throwable {
+    SwiftNativeFileSystem fs = createInitedFS();
+    Path path = new Path("/testMkDir");
+    fs.mkdirs(path);
+    //success then -so try a recursive operation
+    fs.delete(path, true);
+
+  }
+
+
+
+  @Test
+  public void testPutFile() throws Throwable {
+    SwiftNativeFileSystem fs = createInitedFS();
+    Path path = new Path("/testPutFile");
+    FSDataOutputStream stream = fs.create(path, false);
+    stream.writeChars("Testing a put to a file");
+    stream.close();
+    fs.delete(path, true);
+  }
+
+
 }

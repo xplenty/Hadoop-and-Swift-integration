@@ -19,6 +19,8 @@
 package org.apache.hadoop.fs.swift.util;
 
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
+import org.apache.hadoop.fs.swift.http.RestClientBindings;
 
 import java.net.URI;
 import java.util.regex.Pattern;
@@ -26,7 +28,7 @@ import java.util.regex.Pattern;
 /**
  * Swift hierarchy mapping of (container, path)
  */
-public class SwiftObjectPath {
+public final class SwiftObjectPath {
   private static final Pattern PATH_PART_PATTERN = Pattern.compile(".*/AUTH_\\w*/");
 
   /**
@@ -39,9 +41,18 @@ public class SwiftObjectPath {
    */
   private final String object;
 
+  private final String uriPath;
+
+  /**
+   * Build an instance from a (host, object) pair
+   * @param container container name
+   * @param object object ref underneath the container
+   */
   public SwiftObjectPath(String container, String object) {
+
     this.container = container;
     this.object = object;
+    uriPath = buildUriPath();
   }
 
   public String getContainer() {
@@ -67,16 +78,12 @@ public class SwiftObjectPath {
     return result;
   }
 
+  private String buildUriPath() {
+    return SwiftUtils.joinPaths(container, object);
+  }
+
   public String toUriPath() {
-    if (container.endsWith("/")) {
-      return container + object;
-    }
-    else if (object.startsWith("/")) {
-      return container + object;
-    }
-    else {
-      return container + "/" + object;
-    }
+    return uriPath;
   }
 
   @Override
@@ -91,10 +98,24 @@ public class SwiftObjectPath {
    * @param uri uri to start from
    * @param path path underneath
    * @return a new instance.
+   * @throws SwiftConfigurationException if the URI host doesn't parse into
+   * container.service
    */
-  public static SwiftObjectPath fromPath(URI uri, Path path) {
-    final String url = path.toUri().getPath().replaceAll(PATH_PART_PATTERN.pattern(), "");
+  public static SwiftObjectPath fromPath(URI uri, Path path) throws
+                                                             SwiftConfigurationException {
+    final String url =
+      path.toUri().getPath().replaceAll(PATH_PART_PATTERN.pattern(), "");
 
-    return new SwiftObjectPath(uri.getHost(), url);
+    String container = uri.getHost();
+    if (container == null) {
+      //no container, not good: replace with ""
+      container = "";
+    } else if (container.contains(".")) {
+      //its a container.service URI. Strip the container
+      container = RestClientBindings.extractContainerName(container);
+    }
+    return new SwiftObjectPath(container, url);
   }
+
+
 }
