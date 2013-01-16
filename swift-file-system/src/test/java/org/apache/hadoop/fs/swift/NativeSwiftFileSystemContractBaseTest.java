@@ -1,11 +1,12 @@
 package org.apache.hadoop.fs.swift;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystemContractBaseTest;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
 
 import java.io.IOException;
@@ -13,10 +14,14 @@ import java.net.URI;
 import java.net.URISyntaxException;
 
 /**
- * Tests for NativeSwiftFS using in-memory Swift emulator
+ * Tests for NativeSwiftFS using either the in-memory Swift emulator
+ * or the real client
  */
-public abstract class NativeSwiftFileSystemContractBaseTest extends FileSystemContractBaseTest {
+public abstract class NativeSwiftFileSystemContractBaseTest
+  extends FileSystemContractBaseTest {
 
+  private static final Log LOG = LogFactory
+    .getLog(NativeSwiftFileSystemContractBaseTest.class);
 
   @Override
   protected void setUp() throws Exception {
@@ -29,9 +34,14 @@ public abstract class NativeSwiftFileSystemContractBaseTest extends FileSystemCo
     super.setUp();
   }
 
-  protected URI getFilesystemURI() throws URISyntaxException, IOException {
-    return new URI("swift://localhost:8080");
-  }
+  /**
+   * Get the URI of this filesystem
+   * @return a filesystem URI
+   * @throws URISyntaxException Any URI parse failure
+   * @throws IOException other problems
+   */
+  protected abstract URI getFilesystemURI()
+    throws URISyntaxException, IOException;
 
   /**
    * Create a basic SwiftFS. This can be done differently for
@@ -42,7 +52,13 @@ public abstract class NativeSwiftFileSystemContractBaseTest extends FileSystemCo
 
   @Override
   public void tearDown() throws Exception {
-    super.tearDown();
+    try {
+      if (fs != null) {
+        fs.delete(path("/test"), true);
+      }
+    } catch (IOException e) {
+      LOG.error("Error during teardown " + e, e);
+    }
   }
 
   @Override
@@ -58,7 +74,6 @@ public abstract class NativeSwiftFileSystemContractBaseTest extends FileSystemCo
     final Path f = new Path("/home/user");
     final FSDataOutputStream fsDataOutputStream = fs.create(f);
     fsDataOutputStream.close();
-
     assertTrue(fs.exists(f));
   }
 
