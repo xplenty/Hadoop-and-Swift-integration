@@ -124,6 +124,7 @@ public final class SwiftRestClient {
    */
   private URI objectLocationURI;
   private final URI filesystemURI;
+  private final String serviceProvider;
 
 
   /**
@@ -317,14 +318,14 @@ public final class SwiftRestClient {
     //tenant is optional
     this.tenant = props.getProperty(SWIFT_TENANT_PROPERTY);
     //service is used for diagnostics
-    String service = props.getProperty(SWIFT_SERVICE_PROPERTY);
+    serviceProvider = props.getProperty(SWIFT_SERVICE_PROPERTY);
     container = props.getProperty(SWIFT_CONTAINER_PROPERTY);
 
     if (LOG.isDebugEnabled()) {
       //everything you need for diagnostics. The password is omitted.
       LOG.debug(String.format(
         "Service={%s} container={%s} uri={%s} tenant={%s} user={%s} region={%s}",
-        service,
+        serviceProvider,
         container,
         stringAuthUri,
         tenant,
@@ -770,7 +771,7 @@ public final class SwiftRestClient {
         if (LOG.isDebugEnabled()) {
           LOG.debug("authenticated against " + endpointURI);
         }
-        createDefaultContainer(filesystemURI.toString());
+        createDefaultContainer();
         return accessToken;
       }
     });
@@ -782,8 +783,8 @@ public final class SwiftRestClient {
    * @param containerName host object path
    * @throws IOException IO problems.
    */
-  private synchronized void createDefaultContainer(String containerName) throws
-                                                                IOException {
+  private synchronized void createDefaultContainer() throws IOException {
+    String containerName = filesystemURI.toString();
     SwiftObjectPath objectPath = new SwiftObjectPath(containerName, "");
     try {
       //see if the data is there

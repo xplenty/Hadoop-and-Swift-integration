@@ -362,23 +362,48 @@ public class SwiftNativeFileSystem extends FileSystem {
    *                  true, the directory is deleted else throws an exception if the
    *                  directory is not empty
    *                  case of a file the recursive can be set to either true or false.
-   * @return true if a file was found and deleted 
-   * @throws IOException
+   * @return true if the object was deleted
+   * @throws IOException IO problems
    */
   @Override
   public boolean delete(Path path, boolean recursive) throws IOException {
+    try {
+      return innerDelete(path, recursive);
+    } catch (FileNotFoundException e) {
+      //base path was not found.
+      return false;
+    }
+  }
+
+  /**
+   * Delete the entire tree. This is an internal one with slightly different
+   * behavior: if an entry is missing, a {@link FileNotFoundException} is
+   * raised. This lets the caller distinguish a file not found with
+   * other reasons for failure, so handles race conditions in recursive
+   * directory deletes better.
+   *
+   * The problem being addressed is: caller A requests a recursive directory
+   * of directory /dir ; caller B requests a delete of a file /dir/file,
+   * between caller A enumerating the files contents, and requesting a delete
+   * of /dir/file. We want to recognise the special case
+   * "directed file is no longer there" and not convert that into a failure
+   *
+   * @param path      the path to delete.
+   * @param recursive if path is a directory and set to
+   *                  true, the directory is deleted else throws an exception if the
+   *                  directory is not empty
+   *                  case of a file the recursive can be set to either true or false.
+   * @return true if the object was deleted
+   * @throws IOException IO problems
+   * @throws FileNotFoundException if a file/dir being deleted is not there -
+   * this includes entries below the specified path, (if the path is a dir
+   * and recursive is true)
+   */
+  private boolean innerDelete(Path path, boolean recursive) throws IOException {
     LOG.debug("SwiftFileSystem.delete");
     Path absolutePath = makeAbsolute(path);
     final FileStatus fileStatus;
-    try {
-      fileStatus = getFileStatus(path);
-    } catch (FileNotFoundException e) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Delete called for '" + path +
-                  "' but file does not exist, so returning false");
-      }
-      return false;
-    }
+    fileStatus = getFileStatus(path);
     if (!fileStatus.isDir()) {
       //simple file: delete it
       if (LOG.isDebugEnabled()) {
@@ -401,8 +426,13 @@ public class SwiftNativeFileSystem extends FileSystem {
                               + " is not empty.");
       }
       for (FileStatus p : contents) {
-        if (!delete(p.getPath(), recursive)) {
-          return false;
+        try {
+          if (!delete(p.getPath(), recursive)) {
+            return false;
+          }
+        } catch (FileNotFoundException e) {
+          //the path went away -race conditions
+          LOG.info("Path " + p.getPath() + " is no longer present");
         }
       }
     }

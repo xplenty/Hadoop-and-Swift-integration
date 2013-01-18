@@ -77,4 +77,38 @@ public class SwiftTestUtils {
                    val);
     }
   }
+
+  /**
+   * Convert a byte to a character for printing. If the
+   * byte value is < 32 -and hence unprintable- the byte is
+   * returned as a two digit hex value
+   * @param b byte
+   * @return the printable character string
+   */
+  public static String toChar(byte b) {
+    if (b >= 0x20) {
+      return Character.toString((char) b);
+    }
+    else {
+      return String.format("%02x", b);
+    }
+  }
+
+  public static String toChar(byte[] buffer) {
+    StringBuilder builder = new StringBuilder(buffer.length);
+    for (byte b:buffer) {
+      builder.append(toChar(b));
+    }
+    return builder.toString();
+  }
+
+  public static byte[] toAsciiByteArray(String s) {
+    char[] chars = s.toCharArray();
+    int len = chars.length;
+    byte[] buffer = new byte[len];
+    for (int i=0; i<len; i++) {
+      buffer[i]=(byte)(chars[i]&0xff);
+    }
+    return buffer;
+  }
 }
