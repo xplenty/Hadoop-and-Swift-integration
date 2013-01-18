@@ -29,6 +29,7 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
+import org.apache.hadoop.fs.swift.exceptions.SwiftException;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
 import org.apache.hadoop.util.Progressable;
 
@@ -233,19 +234,19 @@ public class SwiftNativeFileSystem extends FileSystem {
    */
   private boolean mkdir(Path path) throws IOException {
     Path absolutePath = makeAbsolute(path);
-    if (!store.objectExists(absolutePath)) {
-      store.createDirectory(absolutePath);
-    }
+//    if (!store.objectExists(absolutePath)) {
+//      store.createDirectory(absolutePath);
+//    }
+
     //TODO: define a consistent semantic for a directory/subdirectory
     //in the hadoop:swift bridge. Hadoop FS assumes that there
     //are files and directories, whereas SwiftFS assumes
     //that there are just "objects"
 
-/*
     FileStatus fileStatus;
     try {
       fileStatus = getFileStatus(absolutePath);
-      if (!fileStatus.isDir()) {
+      if (!fileStatus.isDirectory() && fileStatus.getLen()>0) {
         throw new SwiftException(String.format(
           "Can't make directory for path '%s' since it exists and is not a directory: %s", 
           path, fileStatus));
@@ -257,7 +258,6 @@ public class SwiftNativeFileSystem extends FileSystem {
       //file is not found: it must be created
       store.createDirectory(absolutePath);
     }
-*/
 
     return true;
   }
@@ -427,7 +427,7 @@ public class SwiftNativeFileSystem extends FileSystem {
       }
       for (FileStatus p : contents) {
         try {
-          if (!delete(p.getPath(), recursive)) {
+          if (!innerDelete(p.getPath(), recursive)) {
             return false;
           }
         } catch (FileNotFoundException e) {

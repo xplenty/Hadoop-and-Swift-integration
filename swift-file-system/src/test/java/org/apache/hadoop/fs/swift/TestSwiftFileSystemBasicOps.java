@@ -18,17 +18,22 @@
 
 package org.apache.hadoop.fs.swift;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.fs.swift.exceptions.SwiftException;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
+
 import static org.junit.Assert.*;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -137,19 +142,44 @@ public class TestSwiftFileSystemBasicOps {
     Path path = new Path("/testPutGetFile");
     try {
       String text = "Testing a put and get to a file "
-                 + System.currentTimeMillis();
+                    + System.currentTimeMillis();
       writeTextFile(fs, path, text, false);
 
-      FSDataInputStream in = fs.open(path);
-      byte[] buf = new byte[text.length()];
-      in.readFully(0, buf);
-      in.close();
-      assertEquals(text, SwiftTestUtils.toChar(buf));
+      String result = readBytesToString(fs, path, text.length());
+      assertEquals(text, result);
     } finally {
       fs.delete(path, false);
     }
   }
 
+  /**
+   * Read in "length" bytes, convert to an ascii string
+   * @param fs filesystem
+   * @param path path to read
+   * @param length #of bytes to read.
+   * @return the bytes read and converted to a string
+   * @throws IOException
+   */
+  private String readBytesToString(SwiftNativeFileSystem fs,
+                                   Path path,
+                                   int length) throws IOException {
+    FSDataInputStream in = fs.open(path);
+    try {
+      byte[] buf = new byte[length];
+      in.readFully(0, buf);
+      return SwiftTestUtils.toChar(buf);
+    } finally {
+      in.close();
+    }
+  }
+
+  private void assertLength(FileSystem fs, Path path, int expected) throws
+                                                                    IOException {
+    FileStatus status = fs.getFileStatus(path);
+    assertEquals("Wrong file length of file " + path + " status: " + status,
+                 expected,
+                 status.getLen());
+  }
 
   @Test
   public void testOverwrite() throws Throwable {
@@ -159,15 +189,15 @@ public class TestSwiftFileSystemBasicOps {
       String text = "Testing a put to a file "
                     + System.currentTimeMillis();
       writeTextFile(fs, path, text, false);
+      assertLength(fs, path, text.length());
       String text2 = "Overwriting a file "
                      + System.currentTimeMillis();
       writeTextFile(fs, path, text2, true);
+      assertLength(fs, path, text2.length());
 
-      FSDataInputStream in = fs.open(path);
-      byte[] buf = new byte[text.length()];
-      in.readFully(0, buf);
-      in.close();
-      assertEquals(text2, SwiftTestUtils.toChar(buf));
+
+      String result = readBytesToString(fs, path, text2.length());
+      assertEquals(text2, result);
     } finally {
       fs.delete(path, false);
     }
@@ -182,25 +212,90 @@ public class TestSwiftFileSystemBasicOps {
                     + System.currentTimeMillis();
       writeTextFile(fs, path, text, false);
       FileStatus fileStatus = fs.getFileStatus(path);
-      assertTrue("Not a file: "+fileStatus, fileStatus.isFile());
-      assertFalse("A dir: "+fileStatus, fileStatus.isDirectory());
+      assertTrue("Not a file: " + fileStatus, fileStatus.isFile());
+      assertFalse("A dir: " + fileStatus, fileStatus.isDirectory());
     } finally {
       fs.delete(path, false);
     }
   }
+
+  /**
+   * Assert that a newly created directory is a directory
+   * @throws Throwable if not, or if something else failed
+   */
   @Test
   public void testDirStatus() throws Throwable {
     SwiftNativeFileSystem fs = createInitedFS();
     Path path = new Path("/testDirStatus");
     try {
       fs.mkdirs(path);
-      FileStatus fileStatus = fs.getFileStatus(path);
-      assertFalse("A file: "+fileStatus, fileStatus.isFile());
-      assertTrue("Not a a dir: "+fileStatus, fileStatus.isDirectory());
+      assertDirectory(fs, path);
     } finally {
       fs.delete(path, false);
     }
   }
 
+  /**
+   * Assert that if a directory that has children is deleted, it is still
+   * a directory
+   * @throws Throwable if not, or if something else failed
+   */
+  @Test
+  public void testDirStaysADir() throws Throwable {
+    SwiftNativeFileSystem fs = createInitedFS();
+    Path path = new Path("/testDirStatus");
+    Path child = new Path(path, "child");
+    try {
+      //create the dir
+      fs.mkdirs(path);
+      //create the child dir
+      writeTextFile(fs, child, "child file", true);
+      //assert the parent has the directory nature
+      assertDirectory(fs, path);
+      //now rm the child
+      fs.delete(child, false);
+    } finally {
+      fs.delete(path, true);
+    }
+  }
+
+  @Test
+  public void testCreateMultilevelDir() throws Throwable {
+    SwiftNativeFileSystem fs = createInitedFS();
+    Path path = new Path("/testCreateMultilevelDir/1/2/3");
+    fs.mkdirs(path);
+    fs.delete(path, true);
+  }
+
+  @Test
+  public void testCreateDirWithFileParent() throws Throwable {
+    SwiftNativeFileSystem fs = createInitedFS();
+
+    Path path = new Path("/testCreateDirWithFileParent");
+    Path child = new Path(path, "subdir/child");
+    fs.mkdirs(path);
+    try {
+      //create the child dir
+      writeTextFile(fs, path, "parent", true);
+      try {
+        fs.mkdirs(child);
+      } catch (SwiftException expected) {
+        LOG.debug("Expecte Exception", expected);
+      }
+    } finally {
+      fs.delete(path, true);
+    }
+
+  }
+
+
+  private void assertDirectory(SwiftNativeFileSystem fs, Path path) throws
+                                                                    IOException {
+    FileStatus fileStatus = fs.getFileStatus(path);
+    assertFalse("Should be a dir, but is a file: " + fileStatus,
+                fileStatus.isFile());
+    assertTrue("Should be a dir -but isn't: " + fileStatus,
+               fileStatus.isDirectory());
+  }
 
 }

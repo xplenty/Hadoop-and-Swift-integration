@@ -784,13 +784,20 @@ public final class SwiftRestClient {
    * @throws IOException IO problems.
    */
   private synchronized void createDefaultContainer() throws IOException {
-    String containerName = filesystemURI.toString();
+    String containerName = container;
     SwiftObjectPath objectPath = new SwiftObjectPath(containerName, "");
     try {
       //see if the data is there
       headRequest(objectPath);
     } catch (FileNotFoundException ex) {
-      final int status = putRequest(objectPath);
+      int status = 0;
+      try {
+        status = putRequest(objectPath);
+      } catch (FileNotFoundException e) {
+        //triggered by a very bad container name.
+        //re-insert the 404 result into the status
+        status = SC_NOT_FOUND;
+      }
       if (!isStatusCodeExpected(status,
                                 SC_OK,
                                 SC_CREATED,
