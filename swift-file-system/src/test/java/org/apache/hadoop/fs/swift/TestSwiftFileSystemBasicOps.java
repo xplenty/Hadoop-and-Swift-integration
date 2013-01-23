@@ -30,6 +30,7 @@ import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.swift.exceptions.SwiftException;
+import org.apache.hadoop.fs.swift.exceptions.SwiftNotDirectoryException;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
 
 import static org.junit.Assert.*;
@@ -37,6 +38,7 @@ import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Date;
@@ -115,7 +117,7 @@ public class TestSwiftFileSystemBasicOps {
       caught = e;
     }
     try {
-      fs.delete(path, true);
+      assertTrue("failed to delete " +path, fs.delete(path, true));
     } catch (IOException e) {
       LOG.error("during closedown");
       if (caught == null) {
@@ -148,7 +150,27 @@ public class TestSwiftFileSystemBasicOps {
       String result = readBytesToString(fs, path, text.length());
       assertEquals(text, result);
     } finally {
-      fs.delete(path, false);
+      delete(fs, path);
+    }
+  }
+
+  private void delete(SwiftNativeFileSystem fs, Path path) {
+    try {
+      if (!fs.delete(path, false)) {
+        LOG.warn("Failed to delete "+path);
+      }
+    } catch (IOException e) {
+      LOG.warn("deleting " + path, e);
+    }
+  }
+
+  private void deleteR(SwiftNativeFileSystem fs, Path path) {
+    try {
+      if (!fs.delete(path, true)) {
+        LOG.warn("Failed to delete " + path);
+      }
+    } catch (IOException e) {
+      LOG.warn("deleting " + path, e);
     }
   }
 
@@ -199,7 +221,7 @@ public class TestSwiftFileSystemBasicOps {
       String result = readBytesToString(fs, path, text2.length());
       assertEquals(text2, result);
     } finally {
-      fs.delete(path, false);
+      delete(fs, path);
     }
   }
 
@@ -215,7 +237,7 @@ public class TestSwiftFileSystemBasicOps {
       assertTrue("Not a file: " + fileStatus, fileStatus.isFile());
       assertFalse("A dir: " + fileStatus, fileStatus.isDirectory());
     } finally {
-      fs.delete(path, false);
+      delete(fs, path);
     }
   }
 
@@ -231,7 +253,7 @@ public class TestSwiftFileSystemBasicOps {
       fs.mkdirs(path);
       assertDirectory(fs, path);
     } finally {
-      fs.delete(path, false);
+      delete(fs, path);
     }
   }
 
@@ -253,9 +275,9 @@ public class TestSwiftFileSystemBasicOps {
       //assert the parent has the directory nature
       assertDirectory(fs, path);
       //now rm the child
-      fs.delete(child, false);
+      delete(fs, child);
     } finally {
-      fs.delete(path, true);
+      deleteR(fs, path);
     }
   }
 
@@ -298,4 +320,20 @@ public class TestSwiftFileSystemBasicOps {
                fileStatus.isDirectory());
   }
 
+
+  @Test
+  public void testRenameMissingFile() throws Throwable {
+    SwiftNativeFileSystem fs = createInitedFS();
+    Path path = new Path("/testRenameMissingFile");
+    Path path2 = new Path("/testRenameMissingFileDest");
+    try {
+      fs.rename(path, path2);
+      fail("Expected rename of a missing file to fail");
+    } catch (FileNotFoundException fnfe) {
+      //success
+    } finally {
+      delete(fs, path);
+      delete(fs, path2);
+    }
+  }
 }
