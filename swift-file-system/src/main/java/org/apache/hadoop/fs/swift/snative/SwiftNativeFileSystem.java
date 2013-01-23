@@ -30,7 +30,10 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.fs.swift.exceptions.SwiftException;
+import org.apache.hadoop.fs.swift.exceptions.SwiftNotDirectoryException;
+import org.apache.hadoop.fs.swift.exceptions.SwiftUnsupportedFeatureException;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
+import org.apache.hadoop.fs.swift.util.SwiftUtils;
 import org.apache.hadoop.util.Progressable;
 
 import java.io.FileNotFoundException;
@@ -97,22 +100,14 @@ public class SwiftNativeFileSystem extends FileSystem {
       store = new SwiftNativeFileSystemStore();
     }
     this.uri = fsuri;
-    //the URI given maps to the x-ref in the config, that is retained
-    //for visibility/comparison, but behind the scenes it is converted
-    //into the references relative
-    URI.create(String.format("%s://%s:%d/",
-                             fsuri.getScheme(),
-                             fsuri.getHost(),
-                             fsuri.getPort()));
-    this.workingDir =
-      new Path("/user", System.getProperty("user.name")).makeQualified(this);
+    this.workingDir = new Path("/user",
+                               System.getProperty("user.name")).makeQualified(this);
     if (LOG.isDebugEnabled()) {
       LOG.debug("Initializing SwiftNativeFileSystem against URI "+ uri
                + " and working dir " + workingDir);
     }
     store.initialize(uri, conf);
     LOG.debug("SwiftFileSystem initialized");
-
   }
 
   /**
@@ -179,8 +174,8 @@ public class SwiftNativeFileSystem extends FileSystem {
     List<URI> locations = new ArrayList<URI>();
     if (listOfFileBlocks.length > 1) {
       for (FileStatus fileStatus : listOfFileBlocks) {
-        if (SwiftObjectPath.fromPath(uri, fileStatus.getPath()).
-          equals(SwiftObjectPath.fromPath(uri, file.getPath()))) {
+        if (SwiftObjectPath.fromPath(uri, fileStatus.getPath())
+          .equals(SwiftObjectPath.fromPath(uri, file.getPath()))) {
           continue;
         }
         locations.addAll(store.getObjectLocation(fileStatus.getPath()));
@@ -246,10 +241,14 @@ public class SwiftNativeFileSystem extends FileSystem {
     FileStatus fileStatus;
     try {
       fileStatus = getFileStatus(absolutePath);
-      if (!fileStatus.isDirectory() && fileStatus.getLen()>0) {
-        throw new SwiftException(String.format(
-          "Can't make directory for path '%s' since it exists and is not a directory: %s", 
-          path, fileStatus));
+      if (!SwiftUtils.isDirectory(fileStatus)) {
+        throw new SwiftNotDirectoryException(path,
+          String.format(": can't mkdir since it is not a directory: %s",
+          fileStatus));
+      } else {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("skipping mkdir(" + path + ") as it exists already");
+        }
       }
     } catch (FileNotFoundException e) {
       if (LOG.isDebugEnabled()) {
@@ -258,7 +257,6 @@ public class SwiftNativeFileSystem extends FileSystem {
       //file is not found: it must be created
       store.createDirectory(absolutePath);
     }
-
     return true;
   }
 
@@ -284,7 +282,7 @@ public class SwiftNativeFileSystem extends FileSystem {
   public FSDataOutputStream append(Path f, int bufferSize, Progressable progress) throws
                                                                                   IOException {
     LOG.debug("SwiftFileSystem.append");
-    throw new IOException("Not supported for Swift file system");
+    throw new SwiftUnsupportedFeatureException("Not supported: append()");
   }
 
   /**
@@ -303,17 +301,17 @@ public class SwiftNativeFileSystem extends FileSystem {
     } catch (FileNotFoundException e) {
       //nothing to do
     }
-    if (fileStatus != null && !fileStatus.isDir()) {
+    if (fileStatus != null && !SwiftUtils.isDirectory(fileStatus)) {
       if (overwrite) {
         delete(file, true);
       } else {
-        throw new IOException("File already exists: " + file);
+        throw new SwiftException("File already exists: " + file);
       }
     } else {
       Path parent = file.getParent();
       if (parent != null) {
         if (!mkdirs(parent)) {
-          throw new IOException("Mkdirs failed to create " + parent.toString());
+          throw new SwiftException("Mkdirs failed to create " + parent.toString());
         }
       }
     }
@@ -422,8 +420,7 @@ public class SwiftNativeFileSystem extends FileSystem {
         return false;
       }
       if ((contents.length != 0) && (!recursive)) {
-        throw new IOException("Directory " + path.toString()
-                              + " is not empty.");
+        throw new SwiftException("Directory " + path + " is not empty.");
       }
       for (FileStatus p : contents) {
         try {
@@ -431,7 +428,8 @@ public class SwiftNativeFileSystem extends FileSystem {
             return false;
           }
         } catch (FileNotFoundException e) {
-          //the path went away -race conditions
+          //the path went away -race conditions.
+          //do not fail, as the outcome is still OK.
           LOG.info("Path " + p.getPath() + " is no longer present");
         }
       }

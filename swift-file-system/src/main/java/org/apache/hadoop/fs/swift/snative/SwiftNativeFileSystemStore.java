@@ -6,9 +6,11 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftException;
+import org.apache.hadoop.fs.swift.exceptions.SwiftNotDirectoryException;
 import org.apache.hadoop.fs.swift.http.SwiftProtocolConstants;
 import org.apache.hadoop.fs.swift.http.SwiftRestClient;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
+import org.apache.hadoop.fs.swift.util.SwiftUtils;
 import org.apache.http.HttpHeaders;
 
 import java.io.ByteArrayInputStream;
@@ -228,25 +230,31 @@ public class SwiftNativeFileSystemStore {
    */
   public boolean renameDirectory(Path src, Path dst) throws IOException {
     final FileStatus srcMetadata = getObjectMetadata(src);
-    final FileStatus dstMetadata = getObjectMetadata(dst);
+    FileStatus dstMetadata;
+    try {
+      dstMetadata = getObjectMetadata(dst);
+    } catch (FileNotFoundException e) {
+      //destination does not exist.
+      dstMetadata = null;
+    }
 
     boolean srcExists = srcMetadata != null;
     boolean destExists = dstMetadata != null;
-    if (srcExists && !srcMetadata.isDir()) {
+    if (srcExists && !SwiftUtils.isDirectory(srcMetadata)) {
       //source exists and is not a directory
 
-      if (destExists && !dstMetadata.isDir()) {
+      if (destExists && !SwiftUtils.isDirectory(dstMetadata)) {
         //if the dest file exists: fail
-        throw new SwiftException("A file already exists at the destination: " + dst);
+        throw new SwiftNotDirectoryException(dst, ": a file already exists");
       }
 
       //calculate the destination
       SwiftObjectPath destPath;
-      if (destExists && dstMetadata.isDir()) {
+      if (destExists && SwiftUtils.isDirectory(dstMetadata)) {
         //destination id a directory: create a path from the destination
         //and the source name
 
-        //REVISIT: this uses dst.getParent(), and not dst itself. Why?
+        //TODO: this uses dst.getParent(), and not dst itself. Why?
         destPath = toObjectPath(new Path(dst.getParent(),
                  src.getName()));
       } else {
@@ -263,12 +271,14 @@ public class SwiftNativeFileSystemStore {
         listDirectory(toObjectPath(src.getParent()));
       List<FileStatus> dstPath =
         listDirectory(toObjectPath(dst.getParent()));
-
-      if (dstPath.size() == 1 && !dstPath.get(0).isDir()) {
-        throw new SwiftException("Cannot rename to: " + dst.toString());
+      if (dstPath.size() == 1 && !SwiftUtils.isDirectory(dstPath.get(0))) {
+        throw new SwiftNotDirectoryException(dst,
+                 "the source is a directory, but not the destination");
       }
 
       boolean result = true;
+
+      //iterative copy of everything under the directory
       for (FileStatus fileStatus : fileStatuses) {
         if (!fileStatus.isDir()) {
           result &=
