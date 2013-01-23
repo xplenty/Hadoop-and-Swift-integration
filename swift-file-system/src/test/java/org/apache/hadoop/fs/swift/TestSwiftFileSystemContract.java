@@ -32,7 +32,7 @@ import java.util.Properties;
  * This is the full filesystem contract test -which requires the
  * Default config set up to point to a filesystem
  */
-public class SwiftFileSystemContractTest
+public class TestSwiftFileSystemContract
   extends NativeSwiftFileSystemContractBaseTest {
 
   @Override
