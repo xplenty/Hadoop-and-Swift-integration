@@ -18,6 +18,8 @@
 
 package org.apache.hadoop.fs.swift.http;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.swift.SwiftTestUtils;
 import org.junit.Before;
@@ -27,6 +29,8 @@ import java.io.IOException;
 import java.net.URI;
 
 public class TestSwiftRestClient {
+  private static final Log LOG =
+    LogFactory.getLog(TestSwiftRestClient.class);
 
   private Configuration conf;
   private boolean runTests;
@@ -43,7 +47,7 @@ public class TestSwiftRestClient {
 
   @Test
   public void testCreate() throws Throwable {
-    if (runTests) {
+    if (runTests()) {
       SwiftRestClient client = createClient();
     }
   }
@@ -55,10 +59,17 @@ public class TestSwiftRestClient {
 
   @Test
   public void testAuthenticate() throws Throwable {
-    if (runTests) {
+    if (runTests()) {
       SwiftRestClient client = createClient();
       client.authenticate();
     }
+  }
+
+  private boolean runTests() {
+    if (!runTests) {
+      LOG.info("Skipping test");
+    }
+    return runTests;
   }
 
 
