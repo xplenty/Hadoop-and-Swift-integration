@@ -18,6 +18,8 @@
 
 package org.apache.hadoop.fs.swift.util;
 
+import org.apache.hadoop.fs.FileStatus;
+
 public final class SwiftUtils {
 
   /**
@@ -44,5 +46,16 @@ public final class SwiftUtils {
     }
     result.append(path2);
     return result.toString();
+  }
+
+  /**
+   * This test contains the is-directory logic for Swift, so if
+   * changed there is only one place for it.
+   * @param fileStatus status to examine
+   * @return true if we consider this status to be representative of a
+   * directory.
+   */
+  public static boolean isDirectory(FileStatus fileStatus) {
+    return fileStatus.isDir() || fileStatus.getLen() == 0;
   }
 }
