@@ -42,8 +42,7 @@ public class TestSwiftFileSystemContract
 
   @Override
   protected SwiftNativeFileSystem createSwiftFS() throws IOException {
-    SwiftNativeFileSystem
-      swiftNativeFileSystem =
+    SwiftNativeFileSystem swiftNativeFileSystem =
       new SwiftNativeFileSystem();
     return swiftNativeFileSystem;
   }
@@ -58,7 +57,5 @@ public class TestSwiftFileSystemContract
     URI fsURI = SwiftTestUtils.getServiceURI(conf);
     Properties properties = RestClientBindings.bind(fsURI, conf);
   }
-
-
 
 }
