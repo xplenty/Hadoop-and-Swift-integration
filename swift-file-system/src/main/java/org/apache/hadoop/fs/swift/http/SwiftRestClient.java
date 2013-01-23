@@ -36,7 +36,6 @@ import org.apache.commons.httpclient.params.HttpMethodParams;
 import org.apache.commons.httpclient.protocol.DefaultProtocolSocketFactory;
 import org.apache.commons.httpclient.protocol.Protocol;
 import org.apache.commons.httpclient.protocol.ProtocolSocketFactory;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
@@ -81,7 +80,8 @@ import java.util.Properties;
 @InterfaceStability.Evolving
 public final class SwiftRestClient {
   private static final Log LOG = LogFactory.getLog(SwiftRestClient.class);
-  private static final int RETRY_COUNT = 3;
+  private static final int DEFAULT_RETRY_COUNT = 3;
+  private static final int DEFAULT_CONNECT_TIMEOUT = 15000;
 
   /**
    * authentication endpoint
@@ -125,7 +125,9 @@ public final class SwiftRestClient {
   private URI objectLocationURI;
   private final URI filesystemURI;
   private final String serviceProvider;
-
+  private final boolean usePublicURL;
+  private final int retryCount;
+  private final int connectTimeout;
 
   /**
    * objects query endpoint. This is synchronized
@@ -311,27 +313,37 @@ public final class SwiftRestClient {
     this.filesystemURI = filesystemURI;
     Properties props = RestClientBindings.bind(filesystemURI, conf);
     String stringAuthUri = getOption(props, SWIFT_AUTH_PROPERTY);
-    this.username = getOption(props, SWIFT_USERNAME_PROPERTY);
-    this.password = getOption(props, SWIFT_PASSWORD_PROPERTY);
+    username = getOption(props, SWIFT_USERNAME_PROPERTY);
+    password = getOption(props, SWIFT_PASSWORD_PROPERTY);
     //optional
-    this.region = props.getProperty(SWIFT_REGION_PROPERTY);
+    region = props.getProperty(SWIFT_REGION_PROPERTY);
     //tenant is optional
-    this.tenant = props.getProperty(SWIFT_TENANT_PROPERTY);
+    tenant = props.getProperty(SWIFT_TENANT_PROPERTY);
     //service is used for diagnostics
     serviceProvider = props.getProperty(SWIFT_SERVICE_PROPERTY);
     container = props.getProperty(SWIFT_CONTAINER_PROPERTY);
+    String isPubProp = props.getProperty(SWIFT_PUBLIC_PROPERTY, "false");
+    usePublicURL = "true".equals(isPubProp);
+    retryCount = getIntOption(props, SWIFT_RETRY_COUNT, DEFAULT_RETRY_COUNT);
+    connectTimeout = getIntOption(props, SWIFT_CONNECTION_TIMEOUT,
+                                  DEFAULT_CONNECT_TIMEOUT);
 
     if (LOG.isDebugEnabled()) {
       //everything you need for diagnostics. The password is omitted.
       LOG.debug(String.format(
-        "Service={%s} container={%s} uri={%s} tenant={%s} user={%s} region={%s}",
+        "Service={%s} container={%s} uri={%s}"
+        + " tenant={%s} user={%s} region={%s}"
+        + " publicURL={%b}"
+        + " connect timeout={%d}, retry count={%d}",
         serviceProvider,
         container,
         stringAuthUri,
         tenant,
         username,
-        region != null ? region : "(none)"
-                             ));
+        region != null ? region : "(none)",
+        usePublicURL,
+        connectTimeout,
+        retryCount));
     }
     try {
       this.authUri = new URI(stringAuthUri);
@@ -541,8 +553,7 @@ public final class SwiftRestClient {
    * @param src source path
    * @param dst destination path
    * @param headers any headers
-   * @return true if the status code was consideres successful
-   * @return byte[] file data or null if the object was not found
+   * @return true if the status code was considered successful
    * @throws IOException on IO Faults
    */
   public boolean copyObject(SwiftObjectPath src, final SwiftObjectPath dst, final Header... headers)
@@ -662,10 +673,16 @@ public final class SwiftRestClient {
   /**
    * Authenticate to Openstack Keystone
    * As well as returning the access token, the member fields {@link #token},
-   * {@link #endpointURI} and {@link #objectLocationURI} are set up for re-use
+   * {@link #endpointURI} and {@link #objectLocationURI} are set up for re-use.
    *
    * This method is re-entrant -if more than one thread attempts to authenticate
-   * neither will block -but the field values with have those of the last caller
+   * neither will block -but the field values with have those of the last caller.
+   *
+   * <b>Important:</b> if executed at TRACE level then this method will log the
+   * JSON payload of the authentication. While this can be invaluable for debugging
+   * authentication problems, it can include login information -including
+   * the password. Only turn this level of logging on when dealing with
+   * authentication problems.
    * @return authenticated access token
    */
   public AccessToken authenticate() throws IOException {
@@ -673,9 +690,8 @@ public final class SwiftRestClient {
     return perform(authUri, new PostMethodProcessor<AccessToken>() {
       @Override
       protected void setup(PostMethod method) throws SwiftException {
-        AuthenticationRequest authRequest = new AuthenticationRequest(tenant, new
-                                                               PasswordCredentials(
-          username, password));
+        AuthenticationRequest authRequest = new AuthenticationRequest(tenant,
+            new PasswordCredentials(username, password));
         final String data = JSONUtil.toJSON(new AuthenticationRequestWrapper(
           authRequest));
         if (LOG.isDebugEnabled()) {
@@ -722,14 +738,18 @@ public final class SwiftRestClient {
             //now go through the endpoints
             for (Endpoint endpoint : catalog.getEndpoints()) {
               String endpointRegion = endpoint.getRegion();
-              URI endpointURL = endpoint.getPublicURL();
-              descr = String.format("[%s =>  %s]; ", endpointRegion, endpointURL);
+              URI publicURL = endpoint.getPublicURL();
+              URI internalURL = endpoint.getInternalURL();
+              descr = String.format("[%s =>  %s / %s]; ",
+                                    endpointRegion,
+                                    publicURL,
+                                    internalURL);
               regionList.append(descr);
               if (LOG.isDebugEnabled()) {
                 LOG.debug("Endpoint " + descr);
               }
               if (region == null || endpointRegion.equals(region)) {
-                endpointURI = endpointURL;
+                endpointURI = usePublicURL  ?publicURL: internalURL;
                 break;
               }
             }
@@ -859,9 +879,11 @@ public final class SwiftRestClient {
     final M method = processor.createMethod(uri.toString());
     
     //retry policy
-    method.getParams().setParameter(HttpMethodParams.RETRY_HANDLER,
-                                    new DefaultHttpMethodRetryHandler(
-                                      RETRY_COUNT, false));
+    HttpMethodParams methodParams = method.getParams();
+    methodParams.setParameter(HttpMethodParams.RETRY_HANDLER,
+                        new DefaultHttpMethodRetryHandler(
+                          retryCount, false));
+    methodParams.setSoTimeout(connectTimeout);
 
     try {
       int statusCode = exec(method);

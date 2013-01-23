@@ -50,10 +50,23 @@ public class SwiftProtocolConstants {
    */
   public static final String X_NEWEST = "X-Newest";
 
+  public static final String FS_SWIFT = "fs.swift";
   /**
    * Prefix for all instance-specific values in the configuration: {@value}
    */
-  public static final String SWIFT_SERVICE_PREFIX = "fs.swift.service.";
+  public static final String SWIFT_SERVICE_PREFIX = FS_SWIFT + ".service.";
+
+  /**
+   * timeout for all connections
+   */
+  public static final String SWIFT_CONNECTION_TIMEOUT =
+    FS_SWIFT + ".connect.timeout";
+
+  /**
+   * connection retry count for all connections
+   */
+  public static final String SWIFT_RETRY_COUNT =
+    FS_SWIFT + "connect.retry.count";
 
   /**
    * Key for passing the service name as a property -not read from the
@@ -74,17 +87,22 @@ public class SwiftProtocolConstants {
   public static final String DOT_HTTP_PORT = ".http.port";
   public static final String DOT_HTTPS_PORT = ".https.port";
   public static final String DOT_REGION = ".region";
+  /**
+   * flag to say use public URL
+   */
+  public static final String DOT_PUBLIC = ".public";
 
-  public static final String SWIFT_SERVICE_PROPERTY = "swift" + DOT_SERVICE;
-  public static final String SWIFT_CONTAINER_PROPERTY = "swift" + DOT_CONTAINER;
+  public static final String SWIFT_SERVICE_PROPERTY = FS_SWIFT + DOT_SERVICE;
+  public static final String SWIFT_CONTAINER_PROPERTY = FS_SWIFT + DOT_CONTAINER;
 
-  public static final String SWIFT_AUTH_PROPERTY = "swift" + DOT_AUTH_URL;
-  public static final String SWIFT_TENANT_PROPERTY = "swift" + DOT_TENANT;
-  public static final String SWIFT_USERNAME_PROPERTY = "swift" + DOT_USERNAME;
-  public static final String SWIFT_PASSWORD_PROPERTY = "swift" + DOT_PASSWORD;
-  public static final String SWIFT_HTTP_PORT_PROPERTY = "swift" + DOT_HTTP_PORT;
-  public static final String SWIFT_HTTPS_PORT_PROPERTY = "swift"
+  public static final String SWIFT_AUTH_PROPERTY = FS_SWIFT + DOT_AUTH_URL;
+  public static final String SWIFT_TENANT_PROPERTY = FS_SWIFT + DOT_TENANT;
+  public static final String SWIFT_USERNAME_PROPERTY = FS_SWIFT + DOT_USERNAME;
+  public static final String SWIFT_PASSWORD_PROPERTY = FS_SWIFT + DOT_PASSWORD;
+  public static final String SWIFT_HTTP_PORT_PROPERTY = FS_SWIFT + DOT_HTTP_PORT;
+  public static final String SWIFT_HTTPS_PORT_PROPERTY = FS_SWIFT
                                                          + DOT_HTTPS_PORT;
-  public static final String SWIFT_REGION_PROPERTY = "swift" + DOT_REGION;
+  public static final String SWIFT_REGION_PROPERTY = FS_SWIFT + DOT_REGION;
+  public static final String SWIFT_PUBLIC_PROPERTY = FS_SWIFT + DOT_PUBLIC;
 
 }
