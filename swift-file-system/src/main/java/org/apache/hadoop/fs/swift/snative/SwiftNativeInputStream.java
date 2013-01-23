@@ -60,7 +60,9 @@ class SwiftNativeInputStream extends FSInputStream {
    */
   private long pos = 0;
 
-  public SwiftNativeInputStream(SwiftNativeFileSystemStore storeNative, FileSystem.Statistics statistics, Path path)
+  public SwiftNativeInputStream(SwiftNativeFileSystemStore storeNative,
+                                FileSystem.Statistics statistics,
+                                Path path)
           throws IOException {
     this.nativeStore = storeNative;
     this.statistics = statistics;
@@ -117,10 +119,10 @@ class SwiftNativeInputStream extends FSInputStream {
   }
 
   @Override
-  public synchronized void seek(long pos) throws IOException {
+  public synchronized void seek(long targetPos) throws IOException {
     close();
-    in = nativeStore.getObject(path, pos, pos + BUFFER_SIZE);
-    this.pos = pos;
+    in = nativeStore.getObject(path, targetPos, targetPos + BUFFER_SIZE);
+    this.pos = targetPos;
   }
 
   @Override
