@@ -1,11 +1,13 @@
 package org.apache.hadoop.fs.swift.snative;
 
 import org.apache.commons.httpclient.Header;
+import org.apache.commons.httpclient.HttpStatus;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftException;
+import org.apache.hadoop.fs.swift.exceptions.SwiftInvalidResponseException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftNotDirectoryException;
 import org.apache.hadoop.fs.swift.http.SwiftProtocolConstants;
 import org.apache.hadoop.fs.swift.http.SwiftRestClient;
@@ -117,7 +119,8 @@ public class SwiftNativeFileSystemStore {
    */
   public FileStatus getObjectMetadata(Path path) throws IOException {
     final Header[] headers;
-    headers = swiftRestClient.headRequest(toObjectPath(path));
+    headers = swiftRestClient.headRequest(toObjectPath(path),
+                                          SwiftRestClient.NEWEST);
     //no headers is treated as a missing file
     if (headers.length == 0) {
       throw new FileNotFoundException("Not Found " + path.toUri());
@@ -156,7 +159,8 @@ public class SwiftNativeFileSystemStore {
   }
 
   public InputStream getObject(Path path) throws IOException {
-    return swiftRestClient.getDataAsInputStream(toObjectPath(path));
+    return swiftRestClient.getDataAsInputStream(toObjectPath(path),
+                                                SwiftRestClient.NEWEST);
   }
 
   /**
@@ -175,13 +179,22 @@ public class SwiftNativeFileSystemStore {
 
   public FileStatus[] listSubPaths(Path path) throws IOException {
     final Collection<FileStatus> fileStatuses;
-    fileStatuses = listDirectory(toObjectPath(path));
-
+    fileStatuses = listDirectory(toDirPath(path));
     return fileStatuses.toArray(new FileStatus[fileStatuses.size()]);
   }
 
+  /**
+   * Create a directory
+   * @param path path
+   * @throws IOException
+   */
   public void createDirectory(Path path) throws IOException {
-    swiftRestClient.putRequest(toObjectPath(path));
+    swiftRestClient.putRequest(toDirPath(path));
+  }
+
+  private SwiftObjectPath toDirPath(Path path) throws
+                                               SwiftConfigurationException {
+    return SwiftObjectPath.fromPath(uri, path, false);
   }
 
   private SwiftObjectPath toObjectPath(Path path) throws
@@ -191,8 +204,7 @@ public class SwiftNativeFileSystemStore {
 
   public List<URI> getObjectLocation(Path path) throws IOException {
     final byte[] objectLocation;
-    objectLocation = swiftRestClient.getObjectLocation(
-      toObjectPath(path));
+    objectLocation = swiftRestClient.getObjectLocation(toObjectPath(path));
     return extractUris(new String(objectLocation));
   }
 
@@ -205,6 +217,16 @@ public class SwiftNativeFileSystemStore {
    */
   public boolean deleteObject(Path path) throws IOException {
     return swiftRestClient.delete(toObjectPath(path));
+  }
+  /**
+   * deletes a directory from Swift
+   *
+   * @param path path to delete
+   * @return true if the path was deleted by this specific operation.
+   * @throws IOException on a failure
+   */
+  public boolean rmdir(Path path) throws IOException {
+    return swiftRestClient.delete(toDirPath(path));
   }
 
   /**
@@ -311,6 +333,14 @@ public class SwiftNativeFileSystemStore {
       bytes = swiftRestClient.findObjectsByPrefix(path);
     } catch (FileNotFoundException e) {
       return Collections.emptyList();
+    } catch (SwiftInvalidResponseException e) {
+      //bad HTTP error code
+      if (e.getStatusCode()== HttpStatus.SC_NO_CONTENT) {
+        //this can come back on a root list if the container is empty
+        return Collections.emptyList();
+      } else {
+        throw e;
+      }
     }
 
     final StringTokenizer tokenizer = new StringTokenizer(new String(bytes), "\n");

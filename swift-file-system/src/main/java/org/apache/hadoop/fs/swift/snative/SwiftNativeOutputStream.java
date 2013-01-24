@@ -103,8 +103,8 @@ class SwiftNativeOutputStream extends OutputStream {
         }
       }
     } finally {
-      if (backupFile.delete()) {
-        LOG.warn("Could not delete " +backupFile);
+      if (!backupFile.delete()) {
+        LOG.warn("Could not delete " + backupFile);
       }
       backupStream = null;
     }

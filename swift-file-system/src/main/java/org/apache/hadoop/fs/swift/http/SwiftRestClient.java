@@ -49,10 +49,10 @@ import org.apache.hadoop.fs.swift.auth.PasswordCredentials;
 import org.apache.hadoop.fs.swift.auth.entities.AccessToken;
 import org.apache.hadoop.fs.swift.auth.entities.Catalog;
 import org.apache.hadoop.fs.swift.auth.entities.Endpoint;
+import org.apache.hadoop.fs.swift.exceptions.SwiftBadRequestException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftConnectionException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftException;
-import org.apache.hadoop.fs.swift.exceptions.SwiftIllegalDataLocalityRequest;
 import org.apache.hadoop.fs.swift.exceptions.SwiftInternalStateException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftInvalidResponseException;
 import org.apache.hadoop.fs.swift.ssl.EasySSLProtocolSocketFactory;
@@ -82,6 +82,13 @@ public final class SwiftRestClient {
   private static final Log LOG = LogFactory.getLog(SwiftRestClient.class);
   private static final int DEFAULT_RETRY_COUNT = 3;
   private static final int DEFAULT_CONNECT_TIMEOUT = 15000;
+
+  /**
+   * Header that says "use newest version" -ensures that
+   * the query doesn't pick up older versions by accident
+   */
+  public static final Header NEWEST =
+    new Header(SwiftProtocolConstants.X_NEWEST, "true");
 
   /**
    * authentication endpoint
@@ -213,10 +220,10 @@ public final class SwiftRestClient {
     protected int[] getAllowedStatusCodes() {
       return new int[] {
         SC_OK,
-        SC_PARTIAL_CONTENT,
         SC_CREATED,
-        SC_NO_CONTENT,
         SC_ACCEPTED,
+        SC_NO_CONTENT,
+        SC_PARTIAL_CONTENT,
       };
     }
   }
@@ -421,7 +428,9 @@ public final class SwiftRestClient {
     final String range = String.format(SWIFT_RANGE_HEADER_FORMAT_PATTERN,
                                        offset,
                                        offset + length - 1);
-    return getDataAsInputStream(path, new Header(HEADER_RANGE, range));
+    return getDataAsInputStream(path,
+                                new Header(HEADER_RANGE, range),
+                                SwiftRestClient.NEWEST);
   }
 
   /**
@@ -438,6 +447,12 @@ public final class SwiftRestClient {
       @Override
       public Long extractResult(HeadMethod method) throws IOException {
         return method.getResponseContentLength();
+      }
+
+      @Override
+      protected void setup(HeadMethod method) throws IOException {
+        super.setup(method);
+        method.addRequestHeader(NEWEST);
       }
     });
   }
@@ -459,8 +474,8 @@ public final class SwiftRestClient {
                                           final Header... requestHeaders)
       throws IOException {
     preRemoteCommand("getDataAsInputStream");
-    return executeRequest(pathToURI(path),
-                          requestHeaders);
+    return doGet(pathToURI(path),
+                 requestHeaders);
   }
 
   /**
@@ -703,6 +718,25 @@ public final class SwiftRestClient {
         method.setRequestEntity(toJsonEntity(data));
       }
 
+      /**
+       * specification says any of the 2xxs are OK, so list all
+       * the standard ones
+       * @return a set of 2XX status codes.
+       */
+      @Override
+      protected int[] getAllowedStatusCodes() {
+        return new int[]{
+          SC_OK,
+          SC_CREATED,
+          SC_ACCEPTED,
+          SC_NON_AUTHORITATIVE_INFORMATION,
+          SC_NO_CONTENT,
+          SC_RESET_CONTENT,
+          SC_PARTIAL_CONTENT,
+          SC_MULTI_STATUS
+        };
+      }
+
       @Override
       public AccessToken extractResult(PostMethod method) throws IOException {
         final AuthenticationResponse access =
@@ -800,15 +834,24 @@ public final class SwiftRestClient {
   /**
    * create default container if it doesn't exist for Hadoop Swift integration.
    * non-reentrant, as this should only be needed once.
-   * @param containerName host object path
    * @throws IOException IO problems.
    */
   private synchronized void createDefaultContainer() throws IOException {
-    String containerName = container;
+    createContainer(container);
+  }
+
+  /**
+   * Create a container -if it already exists, do nothing
+   * @param containerName the container name
+   * @throws IOException IO problems
+   * @throws SwiftBadRequestException invalid container name
+   * @throws SwiftInvalidResponseException error from the server
+   */
+  public void createContainer(String containerName) throws IOException {
     SwiftObjectPath objectPath = new SwiftObjectPath(containerName, "");
     try {
       //see if the data is there
-      headRequest(objectPath);
+      headRequest(objectPath, NEWEST);
     } catch (FileNotFoundException ex) {
       int status = 0;
       try {
@@ -817,6 +860,10 @@ public final class SwiftRestClient {
         //triggered by a very bad container name.
         //re-insert the 404 result into the status
         status = SC_NOT_FOUND;
+      }
+      if (status == SC_BAD_REQUEST) {
+        throw new SwiftBadRequestException("Bad request " +
+                                   "-possibly an illegal container name");
       }
       if (!isStatusCodeExpected(status,
                                 SC_OK,
@@ -881,8 +928,8 @@ public final class SwiftRestClient {
     //retry policy
     HttpMethodParams methodParams = method.getParams();
     methodParams.setParameter(HttpMethodParams.RETRY_HANDLER,
-                        new DefaultHttpMethodRetryHandler(
-                          retryCount, false));
+                              new DefaultHttpMethodRetryHandler(
+                                retryCount, false));
     methodParams.setSoTimeout(connectTimeout);
 
     try {
@@ -893,8 +940,7 @@ public final class SwiftRestClient {
       //valid -which it is for many methods.
 
       if (statusCode == SC_BAD_REQUEST) {
-        throw new SwiftIllegalDataLocalityRequest(
-          "Bad request - an illegal path for a data locality test");
+        throw new SwiftBadRequestException("Bad request -possibly an illegal path");
       }
 
       //validate the allowed status code for this operation
@@ -966,7 +1012,7 @@ public final class SwiftRestClient {
    * @return the input stream. This must be closed to avoid log errors
    * @throws IOException
    */
-  private InputStream executeRequest(final URI uri, final Header... requestHeaders) throws IOException {
+  private InputStream doGet(final URI uri, final Header... requestHeaders) throws IOException {
     return perform(uri, new GetMethodProcessor<InputStream>() {
       @Override
       public InputStream extractResult(GetMethod method) throws IOException {
@@ -979,6 +1025,7 @@ public final class SwiftRestClient {
       @Override
       protected void setup(GetMethod method) {
         setHeaders(method, requestHeaders);
+
       }
     });
   }

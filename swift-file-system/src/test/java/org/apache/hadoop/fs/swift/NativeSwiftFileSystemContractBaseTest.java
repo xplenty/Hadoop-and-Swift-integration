@@ -60,14 +60,14 @@ public abstract class NativeSwiftFileSystemContractBaseTest
   }
   
   public void testCreateFile() throws Exception {
-    final Path f = new Path("/home/user");
+    final Path f = new Path("/test/testCreateFile");
     final FSDataOutputStream fsDataOutputStream = fs.create(f);
     fsDataOutputStream.close();
     assertTrue(fs.exists(f));
   }
 
   public void testDeleteFile() throws IOException {
-    final Path f = new Path("/home/user");
+    final Path f = new Path("/test/testDeleteFile");
     final FSDataOutputStream fsDataOutputStream = fs.create(f);
     fsDataOutputStream.close();
 
@@ -79,24 +79,28 @@ public abstract class NativeSwiftFileSystemContractBaseTest
   }
 
   public void testWriteReadFile() throws Exception {
-    final Path f = new Path("/home/user");
+    final Path f = new Path("/test/test");
     final FSDataOutputStream fsDataOutputStream = fs.create(f);
     final String message = "Test string";
     fsDataOutputStream.write(message.getBytes());
     fsDataOutputStream.close();
 
     assertTrue(fs.exists(f));
-    final FSDataInputStream open = fs.open(f);
-    final byte[] bytes = new byte[512];
-    final int read = open.read(bytes);
-    final byte[] buffer = new byte[read];
-    System.arraycopy(bytes, 0, buffer, 0, read);
-    assertEquals(message, new String(buffer));
+    try {
+      final FSDataInputStream open = fs.open(f);
+      final byte[] bytes = new byte[512];
+      final int read = open.read(bytes);
+      final byte[] buffer = new byte[read];
+      System.arraycopy(bytes, 0, buffer, 0, read);
+      assertEquals(message, new String(buffer));
+    } finally {
+      fs.delete(f, false);
+    }
   }
 
   public void testRenameFile() throws Exception {
-    final Path old = new Path("/home/user/file");
-    final Path newPath = new Path("/home/bob/file");
+    final Path old = new Path("/test/alice/file");
+    final Path newPath = new Path("/test/bob/file");
     final FSDataOutputStream fsDataOutputStream = fs.create(old);
     final byte[] message = "Some data".getBytes();
     fsDataOutputStream.write(message);
@@ -115,8 +119,8 @@ public abstract class NativeSwiftFileSystemContractBaseTest
   }
 
   public void testRenameDirectory() throws Exception {
-    final Path old = new Path("/data/logs");
-    final Path newPath = new Path("/var/logs");
+    final Path old = new Path("/test/data/logs");
+    final Path newPath = new Path("/test/var/logs");
     fs.mkdirs(old);
 
     assertTrue(fs.exists(old));
@@ -125,7 +129,7 @@ public abstract class NativeSwiftFileSystemContractBaseTest
   }
 
   public void testRenameTheSameDirectory() throws Exception {
-    final Path old = new Path("/usr/data");
+    final Path old = new Path("/test/usr/data");
     fs.mkdirs(old);
 
     assertTrue(fs.exists(old));

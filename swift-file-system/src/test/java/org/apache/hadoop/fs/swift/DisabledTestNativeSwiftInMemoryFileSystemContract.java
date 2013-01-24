@@ -28,7 +28,7 @@ import java.net.URISyntaxException;
  * Use the {@link InMemorySwiftNativeStore} to simulate swift.
  * This is an unrealistic test -the real test is preferable.
  */
-public class TestNativeSwiftInMemoryFileSystemContract
+public class DisabledTestNativeSwiftInMemoryFileSystemContract
   extends NativeSwiftFileSystemContractBaseTest {
 
   protected SwiftNativeFileSystem createSwiftFS() throws IOException {

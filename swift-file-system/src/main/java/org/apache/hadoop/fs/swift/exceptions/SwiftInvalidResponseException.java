@@ -39,4 +39,15 @@ public class SwiftInvalidResponseException extends SwiftConnectionException {
     this.uri = uri;
   }
 
+  public int getStatusCode() {
+    return statusCode;
+  }
+
+  public String getOperation() {
+    return operation;
+  }
+
+  public URI getUri() {
+    return uri;
+  }
 }

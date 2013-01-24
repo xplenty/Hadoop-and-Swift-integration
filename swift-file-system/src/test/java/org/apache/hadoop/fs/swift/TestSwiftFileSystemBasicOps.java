@@ -29,6 +29,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.fs.swift.exceptions.SwiftBadRequestException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftNotDirectoryException;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
@@ -111,22 +112,8 @@ public class TestSwiftFileSystemBasicOps {
     SwiftNativeFileSystem fs = createInitedFS();
     Path path = new Path("/testPutFile");
     Exception caught = null;
-    try {
-      writeTextFile(fs, path, "Testing a put to a file", false);
-    } catch (Exception e) {
-      caught = e;
-    }
-    try {
-      assertTrue("failed to delete " +path, fs.delete(path, true));
-    } catch (IOException e) {
-      LOG.error("during closedown");
-      if (caught == null) {
-        caught = e;
-      }
-    }
-    if (caught != null) {
-      throw caught;
-    }
+    writeTextFile(fs, path, "Testing a put to a file", false);
+    assertDeleteWorks(fs, path, false);
   }
 
   private void writeTextFile(SwiftNativeFileSystem fs,
@@ -152,6 +139,38 @@ public class TestSwiftFileSystemBasicOps {
     } finally {
       delete(fs, path);
     }
+  }
+
+  @Test
+  public void testPutDeleteFileInSubdir() throws Throwable {
+    SwiftNativeFileSystem fs = createInitedFS();
+    Path path = new Path("/testPutDeleteFileInSubdir/testPutDeleteFileInSubdir");
+    String text = "Testing a put and get to a file in a subdir "
+                  + System.currentTimeMillis();
+    writeTextFile(fs, path, text, false);
+    assertDeleteWorks(fs, path, false);
+    //now delete the parent that should have no children
+    assertDeleteWorks(fs, new Path("/testPutDeleteFileInSubdir"), false);
+  }
+
+  @Test
+  public void testRecursiveDelete() throws Throwable {
+    SwiftNativeFileSystem fs = createInitedFS();
+    Path childpath =
+      new Path("/testRecursiveDelete/testRecursiveDelete");
+    String text = "Testing a put and get to a file in a subdir "
+                  + System.currentTimeMillis();
+    writeTextFile(fs, childpath, text, false);
+    //now delete the parent that should have no children
+    assertDeleteWorks(fs, new Path("/testRecursiveDelete"), true);
+    assertFalse("child entry still present " + childpath, fs.exists(childpath));
+  }
+
+  private void assertDeleteWorks(SwiftNativeFileSystem fs,
+                                 Path path,
+                                 boolean recursive) throws IOException {
+    assertTrue(fs.delete(path, recursive));
+    assertFalse("failed to delete " + path, fs.exists(path));
   }
 
   private void delete(SwiftNativeFileSystem fs, Path path) {
@@ -284,9 +303,11 @@ public class TestSwiftFileSystemBasicOps {
   @Test
   public void testCreateMultilevelDir() throws Throwable {
     SwiftNativeFileSystem fs = createInitedFS();
-    Path path = new Path("/testCreateMultilevelDir/1/2/3");
+
+    Path base = new Path("/testCreateMultilevelDir");
+    Path path = new Path(base, "1/2/3");
     fs.mkdirs(path);
-    fs.delete(path, true);
+    fs.delete(base, true);
   }
 
   @Test
@@ -334,6 +355,28 @@ public class TestSwiftFileSystemBasicOps {
     } finally {
       delete(fs, path);
       delete(fs, path2);
+    }
+  }
+
+  @Test
+  public void testLongObjectNamesForbidden() throws Throwable {
+    StringBuilder buffer = new StringBuilder(1200);
+    buffer.append("/");
+    for (int i=0; i<(1200/4);i++) {
+      buffer.append(String.format("%04x",i));
+    }
+    SwiftNativeFileSystem fs = createInitedFS();
+    String pathString = buffer.toString();
+    Path path = new Path(pathString);
+    try {
+      writeTextFile(fs, path, pathString, true);
+      //if we get here, problems.
+      LOG.warn("Managed to create an object with a name of length "
+               + pathString.length());
+      fs.delete(path, false);
+    } catch (SwiftBadRequestException e) {
+      //expected
+      LOG.debug("Caught exception " + e, e);
     }
   }
 }

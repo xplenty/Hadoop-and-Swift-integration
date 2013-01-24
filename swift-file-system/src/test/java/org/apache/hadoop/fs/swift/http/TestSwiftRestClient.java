@@ -18,13 +18,19 @@
 
 package org.apache.hadoop.fs.swift.http;
 
+import org.apache.commons.httpclient.Header;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.swift.SwiftTestUtils;
+import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 
@@ -63,6 +69,33 @@ public class TestSwiftRestClient {
       SwiftRestClient client = createClient();
       client.authenticate();
     }
+  }
+
+  @Test
+  public void testPutAndDelete() throws Throwable {
+    if (runTests()) {
+      SwiftRestClient client = createClient();
+      client.authenticate();
+      Path path = new Path("restTestPutAndDelete");
+      SwiftObjectPath sobject = SwiftObjectPath.fromPath(serviceURI, path);
+      byte[] stuff = new byte[1];
+      stuff[0]='a';
+      client.upload(sobject,new ByteArrayInputStream(stuff),stuff.length);
+      //check file exists
+      client.headRequest(sobject, SwiftRestClient.NEWEST);
+      //delete the file
+      client.delete(sobject);
+      //check file is gone
+      try {
+        Header[] headers = client.headRequest(sobject, SwiftRestClient.NEWEST);
+        Assert.fail("Expected deleted file, but object is still present: "
+                    + sobject);
+      } catch (FileNotFoundException e) {
+        //expected
+      }
+
+    }
+
   }
 
   private boolean runTests() {

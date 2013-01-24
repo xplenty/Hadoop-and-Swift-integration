@@ -116,7 +116,8 @@ public class SwiftBlockFileSystemStore implements FileSystemStore {
     try {
       inputStream =
         swiftRestClient.getDataAsInputStream(
-          SwiftObjectPath.fromPath(uri, keyToPath(key)));
+          SwiftObjectPath.fromPath(uri, keyToPath(key))
+          , SwiftRestClient.NEWEST);
       inputStream.available();
       return inputStream;
     } catch (NullPointerException e) {
@@ -194,7 +195,9 @@ public class SwiftBlockFileSystemStore implements FileSystemStore {
     InputStream inputStream = null;
     try {
       inputStream =
-        swiftRestClient.getDataAsInputStream(SwiftObjectPath.fromPath(uri, path));
+        swiftRestClient.getDataAsInputStream(
+          SwiftObjectPath.fromPath(uri, path),
+          SwiftRestClient.NEWEST);
       final ByteArrayOutputStream data = new ByteArrayOutputStream();
       byte[] buffer = new byte[1024 * 1024]; // 1 mb
 
