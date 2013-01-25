@@ -20,6 +20,9 @@ package org.apache.hadoop.fs.swift.util;
 
 import org.apache.hadoop.fs.FileStatus;
 
+/**
+ * Various utility classes for SwiftFS support
+ */
 public final class SwiftUtils {
 
   /**
@@ -67,5 +70,9 @@ public final class SwiftUtils {
    */
   public static boolean isFilePretendingToBeDirectory(FileStatus fileStatus) {
     return fileStatus.getLen() == 0;
+  }
+
+  public static boolean isRootDir(SwiftObjectPath swiftObject) {
+    return swiftObject.objectMatches("") || swiftObject.objectMatches("/");
   }
 }

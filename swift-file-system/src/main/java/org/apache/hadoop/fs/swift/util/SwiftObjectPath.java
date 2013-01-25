@@ -91,7 +91,15 @@ public final class SwiftObjectPath {
     return toUriPath();
   }
 
-
+  /**
+   * Test for the object matching a path, ignoring the container
+   * value.
+   * @param path path string
+   * @return true iff the object's name matches the path
+   */
+  public boolean objectMatches(String path) {
+    return object.equals(path);
+  }
   /**
    * Create a path tuple of (container, path), where the container is
    * chosen from the host of the URI.

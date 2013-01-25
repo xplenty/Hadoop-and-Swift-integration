@@ -2,6 +2,8 @@ package org.apache.hadoop.fs.swift.snative;
 
 import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HttpStatus;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
@@ -38,6 +40,8 @@ import java.util.regex.Pattern;
 public class SwiftNativeFileSystemStore {
   private static final Pattern URI_PATTERN = Pattern.compile("\"\\S+?\"");
   private static final String PATTERN = "EEE, d MMM yyyy hh:mm:ss zzz";
+  private static final Log LOG =
+    LogFactory.getLog(SwiftNativeFileSystemStore.class);
   private URI uri;
   private SwiftRestClient swiftRestClient;
 
@@ -251,23 +255,38 @@ public class SwiftNativeFileSystemStore {
    * @throws IOException
    */
   public boolean renameDirectory(Path src, Path dst) throws IOException {
-    final FileStatus srcMetadata = getObjectMetadata(src);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("mv " + src +" " + dst);
+    }
+    if (src.equals(dst)) {
+      LOG.debug("Destination==source -failing");
+      return false;
+    }
+    final FileStatus srcMetadata;
+    try {
+      srcMetadata = getObjectMetadata(src);
+    } catch (FileNotFoundException e) {
+      LOG.debug("source path not found -failing");
+      return false;
+    }
     FileStatus dstMetadata;
     try {
       dstMetadata = getObjectMetadata(dst);
     } catch (FileNotFoundException e) {
       //destination does not exist.
+      LOG.debug("Destination does not exist");
       dstMetadata = null;
     }
 
-    boolean srcExists = srcMetadata != null;
     boolean destExists = dstMetadata != null;
-    if (srcExists && !SwiftUtils.isDirectory(srcMetadata)) {
-      //source exists and is not a directory
+
+    if (!SwiftUtils.isDirectory(srcMetadata)) {
+      //source exists and is a simple file
 
       if (destExists && !SwiftUtils.isDirectory(dstMetadata)) {
         //if the dest file exists: fail
-        throw new SwiftNotDirectoryException(dst, ": a file already exists");
+        throw new SwiftNotDirectoryException(dst,
+                         ": cannot rename a file over one that already exists");
       }
 
       //calculate the destination
@@ -280,15 +299,23 @@ public class SwiftNativeFileSystemStore {
         destPath = toObjectPath(new Path(dst.getParent(),
                  src.getName()));
       } else {
-        //destination is a simple file
+        //destination doesn't ext or is a simple file
         destPath = toObjectPath(dst);
       }
       //do the copy
-      return swiftRestClient.copyObject(toObjectPath(src),
-                                        destPath);
+      SwiftObjectPath srcObject = toObjectPath(src);
+      boolean copySucceeded = swiftRestClient.copyObject(srcObject, destPath);
+      if (copySucceeded) {
+        //if the copy worked delete the original
+        swiftRestClient.delete(srcObject);
+      }
+      return copySucceeded;
+
+
+
     } else {
 
-      //here the source exists and is a directory
+      //here the source exists is a directory
       List<FileStatus> fileStatuses =
         listDirectory(toObjectPath(src.getParent()));
       List<FileStatus> dstPath =
@@ -332,13 +359,31 @@ public class SwiftNativeFileSystemStore {
     try {
       bytes = swiftRestClient.findObjectsByPrefix(path);
     } catch (FileNotFoundException e) {
-      return Collections.emptyList();
-    } catch (SwiftInvalidResponseException e) {
-      //bad HTTP error code
-      if (e.getStatusCode()== HttpStatus.SC_NO_CONTENT) {
-        //this can come back on a root list if the container is empty
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Directory not found " + path);
+      }
+      if (SwiftUtils.isRootDir(path)) {
         return Collections.emptyList();
       } else {
+        throw e;
+      }
+    } catch (SwiftInvalidResponseException e) {
+      //bad HTTP error code
+      if (e.getStatusCode() == HttpStatus.SC_NO_CONTENT) {
+        //this can come back on a root list if the container is empty
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("lsdir " + path +
+                    "status code says NO_CONTENT; "
+                    + e.toString());
+        }
+        if (SwiftUtils.isRootDir(path)) {
+          return Collections.emptyList();
+        }
+        else {
+          throw new FileNotFoundException("Not found: " + path);
+        }
+      }
+      else {
         throw e;
       }
     }

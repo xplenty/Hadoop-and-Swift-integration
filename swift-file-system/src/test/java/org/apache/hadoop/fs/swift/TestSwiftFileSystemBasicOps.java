@@ -18,7 +18,6 @@
 
 package org.apache.hadoop.fs.swift;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -31,7 +30,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.swift.exceptions.SwiftBadRequestException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftException;
-import org.apache.hadoop.fs.swift.exceptions.SwiftNotDirectoryException;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
 
 import static org.junit.Assert.*;
@@ -42,7 +40,6 @@ import org.junit.Test;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
-import java.util.Date;
 
 public class TestSwiftFileSystemBasicOps {
 
@@ -89,6 +86,15 @@ public class TestSwiftFileSystemBasicOps {
     }
   }
 
+
+  @Test
+  public void testlsRoot() throws Throwable {
+    SwiftNativeFileSystem fs = createInitedFS();
+    Path path = new Path("/");
+    FileStatus[] statuses = fs.listStatus(path);
+  }
+
+
   @Test
   public void testMkDir() throws Throwable {
     SwiftNativeFileSystem fs = createInitedFS();
@@ -113,7 +119,7 @@ public class TestSwiftFileSystemBasicOps {
     Path path = new Path("/testPutFile");
     Exception caught = null;
     writeTextFile(fs, path, "Testing a put to a file", false);
-    assertDeleteWorks(fs, path, false);
+    assertDeleted(fs, path, false);
   }
 
   private void writeTextFile(SwiftNativeFileSystem fs,
@@ -148,9 +154,9 @@ public class TestSwiftFileSystemBasicOps {
     String text = "Testing a put and get to a file in a subdir "
                   + System.currentTimeMillis();
     writeTextFile(fs, path, text, false);
-    assertDeleteWorks(fs, path, false);
+    assertDeleted(fs, path, false);
     //now delete the parent that should have no children
-    assertDeleteWorks(fs, new Path("/testPutDeleteFileInSubdir"), false);
+    assertDeleted(fs, new Path("/testPutDeleteFileInSubdir"), false);
   }
 
   @Test
@@ -162,13 +168,13 @@ public class TestSwiftFileSystemBasicOps {
                   + System.currentTimeMillis();
     writeTextFile(fs, childpath, text, false);
     //now delete the parent that should have no children
-    assertDeleteWorks(fs, new Path("/testRecursiveDelete"), true);
+    assertDeleted(fs, new Path("/testRecursiveDelete"), true);
     assertFalse("child entry still present " + childpath, fs.exists(childpath));
   }
 
-  private void assertDeleteWorks(SwiftNativeFileSystem fs,
-                                 Path path,
-                                 boolean recursive) throws IOException {
+  protected void assertDeleted(FileSystem fs,
+                               Path path,
+                               boolean recursive) throws IOException {
     assertTrue(fs.delete(path, recursive));
     assertFalse("failed to delete " + path, fs.exists(path));
   }
@@ -214,7 +220,7 @@ public class TestSwiftFileSystemBasicOps {
     }
   }
 
-  private void assertLength(FileSystem fs, Path path, int expected) throws
+  private void assertFileLength(FileSystem fs, Path path, int expected) throws
                                                                     IOException {
     FileStatus status = fs.getFileStatus(path);
     assertEquals("Wrong file length of file " + path + " status: " + status,
@@ -230,11 +236,11 @@ public class TestSwiftFileSystemBasicOps {
       String text = "Testing a put to a file "
                     + System.currentTimeMillis();
       writeTextFile(fs, path, text, false);
-      assertLength(fs, path, text.length());
+      assertFileLength(fs, path, text.length());
       String text2 = "Overwriting a file "
                      + System.currentTimeMillis();
       writeTextFile(fs, path, text2, true);
-      assertLength(fs, path, text2.length());
+      assertFileLength(fs, path, text2.length());
 
 
       String result = readBytesToString(fs, path, text2.length());
@@ -379,4 +385,18 @@ public class TestSwiftFileSystemBasicOps {
       LOG.debug("Caught exception " + e, e);
     }
   }
+
+  @Test
+  public void testLsNonExistentFile() throws Exception {
+    SwiftNativeFileSystem fs = createInitedFS();
+    try {
+      Path path = new Path("/test/hadoop/file");
+      FileStatus[] statuses = fs.listStatus(path);
+      fail("Should throw FileNotFoundException on " + path
+          + " but got list of length " + statuses.length);
+    } catch (FileNotFoundException fnfe) {
+      // expected
+    }
+  }
+
 }

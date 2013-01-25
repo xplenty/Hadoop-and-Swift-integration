@@ -152,6 +152,27 @@ public class SwiftNativeFileSystem extends FileSystem {
     return objectMetadata;
   }
 
+
+  @Override
+  public boolean isFile(Path f) throws IOException {
+    try {
+      FileStatus fileStatus = getFileStatus(f);
+      return !SwiftUtils.isDirectory(fileStatus);
+    } catch (FileNotFoundException e) {
+      return false;               // f does not exist
+    }
+  }
+
+  @Override
+  public boolean isDirectory(Path f) throws IOException {
+    try {
+      FileStatus fileStatus = getFileStatus(f);
+      return SwiftUtils.isDirectory(fileStatus);
+    } catch (FileNotFoundException e) {
+      return false;               // f does not exist
+    }
+  }
+
   /**
    * Return an array containing hostnames, offset and size of
    * portions of the given file.  For a nonexistent
