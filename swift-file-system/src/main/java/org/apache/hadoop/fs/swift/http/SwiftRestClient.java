@@ -41,7 +41,10 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.swift.auth.ApiKeyAuthenticationRequest;
+import org.apache.hadoop.fs.swift.auth.ApiKeyCredentials;
 import org.apache.hadoop.fs.swift.auth.AuthenticationRequest;
+import org.apache.hadoop.fs.swift.auth.PasswordAuthenticationRequest;
 import org.apache.hadoop.fs.swift.auth.AuthenticationRequestWrapper;
 import org.apache.hadoop.fs.swift.auth.AuthenticationResponse;
 import org.apache.hadoop.fs.swift.auth.AuthenticationWrapper;
@@ -115,6 +118,11 @@ public final class SwiftRestClient {
    * user password
    */
   private final String password;
+
+  /**
+   * user api key
+   */
+  private final String apiKey;
 
   private final String container;
 
@@ -321,7 +329,8 @@ public final class SwiftRestClient {
     Properties props = RestClientBindings.bind(filesystemURI, conf);
     String stringAuthUri = getOption(props, SWIFT_AUTH_PROPERTY);
     username = getOption(props, SWIFT_USERNAME_PROPERTY);
-    password = getOption(props, SWIFT_PASSWORD_PROPERTY);
+    password = props.getProperty(SWIFT_PASSWORD_PROPERTY);
+    apiKey = props.getProperty(SWIFT_APIKEY_PROPERTY);
     //optional
     region = props.getProperty(SWIFT_REGION_PROPERTY);
     //tenant is optional
@@ -334,6 +343,13 @@ public final class SwiftRestClient {
     retryCount = getIntOption(props, SWIFT_RETRY_COUNT, DEFAULT_RETRY_COUNT);
     connectTimeout = getIntOption(props, SWIFT_CONNECTION_TIMEOUT,
                                   DEFAULT_CONNECT_TIMEOUT);
+    
+    if (apiKey == null && password == null) {
+			throw new SwiftConfigurationException(
+					"Configuration must contain either "
+							+ SWIFT_PASSWORD_PROPERTY + " or "
+							+ SWIFT_APIKEY_PROPERTY);
+    }
 
     if (LOG.isDebugEnabled()) {
       //everything you need for diagnostics. The password is omitted.
@@ -705,8 +721,14 @@ public final class SwiftRestClient {
     return perform(authUri, new PostMethodProcessor<AccessToken>() {
       @Override
       protected void setup(PostMethod method) throws SwiftException {
-        AuthenticationRequest authRequest = new AuthenticationRequest(tenant,
-            new PasswordCredentials(username, password));
+    	AuthenticationRequest authRequest = null; 
+    	if (password != null) {
+    		authRequest = new PasswordAuthenticationRequest(tenant,
+              new PasswordCredentials(username, password));
+    	} else {
+    		authRequest = new ApiKeyAuthenticationRequest(tenant,
+    	      new ApiKeyCredentials(username, apiKey));
+    	}
         final String data = JSONUtil.toJSON(new AuthenticationRequestWrapper(
           authRequest));
         if (LOG.isDebugEnabled()) {
