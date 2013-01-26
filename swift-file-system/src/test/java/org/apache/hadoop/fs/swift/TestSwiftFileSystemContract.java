@@ -59,22 +59,11 @@ public class TestSwiftFileSystemContract
     return swiftNativeFileSystem;
   }
 
-  public void testConfDefinesFilesystem() throws Throwable {
-    Configuration conf = new Configuration();
-    URI fsURI = SwiftTestUtils.getServiceURI(conf);
-  }
-
-  public void testConfIsValid() throws Throwable {
-    Configuration conf = new Configuration();
-    URI fsURI = SwiftTestUtils.getServiceURI(conf);
-    Properties properties = RestClientBindings.bind(fsURI, conf);
-  }
-
   public void testMkdirs() throws Exception {
     try {
       super.testMkdirs();
     } catch (AssertionFailedError e) {
-      downgrade("file/dir conflict", e);
+      downgrade("file/dir confusion", e);
     }
   }
 

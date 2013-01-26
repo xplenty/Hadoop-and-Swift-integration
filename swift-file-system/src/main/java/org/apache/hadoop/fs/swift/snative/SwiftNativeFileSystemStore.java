@@ -162,6 +162,14 @@ public class SwiftNativeFileSystemStore {
     return new FileStatus(length, isDir, 0, 0L, lastModified, correctSwiftPath);
   }
 
+
+  /**
+   * Get the object as an input stream
+   * @param path object path
+   * @return the input stream -this must be closed to terminate the connection
+   * @throws IOException IO problems
+   * @throws FileNotFoundException path doesn't resolve to an object
+   */
   public InputStream getObject(Path path) throws IOException {
     return swiftRestClient.getDataAsInputStream(toObjectPath(path),
                                                 SwiftRestClient.NEWEST);
@@ -234,13 +242,18 @@ public class SwiftNativeFileSystemStore {
   }
 
   /**
-   * Checks if specified path exists
-   *
-   * @param path to check
-   * @return true - path exists, false otherwise
+   * Does the object exist
+   * @param path object path
+   * @return true if the metadata of an object could be retrieved
+   * @throws IOException IO problems
    */
   public boolean objectExists(Path path) throws IOException {
-    return !listDirectory(toObjectPath(path)).isEmpty();
+    try {
+      getObjectMetadata(path);
+      return true;
+    } catch (FileNotFoundException e) {
+      return false;
+    }
   }
 
   /**
@@ -262,6 +275,21 @@ public class SwiftNativeFileSystemStore {
       LOG.debug("Destination==source -failing");
       return false;
     }
+
+    SwiftObjectPath srcObject = toObjectPath(src);
+    SwiftObjectPath destObject = toObjectPath(dst);
+
+    if (SwiftUtils.isRootDir(srcObject)) {
+      LOG.debug("cannot rename root dir");
+      return false;
+    }
+
+    if (SwiftUtils.isChildOf(srcObject, destObject)) {
+      LOG.debug("cannot move a directory under itself");
+      return false;
+    }
+
+
     final FileStatus srcMetadata;
     try {
       srcMetadata = getObjectMetadata(src);
@@ -278,32 +306,50 @@ public class SwiftNativeFileSystemStore {
       dstMetadata = null;
     }
 
+    //check to see if the parent exists
+    Path destParent = dst.getParent();
+    FileStatus destParentStat;
+    try {
+      destParentStat = destParent != null
+                       ? getObjectMetadata(destParent)
+                       : null;
+    } catch (FileNotFoundException e) {
+      //destination parent doesn't exist; bail out
+      LOG.debug("destination parent directory "+ destParent + " doesn't exist");
+      return false;
+    }
+
     boolean destExists = dstMetadata != null;
+    boolean destIsDir = destExists && SwiftUtils.isDirectory(dstMetadata);
+    //calculate the destination
+    SwiftObjectPath destPath;
 
-    if (!SwiftUtils.isDirectory(srcMetadata)) {
-      //source exists and is a simple file
 
-      if (destExists && !SwiftUtils.isDirectory(dstMetadata)) {
-        //if the dest file exists: fail
-        throw new SwiftNotDirectoryException(dst,
-                         ": cannot rename a file over one that already exists");
-      }
+    boolean srcIsFile = !SwiftUtils.isDirectory(srcMetadata);
+    if (!srcIsFile) {
 
-      //calculate the destination
-      SwiftObjectPath destPath;
-      if (destExists && SwiftUtils.isDirectory(dstMetadata)) {
-        //destination id a directory: create a path from the destination
-        //and the source name
+      //source is a simple file
+      // outcomes:
+      // #1  dest exists and is file: fail
+      // #2 dest exists and is dir: destination path becomes under dest dir
+      // #3 dest does not exist: use dest as name
 
-        //TODO: this uses dst.getParent(), and not dst itself. Why?
-        destPath = toObjectPath(new Path(dst.getParent(),
-                 src.getName()));
+      if (destExists) {
+
+        if (destIsDir) {
+          //outcome #2 -move to subdir of dest
+          destPath = toObjectPath(new Path(dst, src.getName()));
+        } else {
+          //outcome #1 dest it's a file: fail
+          LOG.debug("cannot rename a file over one that already exists");
+          return false;
+        }
       } else {
-        //destination doesn't ext or is a simple file
+        //outcome #3 -new entry
         destPath = toObjectPath(dst);
       }
-      //do the copy
-      SwiftObjectPath srcObject = toObjectPath(src);
+
+
       boolean copySucceeded = swiftRestClient.copyObject(srcObject, destPath);
       if (copySucceeded) {
         //if the copy worked delete the original
@@ -312,27 +358,42 @@ public class SwiftNativeFileSystemStore {
       return copySucceeded;
 
 
-
     } else {
 
-      //here the source exists is a directory
-      List<FileStatus> fileStatuses =
-        listDirectory(toObjectPath(src.getParent()));
-      List<FileStatus> dstPath =
-        listDirectory(toObjectPath(dst.getParent()));
-      if (dstPath.size() == 1 && !SwiftUtils.isDirectory(dstPath.get(0))) {
-        throw new SwiftNotDirectoryException(dst,
-                 "the source is a directory, but not the destination");
+      //here the source exists and is a directory
+      // outcomes (given we know the parent dir exists if we get this far)
+      // #1 destination is a file: fail
+      // #2 destination is a directory: create a new dir under that one
+      // #3 destination doesn't exist: create a new dir with that name
+
+      if (destExists && !destIsDir) {
+        // #1 destination is a file: fail
+        LOG.debug("the source is a directory, but not the destination");
+        return false;
       }
+
+      Path targetPath;
+      if (destExists) {
+        // #2 destination is a directory: create a new dir under that one
+        targetPath = new Path(dst, src.getName());
+      } else {
+        // #3 destination doesn't exist: create a new dir with that name
+        targetPath = dst;
+      }
+      SwiftObjectPath targetObjectPath = toObjectPath(targetPath);
+
+      //enum the child entries
+      List<FileStatus> fileStatuses = listDirectory(toObjectPath(src.getParent()));
 
       boolean result = true;
 
       //iterative copy of everything under the directory
       for (FileStatus fileStatus : fileStatuses) {
         if (!fileStatus.isDir()) {
-          result &=
+          boolean copied =
             swiftRestClient.copyObject(toObjectPath(fileStatus.getPath()),
-                                       toObjectPath(dst));
+                                       targetObjectPath);
+          result &= copied;
 
           swiftRestClient.delete(toObjectPath(fileStatus.getPath()));
         }
@@ -373,7 +434,7 @@ public class SwiftNativeFileSystemStore {
         //this can come back on a root list if the container is empty
         if (LOG.isDebugEnabled()) {
           LOG.debug("lsdir " + path +
-                    "status code says NO_CONTENT; "
+                    " status code says NO_CONTENT; "
                     + e.toString());
         }
         if (SwiftUtils.isRootDir(path)) {
@@ -396,6 +457,7 @@ public class SwiftNativeFileSystemStore {
       if (!pathInSwift.startsWith("/")) {
         pathInSwift = "/".concat(pathInSwift);
       }
+      //this contains all
       final FileStatus metadata = getObjectMetadata(new Path(pathInSwift));
       if (metadata != null) {
         files.add(metadata);

@@ -150,7 +150,8 @@ public class TestSwiftFileSystemBasicOps {
   @Test
   public void testPutDeleteFileInSubdir() throws Throwable {
     SwiftNativeFileSystem fs = createInitedFS();
-    Path path = new Path("/testPutDeleteFileInSubdir/testPutDeleteFileInSubdir");
+    Path path =
+      new Path("/testPutDeleteFileInSubdir/testPutDeleteFileInSubdir");
     String text = "Testing a put and get to a file in a subdir "
                   + System.currentTimeMillis();
     writeTextFile(fs, path, text, false);
@@ -182,7 +183,7 @@ public class TestSwiftFileSystemBasicOps {
   private void delete(SwiftNativeFileSystem fs, Path path) {
     try {
       if (!fs.delete(path, false)) {
-        LOG.warn("Failed to delete "+path);
+        LOG.warn("Failed to delete " + path);
       }
     } catch (IOException e) {
       LOG.warn("deleting " + path, e);
@@ -221,7 +222,7 @@ public class TestSwiftFileSystemBasicOps {
   }
 
   private void assertFileLength(FileSystem fs, Path path, int expected) throws
-                                                                    IOException {
+                                                                        IOException {
     FileStatus status = fs.getFileStatus(path);
     assertEquals("Wrong file length of file " + path + " status: " + status,
                  expected,
@@ -368,8 +369,8 @@ public class TestSwiftFileSystemBasicOps {
   public void testLongObjectNamesForbidden() throws Throwable {
     StringBuilder buffer = new StringBuilder(1200);
     buffer.append("/");
-    for (int i=0; i<(1200/4);i++) {
-      buffer.append(String.format("%04x",i));
+    for (int i = 0; i < (1200 / 4); i++) {
+      buffer.append(String.format("%04x", i));
     }
     SwiftNativeFileSystem fs = createInitedFS();
     String pathString = buffer.toString();
@@ -393,7 +394,7 @@ public class TestSwiftFileSystemBasicOps {
       Path path = new Path("/test/hadoop/file");
       FileStatus[] statuses = fs.listStatus(path);
       fail("Should throw FileNotFoundException on " + path
-          + " but got list of length " + statuses.length);
+           + " but got list of length " + statuses.length);
     } catch (FileNotFoundException fnfe) {
       // expected
     }

@@ -530,7 +530,9 @@ public final class SwiftRestClient {
       dataLocationURI = dataLocationURI.concat("/")
                                        .concat(path.getContainer())
                                        .concat("/?prefix=")
-                                       .concat(object);
+                                       .concat(object)
+//                                       .concat("&delimiter=/")
+                                      ;
       uri = new URI(dataLocationURI);
     } catch (URISyntaxException e) {
       throw new SwiftException("Bad URI: " + dataLocationURI, e);
