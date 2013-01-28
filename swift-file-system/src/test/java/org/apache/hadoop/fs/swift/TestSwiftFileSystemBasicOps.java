@@ -21,10 +21,7 @@ package org.apache.hadoop.fs.swift;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
@@ -34,6 +31,7 @@ import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
 
 import static org.junit.Assert.*;
 
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -59,12 +57,13 @@ public class TestSwiftFileSystemBasicOps {
     }
   }
 
+  protected void assumeTestEnabled() {
+    Assume.assumeTrue(runTests);
+  }
 
   @Test
   public void testCreate() throws Throwable {
-    if (!runTests) {
-      return;
-    }
+    assumeTestEnabled();
     createInitedFS();
   }
 
@@ -118,17 +117,8 @@ public class TestSwiftFileSystemBasicOps {
     SwiftNativeFileSystem fs = createInitedFS();
     Path path = new Path("/testPutFile");
     Exception caught = null;
-    writeTextFile(fs, path, "Testing a put to a file", false);
-    assertDeleted(fs, path, false);
-  }
-
-  private void writeTextFile(SwiftNativeFileSystem fs,
-                             Path path,
-                             String text,
-                             boolean overwrite) throws IOException {
-    FSDataOutputStream stream = fs.create(path, overwrite);
-    stream.write(SwiftTestUtils.toAsciiByteArray(text));
-    stream.close();
+    SwiftTestUtils.writeTextFile(fs, path, "Testing a put to a file", false);
+    SwiftTestUtils.assertDeleted(fs, path, false);
   }
 
   @Test
@@ -138,9 +128,9 @@ public class TestSwiftFileSystemBasicOps {
     try {
       String text = "Testing a put and get to a file "
                     + System.currentTimeMillis();
-      writeTextFile(fs, path, text, false);
+      SwiftTestUtils.writeTextFile(fs, path, text, false);
 
-      String result = readBytesToString(fs, path, text.length());
+      String result = SwiftTestUtils.readBytesToString(fs, path, text.length());
       assertEquals(text, result);
     } finally {
       delete(fs, path);
@@ -154,10 +144,11 @@ public class TestSwiftFileSystemBasicOps {
       new Path("/testPutDeleteFileInSubdir/testPutDeleteFileInSubdir");
     String text = "Testing a put and get to a file in a subdir "
                   + System.currentTimeMillis();
-    writeTextFile(fs, path, text, false);
-    assertDeleted(fs, path, false);
+    SwiftTestUtils.writeTextFile(fs, path, text, false);
+    SwiftTestUtils.assertDeleted(fs, path, false);
     //now delete the parent that should have no children
-    assertDeleted(fs, new Path("/testPutDeleteFileInSubdir"), false);
+    SwiftTestUtils.assertDeleted(fs, new Path("/testPutDeleteFileInSubdir"),
+                                 false);
   }
 
   @Test
@@ -167,17 +158,10 @@ public class TestSwiftFileSystemBasicOps {
       new Path("/testRecursiveDelete/testRecursiveDelete");
     String text = "Testing a put and get to a file in a subdir "
                   + System.currentTimeMillis();
-    writeTextFile(fs, childpath, text, false);
+    SwiftTestUtils.writeTextFile(fs, childpath, text, false);
     //now delete the parent that should have no children
-    assertDeleted(fs, new Path("/testRecursiveDelete"), true);
+    SwiftTestUtils.assertDeleted(fs, new Path("/testRecursiveDelete"), true);
     assertFalse("child entry still present " + childpath, fs.exists(childpath));
-  }
-
-  protected void assertDeleted(FileSystem fs,
-                               Path path,
-                               boolean recursive) throws IOException {
-    assertTrue(fs.delete(path, recursive));
-    assertFalse("failed to delete " + path, fs.exists(path));
   }
 
   private void delete(SwiftNativeFileSystem fs, Path path) {
@@ -200,35 +184,6 @@ public class TestSwiftFileSystemBasicOps {
     }
   }
 
-  /**
-   * Read in "length" bytes, convert to an ascii string
-   * @param fs filesystem
-   * @param path path to read
-   * @param length #of bytes to read.
-   * @return the bytes read and converted to a string
-   * @throws IOException
-   */
-  private String readBytesToString(SwiftNativeFileSystem fs,
-                                   Path path,
-                                   int length) throws IOException {
-    FSDataInputStream in = fs.open(path);
-    try {
-      byte[] buf = new byte[length];
-      in.readFully(0, buf);
-      return SwiftTestUtils.toChar(buf);
-    } finally {
-      in.close();
-    }
-  }
-
-  private void assertFileLength(FileSystem fs, Path path, int expected) throws
-                                                                        IOException {
-    FileStatus status = fs.getFileStatus(path);
-    assertEquals("Wrong file length of file " + path + " status: " + status,
-                 expected,
-                 status.getLen());
-  }
-
   @Test
   public void testOverwrite() throws Throwable {
     SwiftNativeFileSystem fs = createInitedFS();
@@ -236,15 +191,15 @@ public class TestSwiftFileSystemBasicOps {
     try {
       String text = "Testing a put to a file "
                     + System.currentTimeMillis();
-      writeTextFile(fs, path, text, false);
-      assertFileLength(fs, path, text.length());
+      SwiftTestUtils.writeTextFile(fs, path, text, false);
+      SwiftTestUtils.assertFileLength(fs, path, text.length());
       String text2 = "Overwriting a file "
                      + System.currentTimeMillis();
-      writeTextFile(fs, path, text2, true);
-      assertFileLength(fs, path, text2.length());
+      SwiftTestUtils.writeTextFile(fs, path, text2, true);
+      SwiftTestUtils.assertFileLength(fs, path, text2.length());
 
 
-      String result = readBytesToString(fs, path, text2.length());
+      String result = SwiftTestUtils.readBytesToString(fs, path, text2.length());
       assertEquals(text2, result);
     } finally {
       delete(fs, path);
@@ -258,7 +213,7 @@ public class TestSwiftFileSystemBasicOps {
     try {
       String text = "Testing File Status "
                     + System.currentTimeMillis();
-      writeTextFile(fs, path, text, false);
+      SwiftTestUtils.writeTextFile(fs, path, text, false);
       FileStatus fileStatus = fs.getFileStatus(path);
       assertTrue("Not a file: " + fileStatus, fileStatus.isFile());
       assertFalse("A dir: " + fileStatus, fileStatus.isDirectory());
@@ -277,7 +232,7 @@ public class TestSwiftFileSystemBasicOps {
     Path path = new Path("/testDirStatus");
     try {
       fs.mkdirs(path);
-      assertDirectory(fs, path);
+      SwiftTestUtils.assertDirectory(fs, path);
     } finally {
       delete(fs, path);
     }
@@ -297,9 +252,9 @@ public class TestSwiftFileSystemBasicOps {
       //create the dir
       fs.mkdirs(path);
       //create the child dir
-      writeTextFile(fs, child, "child file", true);
+      SwiftTestUtils.writeTextFile(fs, child, "child file", true);
       //assert the parent has the directory nature
-      assertDirectory(fs, path);
+      SwiftTestUtils.assertDirectory(fs, path);
       //now rm the child
       delete(fs, child);
     } finally {
@@ -326,7 +281,7 @@ public class TestSwiftFileSystemBasicOps {
     fs.mkdirs(path);
     try {
       //create the child dir
-      writeTextFile(fs, path, "parent", true);
+      SwiftTestUtils.writeTextFile(fs, path, "parent", true);
       try {
         fs.mkdirs(child);
       } catch (SwiftException expected) {
@@ -336,16 +291,6 @@ public class TestSwiftFileSystemBasicOps {
       fs.delete(path, true);
     }
 
-  }
-
-
-  private void assertDirectory(SwiftNativeFileSystem fs, Path path) throws
-                                                                    IOException {
-    FileStatus fileStatus = fs.getFileStatus(path);
-    assertFalse("Should be a dir, but is a file: " + fileStatus,
-                fileStatus.isFile());
-    assertTrue("Should be a dir -but isn't: " + fileStatus,
-               fileStatus.isDirectory());
   }
 
 
@@ -376,7 +321,7 @@ public class TestSwiftFileSystemBasicOps {
     String pathString = buffer.toString();
     Path path = new Path(pathString);
     try {
-      writeTextFile(fs, path, pathString, true);
+      SwiftTestUtils.writeTextFile(fs, path, pathString, true);
       //if we get here, problems.
       LOG.warn("Managed to create an object with a name of length "
                + pathString.length());

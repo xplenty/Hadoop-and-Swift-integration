@@ -23,7 +23,7 @@ public class TestSwiftObjectPath {
    * rackspace endpoint address
    */
   private static final String ENDPOINT =
-    "https://storage101.region1.example.org/v1/MossoCloudFS_9fb40cc0-5c12-11e2-bcfd-0800200c9a66";
+    "https://storage101.region1.example.org/v1/MossoCloudFS_9fb40cc0-1234-5678-9abc-def000c9a66";
 
   @Test
   public void testParsePath() throws Exception {

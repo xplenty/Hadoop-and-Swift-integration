@@ -18,7 +18,6 @@
 
 package org.apache.hadoop.fs.swift;
 
-import junit.framework.AssertionFailedError;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -30,6 +29,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.swift.http.RestClientBindings;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
 import org.junit.After;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -47,7 +47,6 @@ public class TestSwiftFileSystemExtendedContract {
   private static final Log LOG =
     LogFactory.getLog(TestSwiftFileSystemExtendedContract.class);
 
-  protected final static String TEST_UMASK = "062";
   protected FileSystem fs;
   protected byte[] data = dataset(getBlockSize() * 2, 0, 255);
 
@@ -63,17 +62,7 @@ public class TestSwiftFileSystemExtendedContract {
 
   @After
   public void tearDown() throws Exception {
-    try {
-      if (fs != null) {
-        fs.delete(path("/test"), true);
-      }
-    } catch (IOException e) {
-      LOG.error("Error deleting /test: " + e, e);
-    }
-  }
-
-  public void downgrade(String message, AssertionFailedError failure) {
-    LOG.warn("Skipping test " + message, failure);
+    SwiftTestUtils.cleanupInTeardown(fs, "/test");
   }
 
   protected URI getFilesystemURI() throws URISyntaxException, IOException {
@@ -90,13 +79,14 @@ public class TestSwiftFileSystemExtendedContract {
     return 1024;
   }
 
-  protected String getDefaultWorkingDirectory() {
-    return "/user/" + System.getProperty("user.name");
-  }
-
 
   protected boolean renameSupported() {
     return true;
+  }
+
+
+  private void assumeRenameSupported() {
+    Assume.assumeTrue(renameSupported());
   }
 
   protected Path path(String pathString) {
@@ -145,33 +135,12 @@ public class TestSwiftFileSystemExtendedContract {
   }
 
   protected String ls(Path path) throws IOException {
-    if (path == null) {
-      //surfaces when someone calls getParent() on something at the top of the path
-      return "/";
-    }
-    FileStatus[] stats = new FileStatus[0];
-    try {
-      stats = fs.listStatus(path);
-    } catch (FileNotFoundException e) {
-      return "ls " + path + " -file not found";
-    }
-    String pathname = path.toString();
-    return dumpStats(pathname, stats);
-  }
-
-  private String dumpStats(String pathname, FileStatus[] stats) {
-    StringBuilder buf = new StringBuilder(stats.length * 128);
-    buf.append("ls ").append(pathname).append(": ").append(stats.length)
-       .append("\n");
-    for (FileStatus stat : stats) {
-      buf.append(stat.toString()).append("\n");
-    }
-    return buf.toString();
+    return SwiftTestUtils.ls(fs, path);
   }
 
   @Test
   public void testRenameFileAsExistingDirectory() throws Exception {
-    if (!renameSupported()) return;
+    assumeRenameSupported();
 
     Path src = path("/test/hadoop/file");
     createFile(src);
@@ -192,7 +161,7 @@ public class TestSwiftFileSystemExtendedContract {
 
   @Test
   public void testRenameFile() throws Exception {
-    if (!renameSupported()) return;
+    assumeRenameSupported();
 
     final Path old = new Path("/test/alice/file");
     final Path newPath = new Path("/test/bob/file");
@@ -214,9 +183,8 @@ public class TestSwiftFileSystemExtendedContract {
   }
 
   @Test
-
   public void testRenameDirectory() throws Exception {
-    if (!renameSupported()) return;
+    assumeRenameSupported();
 
     final Path old = new Path("/test/data/logs");
     final Path newPath = new Path("/test/var/logs");
@@ -228,7 +196,7 @@ public class TestSwiftFileSystemExtendedContract {
 
   @Test
   public void testRenameTheSameDirectory() throws Exception {
-    if (!renameSupported()) return;
+    assumeRenameSupported();
 
     final Path old = new Path("/test/usr/data");
     fs.mkdirs(old);
@@ -249,17 +217,17 @@ public class TestSwiftFileSystemExtendedContract {
     }
 
     FileStatus[] paths = fs.listStatus(path("/test"));
-    assertEquals(dumpStats("/test", paths), 1, paths.length);
+    assertEquals(SwiftTestUtils.dumpStats("/test", paths), 1, paths.length);
     assertEquals(path("/test/hadoop"), paths[0].getPath());
 
     paths = fs.listStatus(path("/test/hadoop"));
-    assertEquals(dumpStats("/test/hadoop", paths),3, paths.length);
+    assertEquals(SwiftTestUtils.dumpStats("/test/hadoop", paths),3, paths.length);
     assertEquals(path("/test/hadoop/a"), paths[0].getPath());
     assertEquals(path("/test/hadoop/b"), paths[1].getPath());
     assertEquals(path("/test/hadoop/c"), paths[2].getPath());
 
     paths = fs.listStatus(path("/test/hadoop/a"));
-    assertEquals(dumpStats("/test/hadoop/a", paths),0, paths.length);
+    assertEquals(SwiftTestUtils.dumpStats("/test/hadoop/a", paths),0, paths.length);
   }
 
 
@@ -340,7 +308,7 @@ public class TestSwiftFileSystemExtendedContract {
 
   @Test
   public void testRenameDirectoryAsExistingDirectory() throws Exception {
-    if (!renameSupported()) return;
+    assumeRenameSupported();
 
     Path src = path("/test/hadoop/dir");
     fs.mkdirs(src);
@@ -431,21 +399,24 @@ public class TestSwiftFileSystemExtendedContract {
    * Assert that root directory renames are not allowed
    * @throws Exception on failures
    */
+  @Test
   public void testRenameRootDirForbidden() throws Exception {
-    if (!renameSupported()) return;
-
+    assumeRenameSupported();
     rename(path("/"),
            path("/test/newRootDir"),
            false, true, false);
   }
+
 
   /**
    * Assert that renaming a parent directory to be a child
    * of itself is forbidden
    * @throws Exception on failures
    */
+  @Test
   public void testRenameChildDirForbidden() throws Exception {
-    if (!renameSupported()) return;
+    assumeRenameSupported();
+
 
     Path parentdir = path("/test/parentdir");
     fs.mkdirs(parentdir);

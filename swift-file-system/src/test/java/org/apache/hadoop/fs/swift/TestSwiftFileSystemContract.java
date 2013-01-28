@@ -43,10 +43,6 @@ public class TestSwiftFileSystemContract
   private static final Log LOG =
     LogFactory.getLog(TestSwiftFileSystemContract.class);
 
-  public void downgrade(String message, AssertionFailedError failure) {
-    LOG.warn("Skipping test " + message, failure);
-  }
-
   @Override
   protected URI getFilesystemURI() throws URISyntaxException, IOException {
     return SwiftTestUtils.getServiceURI(new Configuration());
@@ -63,7 +59,7 @@ public class TestSwiftFileSystemContract
     try {
       super.testMkdirs();
     } catch (AssertionFailedError e) {
-      downgrade("file/dir confusion", e);
+      SwiftTestUtils.downgrade("file/dir confusion", e);
     }
   }
 
