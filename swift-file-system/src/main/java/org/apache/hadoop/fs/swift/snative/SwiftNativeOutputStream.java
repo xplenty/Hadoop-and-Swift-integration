@@ -31,7 +31,7 @@ import java.io.*;
  * Writes to Swift on close() method
  */
 class SwiftNativeOutputStream extends OutputStream {
-  private static final long FILE_PART_SIZE = 4768709000l; // files greater than 4.5Gb are divided into parts
+  private long filePartSize = 4768709000L; // files greater than 4.5Gb are divided into parts
   private static final Log LOG =
     LogFactory.getLog(SwiftNativeOutputStream.class);
   private Configuration conf;
@@ -43,7 +43,6 @@ class SwiftNativeOutputStream extends OutputStream {
   private int partNumber;
   private long blockSize;
   private boolean partUpload = false;
-  private boolean abortWrite = false;
 
   public SwiftNativeOutputStream(Configuration conf,
                                  SwiftNativeFileSystemStore nativeStore,
@@ -68,7 +67,7 @@ class SwiftNativeOutputStream extends OutputStream {
   }
 
   @Override
-  public void flush() throws IOException {
+  public synchronized void flush() throws IOException {
     backupStream.flush();
   }
 
@@ -92,15 +91,13 @@ class SwiftNativeOutputStream extends OutputStream {
     backupStream.close();
 
     try {
-      if (!abortWrite) {
-        if (partUpload) {
-          partUpload();
-          nativeStore.createManifestForPartUpload(new Path(key));
-        } else {
-          nativeStore.uploadFile(new Path(key),
-                                 new FileInputStream(backupFile),
-                                 backupFile.length());
-        }
+      if (partUpload) {
+        partUpload();
+        nativeStore.createManifestForPartUpload(new Path(key));
+      } else {
+        nativeStore.uploadFile(new Path(key),
+                               new FileInputStream(backupFile),
+                               backupFile.length());
       }
     } finally {
       if (!backupFile.delete()) {
@@ -111,7 +108,7 @@ class SwiftNativeOutputStream extends OutputStream {
   }
 
   @Override
-  public void write(int b) throws IOException {
+  public synchronized void write(int b) throws IOException {
     verifyOpen();
     backupStream.write(b);
   }
@@ -125,7 +122,7 @@ class SwiftNativeOutputStream extends OutputStream {
     verifyOpen();
 
     //if size of file is greater than 5Gb Swift limit - than divide file into parts and upload parts
-    if (blockSize + len >= FILE_PART_SIZE) {
+    if (blockSize + len >= filePartSize) {
       partUpload();
     }
 
@@ -133,12 +130,14 @@ class SwiftNativeOutputStream extends OutputStream {
     backupStream.write(b, off, len);
   }
 
-  private void partUpload() throws IOException {
+  private synchronized void partUpload() throws IOException {
     partUpload = true;
+    backupStream.close();
     nativeStore.uploadFilePart(new Path(key),
                                partNumber,
                                new FileInputStream(backupFile),
                                backupFile.length());
+    backupFile.delete();
     backupFile = newBackupFile();
     backupStream = new BufferedOutputStream(new FileOutputStream(backupFile));
     blockSize = 0;
@@ -146,10 +145,10 @@ class SwiftNativeOutputStream extends OutputStream {
   }
 
   /**
-   * Cancel the write-on-close operation. This permits a faster bailout
-   * during some failures.
+   * Package-scoped for testing
+   * @param filePartSize new partition size
    */
-  public void abortWrite() {
-    abortWrite = true;
+  synchronized void setFilePartSize(long filePartSize) {
+    this.filePartSize = filePartSize;
   }
 }

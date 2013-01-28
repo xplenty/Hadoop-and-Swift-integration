@@ -33,6 +33,7 @@ import org.junit.internal.AssumptionViolatedException;
 import static org.junit.Assert.*;
 
 import java.io.FileNotFoundException;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -155,7 +156,7 @@ public class SwiftTestUtils {
   }
 
   /**
-   * report an overridem test as unsupported
+   * report an overridden test as unsupported
    * @param message message to use in the text
    * @throws AssumptionViolatedException
    */
@@ -163,16 +164,30 @@ public class SwiftTestUtils {
     throw new AssumptionViolatedException(message);
   }
 
-  static void assertFileLength(FileSystem fs, Path path, int expected) throws
-                                                                        IOException {
+
+  /**
+   * Make an assertion about the length of a file
+   * @param fs filesystem
+   * @param path path of the file
+   * @param expected expected length
+   * @throws IOException on File IO problems
+   */
+  public static void assertFileHasLength(FileSystem fs, Path path,
+                                         int expected) throws IOException {
     FileStatus status = fs.getFileStatus(path);
     assertEquals("Wrong file length of file " + path + " status: " + status,
                  expected,
                  status.getLen());
   }
 
-  static void assertDirectory(SwiftNativeFileSystem fs, Path path) throws
-                                                                    IOException {
+  /**
+   * Assert that a path refers to a directory
+   * @param fs filesystem
+   * @param path path of the directory
+   * @throws IOException on File IO problems
+   */
+  public static void assertIsDirectory(SwiftNativeFileSystem fs,
+                                       Path path) throws IOException {
     FileStatus fileStatus = fs.getFileStatus(path);
     assertFalse("Should be a dir, but is a file: " + fileStatus,
                 fileStatus.isFile());
@@ -180,7 +195,7 @@ public class SwiftTestUtils {
                fileStatus.isDirectory());
   }
 
-  static void writeTextFile(SwiftNativeFileSystem fs,
+  public static void writeTextFile(SwiftNativeFileSystem fs,
                             Path path,
                             String text,
                             boolean overwrite) throws IOException {
@@ -189,7 +204,7 @@ public class SwiftTestUtils {
     stream.close();
   }
 
-  protected static void assertDeleted(FileSystem fs,
+  public static void assertDeleted(FileSystem fs,
                                Path path,
                                boolean recursive) throws IOException {
     assertTrue(fs.delete(path, recursive));
@@ -244,5 +259,25 @@ public class SwiftTestUtils {
       buf.append(stat.toString()).append("\n");
     }
     return buf.toString();
+  }
+
+  /**
+   /**
+   * Assert that a file exists and whose {@link FileStatus} entry
+   * declares that this is a file and not a symlink or directory.
+   * @param fileSystem filesystem to resolve path against
+   * @param filename name of the file
+   * @throws IOException IO problems during file operations
+   */
+  static void assertIsFile(FileSystem fileSystem, Path filename) throws
+                                                                         IOException {
+    assertTrue("Does not exit: " + filename, fileSystem.exists(filename));
+    FileStatus status = fileSystem.getFileStatus(filename);
+    String fileInfo = filename + "  " + status;
+    assertTrue("Not a file " + fileInfo, status.isFile());
+    assertFalse("File claims to be a symlink " + fileInfo,
+                status.isSymlink());
+    assertFalse("File claims to be a directory " + fileInfo,
+                status.isDirectory());
   }
 }

@@ -79,11 +79,9 @@ public class TestSwiftFileSystemExtendedContract {
     return 1024;
   }
 
-
   protected boolean renameSupported() {
     return true;
   }
-
 
   private void assumeRenameSupported() {
     Assume.assumeTrue(renameSupported());
@@ -407,7 +405,6 @@ public class TestSwiftFileSystemExtendedContract {
            false, true, false);
   }
 
-
   /**
    * Assert that renaming a parent directory to be a child
    * of itself is forbidden
@@ -416,7 +413,6 @@ public class TestSwiftFileSystemExtendedContract {
   @Test
   public void testRenameChildDirForbidden() throws Exception {
     assumeRenameSupported();
-
 
     Path parentdir = path("/test/parentdir");
     fs.mkdirs(parentdir);
@@ -438,14 +434,8 @@ public class TestSwiftFileSystemExtendedContract {
    * @throws IOException IO problems during file operations
    */
   private void assertIsFile(Path filename) throws IOException {
-    assertTrue("Does not exit: " + filename, fs.exists(filename));
-    FileStatus status = fs.getFileStatus(filename);
-    String fileInfo = filename + "  " + status;
-    assertTrue("Not a file " + fileInfo, status.isFile());
-    assertFalse("File claims to be a symlink " + fileInfo,
-                status.isSymlink());
-    assertFalse("File claims to be a directory " + fileInfo,
-                status.isDirectory());
+    FileSystem fileSystem = fs;
+    SwiftTestUtils.assertIsFile(fileSystem, filename);
   }
 
 }

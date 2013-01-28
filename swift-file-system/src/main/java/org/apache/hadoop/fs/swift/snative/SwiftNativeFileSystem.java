@@ -78,7 +78,7 @@ public class SwiftNativeFileSystem extends FileSystem {
   }
 
   /**
-   * This construstor used for testing purposes
+   * This constructor used for testing purposes
    */
   public SwiftNativeFileSystem(SwiftNativeFileSystemStore store)
     throws IOException {
@@ -501,7 +501,7 @@ public class SwiftNativeFileSystem extends FileSystem {
    * @param path path to file
    * @return absolute path
    */
-  private Path makeAbsolute(Path path) {
+  protected Path makeAbsolute(Path path) {
     if (path.isAbsolute()) {
       return path;
     }

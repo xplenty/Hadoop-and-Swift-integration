@@ -10,7 +10,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftInvalidResponseException;
-import org.apache.hadoop.fs.swift.exceptions.SwiftNotDirectoryException;
 import org.apache.hadoop.fs.swift.http.SwiftProtocolConstants;
 import org.apache.hadoop.fs.swift.http.SwiftRestClient;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
@@ -90,7 +89,7 @@ public class SwiftNativeFileSystemStore {
       stringPath = stringPath.concat("/").concat(String.valueOf(partNumber));
     }
 
-    swiftRestClient.upload(new SwiftObjectPath(uri.getHost(), stringPath), inputStream, length);
+    swiftRestClient.upload(new SwiftObjectPath(toDirPath(path).getContainer(), stringPath), inputStream, length);
   }
 
   /**
