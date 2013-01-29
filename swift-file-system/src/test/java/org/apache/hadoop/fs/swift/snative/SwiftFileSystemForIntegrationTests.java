@@ -6,6 +6,7 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.util.Progressable;
 
 import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * Class for functional testing huge file upload to Swift FS.
@@ -36,5 +37,16 @@ public class SwiftFileSystemForIntegrationTests extends SwiftNativeFileSystem {
 
   public void setPartitionSize(long partitionSize) {
     this.partitionSize = partitionSize;
+  }
+
+  /**
+   * Get the number of partitions written
+   * @param outputStream output stream
+   * @return the #of partitions written by that stream
+   */
+  public int getPartitionsWritten(FSDataOutputStream outputStream) {
+    OutputStream wrappedStream = outputStream.getWrappedStream();
+    SwiftNativeOutputStream snos = (SwiftNativeOutputStream)wrappedStream;
+    return snos.getPartitionsWritten();
   }
 }

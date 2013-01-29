@@ -63,7 +63,7 @@ public class TestSwiftFileSystemPartitionedUploads {
   @Test
   public void testFilePartUpload() throws IOException, URISyntaxException {
 
-    final Path path = new Path("/home/huge/file/test/file");
+    final Path path = new Path("/test/huge-file");
 
     int len = 4096;
     final byte[] src = SwiftTestUtils.dataset(len,32,144);
@@ -73,11 +73,19 @@ public class TestSwiftFileSystemPartitionedUploads {
                                                  4096),
                                        (short) 1,
                                        1024);
+    assertEquals("wrong number of partitons written",
+                 0, fs.getPartitionsWritten(out));
     //write first half
     out.write(src, 0, len/2);
+    assertEquals("wrong number of partitons written",
+                 1, fs.getPartitionsWritten(out));
     //write second half
     out.write(src, len / 2, len / 2);
+    assertEquals("wrong number of partitons written",
+                 2, fs.getPartitionsWritten(out));
     out.close();
+    assertEquals("wrong number of partitons written",
+                 3, fs.getPartitionsWritten(out));
 
     assertTrue("Exists", fs.exists(path));
     assertEquals("Length", len, fs.getFileStatus(path).getLen());
