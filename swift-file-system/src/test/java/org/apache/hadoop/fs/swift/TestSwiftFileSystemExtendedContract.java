@@ -48,7 +48,7 @@ public class TestSwiftFileSystemExtendedContract {
     LogFactory.getLog(TestSwiftFileSystemExtendedContract.class);
 
   protected FileSystem fs;
-  protected byte[] data = dataset(getBlockSize() * 2, 0, 255);
+  protected byte[] data = SwiftTestUtils.dataset(getBlockSize() * 2, 0, 255);
 
   @Before
   public void setUp() throws Exception {
@@ -115,22 +115,6 @@ public class TestSwiftFileSystemExtendedContract {
                  dstExists, fs.exists(dst));
   }
 
-
-  /**
-   * Create a dataset for use in the tests; all data is in the range
-   * base to (base+modulo-1) inclusive
-   * @param len length of data
-   * @param base base of the data
-   * @param modulo the modulo
-   * @return the newly generated dataset
-   */
-  protected byte[] dataset(int len, int base, int modulo) {
-    byte[] dataset = new byte[len];
-    for (int i = 0; i < len; i++) {
-      dataset[i] = (byte) (base + (i % modulo));
-    }
-    return dataset;
-  }
 
   protected String ls(Path path) throws IOException {
     return SwiftTestUtils.ls(fs, path);
@@ -254,7 +238,7 @@ public class TestSwiftFileSystemExtendedContract {
     final Path f = new Path("/test/testCreateFile");
     final FSDataOutputStream fsDataOutputStream = fs.create(f);
     fsDataOutputStream.close();
-    assertTrue(fs.exists(f));
+    assertExists("created file", f);
   }
 
   @Test
@@ -263,11 +247,11 @@ public class TestSwiftFileSystemExtendedContract {
     final FSDataOutputStream fsDataOutputStream = fs.create(f);
     fsDataOutputStream.close();
 
-    assertTrue(fs.exists(f));
+    assertExists("about to be deleted file", f);
 
-    fs.delete(f, true);
-    final boolean exists = fs.exists(f);
-    assertFalse(exists);
+    boolean deleted = fs.delete(f, true);
+    assertTrue("Delete failed on " + f, deleted);
+    assertFalse(fs.exists(f));
   }
 
   @Test
@@ -277,8 +261,7 @@ public class TestSwiftFileSystemExtendedContract {
     final String message = "Test string";
     fsDataOutputStream.write(message.getBytes());
     fsDataOutputStream.close();
-
-    assertTrue(fs.exists(f));
+    assertExists("created file", f);
     try {
       final FSDataInputStream open = fs.open(f);
       final byte[] bytes = new byte[512];
@@ -320,17 +303,19 @@ public class TestSwiftFileSystemExtendedContract {
     assertExists("Renamed nested file1", path("/test/new/newdir/dir/file1"));
     assertExists("Renamed nested subdir",
                  path("/test/new/newdir/dir/subdir/file2"));
-    assertFalse("Nested file1 should have been deleted",
-                fs.exists(path("/test/hadoop/dir/file1")));
-    assertFalse("Nested /test/hadoop/dir/subdir/file2 still exists",
-                fs.exists(path("/test/hadoop/dir/subdir/file2")));
+    assertPathDoesNotExist("Nested file1 should have been deleted",
+                path("/test/hadoop/dir/file1"));
+
+    assertPathDoesNotExist("Nested /test/hadoop/dir/subdir/file2 still exists",
+                path("/test/hadoop/dir/subdir/file2"));
   }
 
   public void assertExists(String message, Path path) throws IOException {
-    if(!fs.exists(path)) {
-      //failure, report it
-      fail(message + ": not found " + path + " in " + ls(path.getParent()));
-    }
+    SwiftTestUtils.assertPathExists(message, fs, path);
+  }
+
+  public void assertPathDoesNotExist(String message, Path path) throws IOException {
+    SwiftTestUtils.assertPathDoesNotExist(message, fs, path);
   }
 
   /**
@@ -350,16 +335,16 @@ public class TestSwiftFileSystemExtendedContract {
     out.writeUTF("UPPER");
     out.close();
     FileStatus upperStatus = fs.getFileStatus(upper);
-    assertTrue("File does not exists" + upper, fs.exists(upper));
+    assertExists("Original upper case file" + upper, upper);
     //verify the lower-case version of the filename doesn't exist
-    assertFalse("File exists" + lower, fs.exists(lower));
+    assertPathDoesNotExist("lower case file", lower);
     //now overwrite the lower case version of the filename with a
     //new version.
     out = fs.create(lower);
     out.writeUTF("l");
     out.close();
-    assertTrue("File exists" + lower, fs.exists(lower));
-    //verify the length of the upper file hasn't changed
+    assertExists("lower case file", lower);
+    //verifEy the length of the upper file hasn't changed
     FileStatus newStatus = fs.getFileStatus(upper);
     assertEquals("Expected status:" + upperStatus
                  + " actual status " + newStatus,
@@ -372,6 +357,7 @@ public class TestSwiftFileSystemExtendedContract {
    * directory or symlink
    * @throws Exception on failures
    */
+  @Test
   public void testZeroByteFilesAreFiles() throws Exception {
     Path src = path("/test/testZeroByteFilesAreFiles");
     //create a zero byte file
@@ -385,6 +371,7 @@ public class TestSwiftFileSystemExtendedContract {
    * directory or symlink
    * @throws Exception on failures
    */
+  @Test
   public void testMultiByteFilesAreFiles() throws Exception {
     Path src = path("/test/testMultiByteFilesAreFiles");
     FSDataOutputStream out = fs.create(src);
@@ -434,8 +421,7 @@ public class TestSwiftFileSystemExtendedContract {
    * @throws IOException IO problems during file operations
    */
   private void assertIsFile(Path filename) throws IOException {
-    FileSystem fileSystem = fs;
-    SwiftTestUtils.assertIsFile(fileSystem, filename);
+    SwiftTestUtils.assertIsFile(fs, filename);
   }
 
 }

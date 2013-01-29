@@ -325,7 +325,7 @@ public class SwiftNativeFileSystemStore {
 
 
     boolean srcIsFile = !SwiftUtils.isDirectory(srcMetadata);
-    if (!srcIsFile) {
+    if (srcIsFile) {
 
       //source is a simple file
       // outcomes:

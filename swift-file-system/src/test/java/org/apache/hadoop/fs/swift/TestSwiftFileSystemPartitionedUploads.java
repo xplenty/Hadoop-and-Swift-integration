@@ -1,11 +1,14 @@
-package org.apache.hadoop.fs.swift.integration.tests;
+package org.apache.hadoop.fs.swift;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.swift.snative.SwiftFileSystemForIntegrationTests;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -23,22 +26,35 @@ import static org.junit.Assert.*;
  * these tests currently are unit tests, but will be
  * moved to functional/integration tests
  */
-public class SwiftFileSystemTest {
-  URI uri;
-  Configuration conf;
+public class TestSwiftFileSystemPartitionedUploads {
+  private static final Log LOG =
+    LogFactory.getLog(TestSwiftFileSystemPartitionedUploads.class);
+
+  private URI uri;
+  private Configuration conf;
+  protected SwiftFileSystemForIntegrationTests fs;
 
   @Before
-  public void initialization() throws URISyntaxException {
-    this.conf = new Configuration();
-    this.conf.set("fs.swift.service.rackspace.auth.url", "https://identity.api.rackspacecloud.com/v2.0/tokens");
-    this.conf.set("fs.swift.service.rackspace.tenant", "");
-    this.conf.set("fs.swift.service.rackspace.username", "");
-    this.conf.set("fs.swift.service.rackspace.password", "");
-    this.conf.set("fs.swift.service.rackspace.public", "true");
-    this.conf.setInt("fs.swift.service.rackspace.http.port", 8080);
-    this.conf.setInt("fs.swift.service.rackspace.https.port", 443);
+  public void setUp() throws Exception {
+    uri = getFilesystemURI();
+    final Configuration conf = new Configuration();
+    //patch the configuration with the factory of the new driver
 
-    this.uri = new URI("swift://data.rackspace");
+
+    SwiftFileSystemForIntegrationTests swiftFS = new SwiftFileSystemForIntegrationTests();
+    swiftFS.setPartitionSize(1024L);
+    fs = swiftFS;
+    fs.initialize(uri, conf);
+  }
+
+
+  @After
+  public void tearDown() throws Exception {
+    SwiftTestUtils.cleanupInTeardown(fs, "/test");
+  }
+
+  protected URI getFilesystemURI() throws URISyntaxException, IOException {
+    return SwiftTestUtils.getServiceURI(new Configuration());
   }
 
   /**
@@ -46,33 +62,33 @@ public class SwiftFileSystemTest {
    */
   @Test
   public void testFilePartUpload() throws IOException, URISyntaxException {
-    final SwiftFileSystemForIntegrationTests fileSystemForIntegrationTests =
-            new SwiftFileSystemForIntegrationTests();
-    fileSystemForIntegrationTests.initialize(uri, conf);
 
-    final Path f = new Path("/home/huge/file/test/file");
-    final FSDataOutputStream fsDataOutputStream =
-            fileSystemForIntegrationTests.create(f);
+    final Path path = new Path("/home/huge/file/test/file");
 
-    final String originalString = createDataSize(2000);
-    final String secondString = "bbb";
-    fsDataOutputStream.write(originalString.getBytes());
-    fsDataOutputStream.write(secondString.getBytes());
-    fsDataOutputStream.close();
+    int len = 4096;
+    final byte[] src = SwiftTestUtils.dataset(len,32,144);
+    FSDataOutputStream out = fs.create(path, false,
+                                       fs.getConf()
+                                         .getInt("io.file.buffer.size",
+                                                 4096),
+                                       (short) 1,
+                                       1024);
+    //write first half
+    out.write(src, 0, len/2);
+    //write second half
+    out.write(src, len / 2, len / 2);
+    out.close();
 
-    final FSDataInputStream open = fileSystemForIntegrationTests.open(f);
+    assertTrue("Exists", fs.exists(path));
+    assertEquals("Length", len, fs.getFileStatus(path).getLen());
 
-    final StringBuilder readData = new StringBuilder();
-    final byte[] buffer = new byte[1024];
-    int read = 0;
-    while (read >= 0) {
-      read = open.read(buffer);
-      if (read > 0) {
-        readData.append(new String(buffer, 0, read));
-      }
-    }
+    FSDataInputStream in = fs.open(path);
+    byte[] dest = new byte[len];
+    in.readFully(0, dest);
+    in.close();
 
-    assertEquals(originalString.concat(secondString), readData.toString());
+    SwiftTestUtils.compareByteArrays(src, dest, len);
+
   }
 
   /**
@@ -142,11 +158,4 @@ public class SwiftFileSystemTest {
     assertEquals(message, new String(data, 0, read));
   }
 
-  private static String createDataSize(int msgSize) {
-    StringBuilder sb = new StringBuilder(msgSize);
-    for (int i = 0; i < msgSize; i++) {
-      sb.append('a');
-    }
-    return sb.toString();
-  }
 }

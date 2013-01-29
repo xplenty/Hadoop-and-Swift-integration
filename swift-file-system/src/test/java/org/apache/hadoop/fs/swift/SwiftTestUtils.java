@@ -93,6 +93,109 @@ public class SwiftTestUtils {
     }
   }
 
+
+  /**
+   *
+   * Write a file and read it in, validating the result. Optional flags control
+   * whether file overwrite operations should be enabled, and whether the
+   * file should be deleted afterwards.
+   *
+   * If there is a mismatch between what was written and what was expected,
+   * a small range of bytes either side of the first error are logged to aid
+   * diagnosing what problem occurred -whether it was a previous file
+   * or a corrupting of the current file. This assumes that two
+   * sequential runs to the same path use datasets with different character
+   * moduli.
+   *
+   * @param path path to write to
+   * @param len length of data
+   * @param overwrite should the create option allow overwrites?
+   * @param delete should the file be deleted afterwards? -with a verification
+   * that it worked. Deletion is not attempted if an assertion has failed
+   * earlier -it is not in a <code>finally{}</code> block.
+   * @throws IOException IO problems
+   */
+  public static void writeAndRead(FileSystem fs,
+                              Path path,
+                              byte[] src,
+                              int len,
+                              int blocksize,
+                              boolean overwrite,
+                              boolean delete) throws IOException {
+    assertTrue("Not enough data in source array to write " + len + " bytes",
+               src.length >= len);
+    fs.mkdirs(path.getParent());
+
+    FSDataOutputStream out = fs.create(path, overwrite,
+                                       fs.getConf()
+                                         .getInt("io.file.buffer.size",
+                                                 4096),
+                                       (short) 1,
+                                       blocksize);
+    out.write(src, 0, len);
+    out.close();
+
+    assertFileHasLength(fs, path, len);
+
+    FSDataInputStream in = fs.open(path);
+    byte[] dest = new byte[len];
+    in.readFully(0, dest);
+    in.close();
+
+    compareByteArrays(src, dest, len);
+
+    if (delete) {
+      boolean deleted = fs.delete(path, false);
+      assertTrue("Deleted", deleted);
+      assertPathDoesNotExist("Cleanup failed", fs, path);
+    }
+  }
+
+  public static void compareByteArrays(byte[] src,
+                                       byte[] dest,
+                                       int len) {
+    assertEquals("Number of bytes read != number written",
+                 len, dest.length);
+    int errors = 0;
+    int first_error_byte = -1;
+    for (int i = 0; i < len; i++) {
+      if (src[i] != dest[i]) {
+        if (errors == 0) {
+          first_error_byte = i;
+        }
+        errors++;
+      }
+    }
+
+    if (errors > 0) {
+      String message = String.format(" %d errors in file of length %d",
+                                     errors, len);
+      LOG.warn(message);
+      // the range either side of the first error to print
+      // this is a purely arbitrary number, to aid user debugging
+      final int overlap = 10;
+      for (int i = Math.max(0, first_error_byte - overlap);
+           i < Math.min(first_error_byte + overlap, len);
+           i++) {
+        byte actual = dest[i];
+        byte expected = src[i];
+        String letter = toChar(actual);
+        String line = String.format("[%04d] %2x %s\n", i, actual, letter);
+        if (expected != actual) {
+          line = String.format("[%04d] %2x %s -expected %2x %s\n",
+                               i,
+                               actual,
+                               letter,
+                               expected,
+                               toChar(expected));
+        }
+        LOG.warn(line);
+      }
+      fail(message);
+    }
+  }
+
+
   /**
    * Convert a byte to a character for printing. If the
    * byte value is < 32 -and hence unprintable- the byte is
@@ -270,8 +373,8 @@ public class SwiftTestUtils {
    * @throws IOException IO problems during file operations
    */
   static void assertIsFile(FileSystem fileSystem, Path filename) throws
-                                                                         IOException {
-    assertTrue("Does not exit: " + filename, fileSystem.exists(filename));
+                                                           IOException {
+    assertPathExists("Expected file", fileSystem, filename);
     FileStatus status = fileSystem.getFileStatus(filename);
     String fileInfo = filename + "  " + status;
     assertTrue("Not a file " + fileInfo, status.isFile());
@@ -279,5 +382,57 @@ public class SwiftTestUtils {
                 status.isSymlink());
     assertFalse("File claims to be a directory " + fileInfo,
                 status.isDirectory());
+  }
+
+  /**
+   * Create a dataset for use in the tests; all data is in the range
+   * base to (base+modulo-1) inclusive
+   * @param len length of data
+   * @param base base of the data
+   * @param modulo the modulo
+   * @return the newly generated dataset
+   */
+  protected static byte[] dataset(int len, int base, int modulo) {
+    byte[] dataset = new byte[len];
+    for (int i = 0; i < len; i++) {
+      dataset[i] = (byte) (base + (i % modulo));
+    }
+    return dataset;
+  }
+
+  /**
+   * Assert that a path exists -but make no assertions as to the
+   * type of that entry
+   * @param message message to include in the assertion failure message
+   * @param fileSystem filesystem to examine
+   * @param path path in the filesystem
+   * @throws IOException IO problems
+   */
+  static void assertPathExists(String message,
+                               FileSystem fileSystem,
+                               Path path) throws IOException {
+    if(!fileSystem.exists(path)) {
+      //failure, report it
+      fail(message + ": not found " + path + " in "
+           + ls(fileSystem, path.getParent()));
+    }
+  }
+  /**
+   * Assert that a path does not exist
+   * @param message message to include in the assertion failure message
+   * @param fileSystem filesystem to examine
+   * @param path path in the filesystem
+   * @throws IOException IO problems
+   */
+  static void assertPathDoesNotExist(String message,
+                               FileSystem fileSystem,
+                               Path path) throws IOException {
+    try {
+      FileStatus status = fileSystem.getFileStatus(path);
+      fail(message + ": found " + path + " as  " + status);
+    } catch (FileNotFoundException expected) {
+      //this is expected
+
+    }
   }
 }
