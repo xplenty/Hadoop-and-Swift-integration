@@ -724,14 +724,17 @@ public final class SwiftRestClient {
     return perform(authUri, new PostMethodProcessor<AccessToken>() {
       @Override
       protected void setup(PostMethod method) throws SwiftException {
-    	AuthenticationRequest authRequest = null; 
-    	if (password != null) {
-    		authRequest = new PasswordAuthenticationRequest(tenant,
-              new PasswordCredentials(username, password));
-    	} else {
-    		authRequest = new ApiKeyAuthenticationRequest(tenant,
-    	      new ApiKeyCredentials(username, apiKey));
-    	}
+        AuthenticationRequest authRequest = null;
+        if (password != null) {
+          authRequest = new PasswordAuthenticationRequest(tenant,
+                                                          new PasswordCredentials(
+                                                            username,
+                                                            password));
+        } else {
+          authRequest = new ApiKeyAuthenticationRequest(tenant,
+                                                        new ApiKeyCredentials(
+                                                          username, apiKey));
+        }
         final String data = JSONUtil.toJSON(new AuthenticationRequestWrapper(
           authRequest));
         if (LOG.isDebugEnabled()) {
@@ -943,7 +946,8 @@ public final class SwiftRestClient {
    * @param <R>       result type
    * @return result of HTTP request
    */
-  private <M extends HttpMethod, R> R perform(URI uri, HttpMethodProcessor<M, R> processor) throws IOException {
+  private <M extends HttpMethod, R> R perform(URI uri,
+                      HttpMethodProcessor<M, R> processor) throws IOException {
     checkNotNull(uri);
     checkNotNull(processor);
 
@@ -1037,7 +1041,8 @@ public final class SwiftRestClient {
    * @return the input stream. This must be closed to avoid log errors
    * @throws IOException
    */
-  private InputStream doGet(final URI uri, final Header... requestHeaders) throws IOException {
+  private InputStream doGet(final URI uri, final Header... requestHeaders)
+       throws IOException {
     return perform(uri, new GetMethodProcessor<InputStream>() {
       @Override
       public InputStream extractResult(GetMethod method) throws IOException {
@@ -1176,8 +1181,8 @@ public final class SwiftRestClient {
   }
 
   private <M extends HttpMethod> int execWithDebugOutput(M method,
-                                                         HttpClient client) throws
-                                                                            IOException {
+                                                         HttpClient client)
+                                                        throws IOException {
     if (LOG.isDebugEnabled()) {
       LOG.debug("Executing " + method.getName() + " " + method.getURI());
     }

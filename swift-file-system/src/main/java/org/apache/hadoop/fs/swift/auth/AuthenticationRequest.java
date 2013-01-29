@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -20,27 +20,27 @@ package org.apache.hadoop.fs.swift.auth;
 
 public class AuthenticationRequest {
 
-	/**
-	   * tenant name
-	   */
-	protected String tenantName;
+  /**
+   * tenant name
+   */
+  protected String tenantName;
 
-	public AuthenticationRequest() {
-		super();
-	}
+  public AuthenticationRequest() {
+    super();
+  }
 
-	/**
-	   * @return tenant name for Keystone authorization
-	   */
-	public String getTenantName() {
-	    return tenantName;
-	  }
+  /**
+   * @return tenant name for Keystone authorization
+   */
+  public String getTenantName() {
+    return tenantName;
+  }
 
-	/**
-	   * @param tenantName tenant name for authorization
-	   */
-	public void setTenantName(String tenantName) {
-	    this.tenantName = tenantName;
-	  }
+  /**
+   * @param tenantName tenant name for authorization
+   */
+  public void setTenantName(String tenantName) {
+    this.tenantName = tenantName;
+  }
 
 }
