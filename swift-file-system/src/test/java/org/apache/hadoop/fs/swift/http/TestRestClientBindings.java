@@ -85,28 +85,40 @@ public class TestRestClientBindings extends Assert {
     assertPropertyEquals(props, SWIFT_HTTPS_PORT_PROPERTY, null);
   }
 
-  @Test(expected = SwiftConfigurationException.class)
+
+  public void expectBindingFailure(URI fsURI, Configuration config) {
+    try {
+      Properties binding = RestClientBindings.bind(fsURI, config);
+      //if we get here, binding didn't fail- there is something else.
+      //list the properties but not the values.
+      StringBuilder details = new StringBuilder() ;
+      for (Object key: binding.keySet()) {
+        details.append(key.toString()).append(" ");
+      }
+      fail("Expected a failure, got the binding [ "+ details+"]");
+    } catch (SwiftConfigurationException expected) {
+
+    }
+  }
+
   public void testBindAgainstConfMissingInstance() throws Exception {
     Configuration badConf = new Configuration();
-    RestClientBindings.bind(filesysURI, badConf);
+    expectBindingFailure(filesysURI, badConf);
   }
 
 
-  @Test(expected = SwiftConfigurationException.class)
   public void testBindAgainstConfIncompleteInstance() throws Exception {
     String instance = RestClientBindings.buildSwiftInstancePrefix(SERVICE);
     conf.unset(instance + DOT_PASSWORD);
-    RestClientBindings.bind(filesysURI, conf);
+    expectBindingFailure(filesysURI, conf);
   }
 
-  @Test(expected = SwiftConfigurationException.class)
   public void testDottedServiceURL() throws Exception {
-    RestClientBindings.bind(new URI("swift://hadoop.apache.org/"), conf);
+    expectBindingFailure(new URI("swift://hadoop.apache.org/"), conf);
   }
 
-  @Test(expected = SwiftConfigurationException.class)
   public void testMissingServiceURL() throws Exception {
-    RestClientBindings.bind(new URI("swift:///"), conf);
+    expectBindingFailure(new URI("swift:///"), conf);
   }
 
   /**
