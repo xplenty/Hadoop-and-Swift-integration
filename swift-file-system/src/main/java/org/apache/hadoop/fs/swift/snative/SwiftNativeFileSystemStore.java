@@ -288,7 +288,6 @@ public class SwiftNativeFileSystemStore {
       return false;
     }
 
-
     final FileStatus srcMetadata;
     try {
       srcMetadata = getObjectMetadata(src);

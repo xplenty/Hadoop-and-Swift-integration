@@ -11,7 +11,7 @@ import java.io.OutputStream;
 /**
  * Class for functional testing huge file upload to Swift FS.
  */
-public class SwiftFileSystemForIntegrationTests extends SwiftNativeFileSystem {
+public class SwiftFileSystemForFunctionalTests extends SwiftNativeFileSystem {
 
   private long partitionSize;
 
