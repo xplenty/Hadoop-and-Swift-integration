@@ -6,7 +6,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.swift.snative.SwiftFileSystemForIntegrationTests;
+import org.apache.hadoop.fs.swift.snative.SwiftFileSystemForFunctionalTests;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
 import org.junit.After;
 import org.junit.Before;
@@ -32,16 +32,16 @@ public class TestSwiftFileSystemPartitionedUploads {
 
   private URI uri;
   private Configuration conf;
-  protected SwiftFileSystemForIntegrationTests fs;
+  protected SwiftFileSystemForFunctionalTests fs;
 
   @Before
   public void setUp() throws Exception {
     uri = getFilesystemURI();
-    final Configuration conf = new Configuration();
+    conf = new Configuration();
     //patch the configuration with the factory of the new driver
 
 
-    SwiftFileSystemForIntegrationTests swiftFS = new SwiftFileSystemForIntegrationTests();
+    SwiftFileSystemForFunctionalTests swiftFS = new SwiftFileSystemForFunctionalTests();
     swiftFS.setPartitionSize(1024L);
     fs = swiftFS;
     fs.initialize(uri, conf);
@@ -104,8 +104,7 @@ public class TestSwiftFileSystemPartitionedUploads {
    */
   @Test(expected = FileNotFoundException.class)
   public void raceConditionOnDirDeleteTest() throws IOException, URISyntaxException, InterruptedException {
-    final SwiftNativeFileSystem fileSystem = new SwiftNativeFileSystem();
-    fileSystem.initialize(uri, conf);
+    final SwiftNativeFileSystem fileSystem = fs;
 
     final String message = "message";
     final Path fileToRead = new Path("/home/huge/files/many-files/file");
@@ -145,8 +144,7 @@ public class TestSwiftFileSystemPartitionedUploads {
 
   @Test
   public void testRenameDirWithSubDis() throws IOException {
-    final SwiftNativeFileSystem fileSystem = new SwiftNativeFileSystem();
-    fileSystem.initialize(uri, conf);
+    final SwiftNativeFileSystem fileSystem = fs;
 
     final String message = "message";
     final Path filePath = new Path("/home/user/documents/file.txt");
