@@ -304,17 +304,20 @@ public class SwiftNativeFileSystemStore {
       dstMetadata = null;
     }
 
-    //check to see if the parent exists
-    Path destParent = dst.getParent();
-    FileStatus destParentStat;
-    try {
-      destParentStat = destParent != null
-                       ? getObjectMetadata(destParent)
-                       : null;
-    } catch (FileNotFoundException e) {
-      //destination parent doesn't exist; bail out
-      LOG.debug("destination parent directory "+ destParent + " doesn't exist");
-      return false;
+    //check to see if the destination parent directory exists
+    Path srcParent = src.getParent();
+    Path dstParent = dst.getParent();
+    //skip the overhead of a HEAD call if the src and dest share the same
+    //parent dir (in which case the dest dir exists), or the destination
+    //directory is root, in which case it must also exist
+    if (dstParent !=null && !dstParent.equals(srcParent)) {
+      try {
+        getObjectMetadata(dstParent);
+      } catch (FileNotFoundException e) {
+        //destination parent doesn't exist; bail out
+        LOG.debug("destination parent directory "+ dstParent + " doesn't exist");
+        return false;
+      }
     }
 
     boolean destExists = dstMetadata != null;
