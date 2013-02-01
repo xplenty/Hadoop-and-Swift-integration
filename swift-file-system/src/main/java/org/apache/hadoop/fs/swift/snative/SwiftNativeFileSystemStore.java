@@ -14,7 +14,6 @@ import org.apache.hadoop.fs.swift.http.SwiftProtocolConstants;
 import org.apache.hadoop.fs.swift.http.SwiftRestClient;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
 import org.apache.hadoop.fs.swift.util.SwiftUtils;
-import org.apache.http.HttpHeaders;
 
 import java.io.ByteArrayInputStream;
 import java.io.FileNotFoundException;
@@ -139,10 +138,10 @@ public class SwiftNativeFileSystemStore {
         length = 0;
         isDir = true;
       }
-      if (HttpHeaders.CONTENT_LENGTH.equals(headerName)) {
+      if (SwiftProtocolConstants.HEADER_CONTENT_LENGTH.equals(headerName)) {
         length = Long.parseLong(header.getValue());
       }
-      if (HttpHeaders.LAST_MODIFIED.equals(headerName)) {
+      if (SwiftProtocolConstants.HEADER_LAST_MODIFIED.equals(headerName)) {
         final SimpleDateFormat simpleDateFormat = new SimpleDateFormat(PATTERN);
         try {
           lastModified = simpleDateFormat.parse(header.getValue()).getTime();

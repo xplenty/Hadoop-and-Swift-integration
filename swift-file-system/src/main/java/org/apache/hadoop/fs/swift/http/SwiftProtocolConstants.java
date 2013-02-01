@@ -20,7 +20,7 @@ package org.apache.hadoop.fs.swift.http;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
-import org.apache.http.HttpHeaders;
+
 
 /**
  * Constants used in the Swift REST protocol,
@@ -32,8 +32,10 @@ public class SwiftProtocolConstants {
   public static final String HEADER_AUTH_KEY = "X-Auth-Token";
   public static final int SWIFT_HTTP_PORT = 8080;
   public static final int SWIFT_HTTPS_PORT = 443;
-  public static final String HEADER_RANGE = HttpHeaders.RANGE;
-  public static final String HEADER_DESTINATION = HttpHeaders.DESTINATION;
+  public static final String HEADER_RANGE = "Range";
+  public static final String HEADER_DESTINATION = "Destination";
+  public static final String HEADER_CONTENT_LENGTH = "Content-Length";
+  public static final String HEADER_LAST_MODIFIED = "Last-Modified";
   public static final String SWIFT_RANGE_HEADER_FORMAT_PATTERN = "bytes=%d-%d";
   public static final String SERVICE_CATALOG_SWIFT = "swift";
   public static final String SERVICE_CATALOG_CLOUD_FILES = "cloudFiles";
