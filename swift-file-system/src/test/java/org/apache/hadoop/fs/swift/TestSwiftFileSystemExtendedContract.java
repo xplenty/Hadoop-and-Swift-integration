@@ -310,6 +310,23 @@ public class TestSwiftFileSystemExtendedContract {
                 path("/test/hadoop/dir/subdir/file2"));
   }
 
+  /**
+   * trying to rename a directory onto itself should fail,
+   * preserving everything underneath.
+   */
+  @Test
+  public void testRenameDirToSelf() throws Throwable {
+    assumeRenameSupported();
+    Path parentdir = path("test/parentdir");
+    fs.mkdirs(parentdir);
+    Path child = new Path(parentdir, "child");
+    createFile(child);
+
+    rename(parentdir, parentdir, true, true, true);
+    //verify the child is still there
+    assertIsFile(child);
+  }
+
   public void assertExists(String message, Path path) throws IOException {
     SwiftTestUtils.assertPathExists(message, fs, path);
   }
