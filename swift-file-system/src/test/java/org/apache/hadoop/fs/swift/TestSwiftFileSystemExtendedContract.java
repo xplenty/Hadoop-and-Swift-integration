@@ -177,4 +177,9 @@ public class TestSwiftFileSystemExtendedContract extends SwiftFileSystemBaseTest
     assertIsFile(src);
   }
 
+  @Test
+  public void testRmRootDirRecursiveIsForbidden() throws Throwable {
+    Path root = path("/");
+    assertFalse("Just deleted root directory!", fs.delete(root, true));
+  }
 }

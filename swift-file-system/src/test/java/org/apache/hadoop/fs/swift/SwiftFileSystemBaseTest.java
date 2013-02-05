@@ -35,6 +35,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class SwiftFileSystemBaseTest {
   protected static final Log LOG =
@@ -128,4 +129,17 @@ public class SwiftFileSystemBaseTest {
   protected void assertIsFile(Path filename) throws IOException {
     SwiftTestUtils.assertIsFile(fs, filename);
   }
+
+
+  /**
+   * Assert that a file exists and whose {@link FileStatus} entry
+   * declares that this is a file and not a symlink or directory.
+   * @param filename name of the file
+   * @throws IOException IO problems during file operations
+   */
+  protected void mkdirs(Path path) throws IOException {
+    assertTrue("Failed to mkdir" + path,fs.mkdirs(path));
+  }
+
+
 }

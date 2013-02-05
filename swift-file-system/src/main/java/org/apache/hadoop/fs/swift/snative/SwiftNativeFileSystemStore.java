@@ -138,8 +138,9 @@ public class SwiftNativeFileSystemStore {
    * @throws FileNotFoundException if there is nothing at the end
    */
   public FileStatus getObjectMetadata(Path path) throws IOException {
+    SwiftObjectPath objectPath = toObjectPath(path);
     final Header[] headers;
-    headers = swiftRestClient.headRequest(toObjectPath(path),
+    headers = swiftRestClient.headRequest(objectPath,
             SwiftRestClient.NEWEST);
     //no headers is treated as a missing file
     if (headers.length == 0) {
@@ -169,12 +170,7 @@ public class SwiftNativeFileSystemStore {
       }
     }
 
-    final Path correctSwiftPath;
-    try {
-      correctSwiftPath = getCorrectSwiftPath(path);
-    } catch (URISyntaxException e) {
-      throw new SwiftException("Specified path " + path + " is incorrect", e);
-    }
+    Path correctSwiftPath = getCorrectSwiftPath(path);
     return new FileStatus(length, isDir, 0, 0L, lastModified, correctSwiftPath);
   }
 
@@ -209,16 +205,38 @@ public class SwiftNativeFileSystemStore {
 
   /**
    * List all elements in this directory
+   *
    * @param path path to work with
+   * @param nameOnly should the status be minimal and not make any calls
+   * to the system to determine attributes beyond the name?
+   * @return the file statuses, or an empty array if there are no children
+   * @throws IOException on IO problems
+   * @throws FileNotFoundException if the path is nonexistent
+   */
+  public FileStatus[] listSubPaths(Path path,
+                                   boolean recursive,
+                                   boolean nameOnly) throws IOException {
+    final Collection<FileStatus> fileStatuses;
+    fileStatuses = listDirectory(toDirPath(path), recursive, nameOnly);
+    return fileStatuses.toArray(new FileStatus[fileStatuses.size()]);
+  }
+  /**
+   * List all elements in this directory
+   *
+   *
+   * @param path path to work with
+   * @param nameOnly should the status be minimal and not make any calls
+   * to the system to determine attributes beyond the name?
    * @return the file statuses, or an empty list if there are no children
    * @throws IOException on IO problems
    * @throws FileNotFoundException if the path is nonexistent
    */
-  public FileStatus[] listSubPaths(Path path) throws IOException {
-    final Collection<FileStatus> fileStatuses;
-    fileStatuses = listDirectory(toDirPath(path));
-    return fileStatuses.toArray(new FileStatus[fileStatuses.size()]);
+  public List<FileStatus> listDirectory(Path path,
+                                        boolean recursive,
+                                        boolean nameOnly) throws IOException {
+    return listDirectory(toDirPath(path), recursive, nameOnly);
   }
+
 
   /**
    * Create a directory
@@ -273,12 +291,26 @@ public class SwiftNativeFileSystemStore {
    *
    * @param path object path
    * @return true if the metadata of an object could be retrieved
-   * @throws IOException IO problems
+   * @throws IOException IO problems other than FileNotFound, which
+   * is downgraded to an object does not exist return code
    */
   public boolean objectExists(Path path) throws IOException {
+    return objectExists(toObjectPath(path));
+  }
+  /**
+   * Does the object exist
+   *
+   * @param path swift object path
+   * @return true if the metadata of an object could be retrieved
+   * @throws IOException IO problems other than FileNotFound, which
+   * is downgraded to an object does not exist return code
+   */
+  public boolean objectExists(SwiftObjectPath path) throws IOException {
     try {
-      getObjectMetadata(path);
-      return true;
+      Header[] headers = swiftRestClient.headRequest(path,
+                                                     SwiftRestClient.NEWEST);
+      //no headers is treated as a missing file
+      return headers.length != 0;
     } catch (FileNotFoundException e) {
       return false;
     }
@@ -409,8 +441,9 @@ public class SwiftNativeFileSystemStore {
       }
       SwiftObjectPath targetObjectPath = toObjectPath(targetPath);
 
-      //enum the child entries
-      List<FileStatus> fileStatuses = listDirectory(toObjectPath(src.getParent()));
+      //enum the child entries amd everything underneath
+      List<FileStatus> fileStatuses = listDirectory(toObjectPath(src.getParent()),
+                                                   true, false);
 
       boolean result = true;
 
@@ -444,20 +477,15 @@ public class SwiftNativeFileSystemStore {
    */
   private void copyThenDeleteObject(SwiftObjectPath srcObject,
                                       SwiftObjectPath destObject) throws
-                                                                IOException {
+                                                                  IOException {
     boolean copySucceeded = swiftRestClient.copyObject(srcObject, destObject);
     if (copySucceeded) {
       //if the copy worked delete the original
       swiftRestClient.delete(srcObject);
     } else {
-      throw new SwiftException("Copy of "+srcObject + " to "
-                                  + destObject + "failed");
+      throw new SwiftException("Copy of " + srcObject + " to "
+                               + destObject + "failed");
     }
-  }
-
-  public void delete(Path key) throws IOException {
-    SwiftObjectPath srcObject = toObjectPath(key);
-    swiftRestClient.delete(srcObject);
   }
 
   public void copy(Path srcKey, Path dstKey) throws IOException {
@@ -470,23 +498,29 @@ public class SwiftNativeFileSystemStore {
   /**
    * List a directory.
    * This is O(n) for the number of objects in this path.
+   *
    * @param path path to list
+   * @param nameOnly should the status be minimal (name) or should
+   * the (expensive) operation be made to ask for it.
    * @return the filestats of all the entities in the directory -or
    *         an empty list if no objects were found listed under that prefix
    * @throws IOException IO problems
    */
-  private List<FileStatus> listDirectory(SwiftObjectPath path) throws IOException {
-    String pathURI = path.toUriPath();
-    if (!pathURI.endsWith(Path.SEPARATOR)) {
-      pathURI += Path.SEPARATOR;
-    }
-
+  private List<FileStatus> listDirectory(SwiftObjectPath path,
+                                         boolean recursive,
+                                         boolean nameOnly) throws IOException {
     final byte[] bytes;
+    final ArrayList<FileStatus> files = new ArrayList<FileStatus>();
     try {
+      if (recursive) {
       bytes = swiftRestClient.findObjectsByPrefix(path, null);
+      } else {
+        bytes = swiftRestClient.listObjectsInDirectory(path);
+      }
     } catch (FileNotFoundException e) {
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Directory not found " + path);
+        LOG.debug("" +
+                  "File/Directory not found " + path);
       }
       if (SwiftUtils.isRootDir(path)) {
         return Collections.emptyList();
@@ -507,8 +541,18 @@ public class SwiftNativeFileSystemStore {
           return Collections.emptyList();
         } else {
           //NO_CONTENT returned on something other than the root directory;
-          //convert to a FileNotFound
-          throw new FileNotFoundException("Not found: " + path);
+          //see if it is there, and conver to empty list or not found
+          //depending on whether the entry exists.
+          FileStatus stat = getObjectMetadata(getCorrectSwiftPath(path));
+
+          if (SwiftUtils.isDirectory(stat)) {
+            //it's an empty directory. state that
+            return Collections.emptyList();
+          } else {
+            //it's a file -return that as the status
+            files.add(stat);
+            return files;
+          }
         }
       } else {
         //a different status code: rethrow immediately
@@ -516,34 +560,79 @@ public class SwiftNativeFileSystemStore {
       }
     }
 
-    //the bytre array contains the files separated by newlines
-    final StringTokenizer tokenizer = new StringTokenizer(new String(bytes), "\n");
-    final ArrayList<FileStatus> files = new ArrayList<FileStatus>();
+    //the byte array contains the files separated by newlines
+    final StringTokenizer tokenizer =
+      new StringTokenizer(new String(bytes), "\n");
+
+    Map<String, Boolean> names = new HashMap<String, Boolean>();
+    //insert own name as one to skip
+    names.put(path.getObject(), true);
 
     while (tokenizer.hasMoreTokens()) {
       String pathInSwift = tokenizer.nextToken();
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("entry: " + pathInSwift);
+      }
       if (!pathInSwift.startsWith("/")) {
         pathInSwift = "/".concat(pathInSwift);
       }
-      //For each entry, get the metadata.
-      final FileStatus metadata = getObjectMetadata(new Path(pathInSwift));
-      if (metadata != null) {
-        files.add(metadata);
+      Path childPath = new Path(pathInSwift);
+      if (!names.containsKey(pathInSwift)) {
+        names.put(pathInSwift, true);
+        names.put(pathInSwift + "/", true);
+        //For each entry, get the metadata.
+        try {
+          FileStatus metadata;
+          if (nameOnly) {
+            metadata = new FileStatus(0, false, 0, 0, 0, childPath);
+          } else {
+            metadata = getObjectMetadata(childPath);
+          }
+          files.add(metadata);
+        } catch (FileNotFoundException e) {
+          //get Object metadata failed
+          LOG.info(
+            "Object " + childPath + " was deleting during directory listing");
+        }
+      } else {
+        //hash map
+        LOG.debug("skipping adding self to path");
       }
     }
-
     return files;
   }
 
-  private Path getCorrectSwiftPath(Path path) throws URISyntaxException {
-    final URI fullUri = new URI(uri.getScheme(),
-            uri.getAuthority(),
-            path.toUri().getPath(),
-            null,
-            null);
+  private Path getCorrectSwiftPath(Path path) throws
+                                              SwiftException {
+    try {
+      final URI fullUri = new URI(uri.getScheme(),
+              uri.getAuthority(),
+              path.toUri().getPath(),
+              null,
+              null);
 
-    return new Path(fullUri);
+      return new Path(fullUri);
+    } catch (URISyntaxException e) {
+      throw new SwiftException("Specified path " + path + " is incorrect", e);
+    }
   }
+
+    private Path getCorrectSwiftPath(SwiftObjectPath path) throws
+                                              SwiftException {
+    try {
+      final URI fullUri = new URI(uri.getScheme(),
+              uri.getAuthority(),
+              path.getObject(),
+              null,
+              null);
+
+      return new Path(fullUri);
+    } catch (URISyntaxException e) {
+      throw new SwiftException("Specified path " + path + " is incorrect", e);
+    }
+  }
+
+
 
   /**
    * extracts URIs from json

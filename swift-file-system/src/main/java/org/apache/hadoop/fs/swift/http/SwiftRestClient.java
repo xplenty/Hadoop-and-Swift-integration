@@ -62,7 +62,6 @@ import static org.apache.hadoop.fs.swift.http.SwiftProtocolConstants.*;
 
 import org.apache.hadoop.fs.swift.util.SwiftUtils;
 import org.apache.http.conn.params.ConnRoutePNames;
-import org.jets3t.service.impl.rest.httpclient.HttpMethodReleaseInputStream;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -519,14 +518,18 @@ public final class SwiftRestClient {
                      public byte[] extractResult(GetMethod method) throws
                                                                    IOException {
                        //TODO: remove SC_NO_CONTENT if it depends on Swift versions
-                       if (method.getStatusCode() == SC_NOT_FOUND || method.getStatusCode() == SC_NO_CONTENT ||
-                             method.getResponseBodyAsStream() == null) {
+                       if (method.getStatusCode() == SC_NOT_FOUND ||
+                           method.getStatusCode() == SC_NO_CONTENT ||
+                           method.getResponseBodyAsStream() == null) {
                          return null;
                        }
-                       final InputStream responseBodyAsStream = method.getResponseBodyAsStream();
+                       final InputStream responseBodyAsStream =
+                         method.getResponseBodyAsStream();
                        final byte[] locationData = new byte[1024];
 
-                       return responseBodyAsStream.read(locationData) > 0 ? locationData : null;
+                       return responseBodyAsStream.read(locationData) > 0
+                              ? locationData
+                              : null;
                      }
 
                      @Override
@@ -557,8 +560,9 @@ public final class SwiftRestClient {
    * Find objects under a prefix
    *
    * @param path path prefix
-   * @param delimiter
-   *@param requestHeaders optional request headers  @return byte[] file data or null if the object was not found
+   * @param delimiter delimiter of path, can be null
+   * @param requestHeaders optional request headers
+   * @return  byte[] file data or null if the object was not found
    * @throws IOException on IO Faults
    * @throws FileNotFoundException if nothing is at the end of the URI -that is,
    * the directory is empty
@@ -566,7 +570,7 @@ public final class SwiftRestClient {
   public byte[] findObjectsByPrefix(SwiftObjectPath path,
                                     String delimiter,
                                     final Header... requestHeaders) throws IOException {
-    preRemoteCommand("findObjectsByPrefix");
+
     URI uri;
     String endpoint = getEndpointURI().toString();
     StringBuilder dataLocationURI = new StringBuilder();
@@ -582,11 +586,19 @@ public final class SwiftRestClient {
     if (delimiter != null) {
       dataLocationURI.append("&delimiter=/").append(delimiter);
     }
+    return findObjects(dataLocationURI.toString(), requestHeaders);
+  }
+
+  private byte[] findObjects(String location, final Header[] requestHeaders) throws
+                                                                     IOException {
+    URI uri;
+    preRemoteCommand("findObjects");
     try {
-      uri = new URI(dataLocationURI.toString());
+      uri = new URI(location);
     } catch (URISyntaxException e) {
-      throw new SwiftException("Bad URI: " + dataLocationURI, e);
+      throw new SwiftException("Bad URI: " + location, e);
     }
+
 
     return perform(uri, new GetMethodProcessor<byte[]>() {
       @Override
@@ -611,6 +623,44 @@ public final class SwiftRestClient {
         setHeaders(method, requestHeaders);
       }
     });
+  }
+
+  /**
+   * Find objects in a directory
+   *
+   * @param path path prefix
+   * @param requestHeaders optional request headers
+   * @return byte[] file data or null if the object was not found
+   * @throws IOException on IO Faults
+   * @throws FileNotFoundException if nothing is at the end of the URI -that is,
+   * the directory is empty
+   */
+  public byte[] listObjectsInDirectory(SwiftObjectPath path,
+                                       final Header... requestHeaders) throws IOException {
+    preRemoteCommand("listObjectsInPath");
+    URI uri;
+    String endpoint = getEndpointURI().toString();
+    StringBuilder dataLocationURI = new StringBuilder();
+    dataLocationURI.append(endpoint);
+    String object = path.getObject();
+    if (object.startsWith("/")) {
+      object = object.substring(1);
+    }
+    if (!object.endsWith("/")) {
+      object = object.concat("/");
+    }
+
+/*    dataLocationURI = dataLocationURI.append("/")
+.append(path.getContainer())
+.append("/?path=")
+.append(object);*/
+    dataLocationURI = dataLocationURI.append("/")
+                                     .append(path.getContainer())
+                                     .append("/?prefix=")
+                                     .append(object)
+                                     .append("&delimiter=/")
+    ;
+    return findObjects(dataLocationURI.toString(), requestHeaders);
   }
 
   /**

@@ -429,7 +429,7 @@ public class SwiftTestUtils {
                                Path path) throws IOException {
     try {
       FileStatus status = fileSystem.getFileStatus(path);
-      fail(message + ": found " + path + " as  " + status);
+      fail(message + ": unexpectedly found " + path + " as  " + status);
     } catch (FileNotFoundException expected) {
       //this is expected
 

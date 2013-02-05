@@ -20,7 +20,11 @@ package org.apache.hadoop.fs.swift;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
+
+import java.io.IOException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -28,32 +32,64 @@ import static org.junit.Assert.assertTrue;
 
 public class TestLsOperations extends SwiftFileSystemBaseTest {
 
+  private Path[] testDirs;
 
-  @Test
-  public void testListStatus() throws Exception {
-    Path[] testDirs = {
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
+    testDirs = new Path[]{
       path("/test/hadoop/a"),
       path("/test/hadoop/b"),
       path("/test/hadoop/c/1"),
     };
-    assertFalse(fs.exists(testDirs[0]));
-
+    assertPathDoesNotExist("test directory", testDirs[0]);
     for (Path path : testDirs) {
-      assertTrue(fs.mkdirs(path));
+      mkdirs(path);
     }
+  }
 
+  @Test
+  public void testListLevelTest() throws Exception {
+    LOG.info("===============================================================");
     FileStatus[] paths = fs.listStatus(path("/test"));
+    LOG.info("===============================================================");
     assertEquals(SwiftTestUtils.dumpStats("/test", paths), 1, paths.length);
     assertEquals(path("/test/hadoop"), paths[0].getPath());
+  }
 
+  @Test
+  public void testListLevelTestHadoop() throws Exception {
+    FileStatus[] paths;
+    LOG.info("===============================================================");
     paths = fs.listStatus(path("/test/hadoop"));
-    assertEquals(SwiftTestUtils.dumpStats("/test/hadoop", paths),3, paths.length);
-    assertEquals(path("/test/hadoop/a"), paths[0].getPath());
-    assertEquals(path("/test/hadoop/b"), paths[1].getPath());
-    assertEquals(path("/test/hadoop/c"), paths[2].getPath());
+    LOG.info("===============================================================");
+    String stats = SwiftTestUtils.dumpStats("/test/hadoop", paths);
+    assertEquals(stats, 3, paths.length);
+    assertEquals(stats, path("/test/hadoop/a"), paths[0].getPath());
+    assertEquals(stats, path("/test/hadoop/b"), paths[1].getPath());
+    assertEquals(stats, path("/test/hadoop/c"), paths[2].getPath());
 
+  }
+
+  @Test
+  public void testListStatusEmptyDirectory() throws Exception {
+    FileStatus[] paths;
+    LOG.info("===============================================================");
     paths = fs.listStatus(path("/test/hadoop/a"));
+    LOG.info("===============================================================");
     assertEquals(SwiftTestUtils.dumpStats("/test/hadoop/a", paths), 0,
                  paths.length);
   }
+
+  @Test
+  public void testListStatusFile() throws Exception {
+    Path file = path("/test/filename");
+    createFile(file);
+    LOG.info("===============================================================");
+    FileStatus[] paths = fs.listStatus(file);
+    LOG.info("===============================================================");
+    assertEquals(SwiftTestUtils.dumpStats("/test/", paths), 1,
+                 paths.length);
+  }
+
 }
