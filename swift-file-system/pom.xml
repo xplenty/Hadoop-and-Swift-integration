@@ -4,8 +4,12 @@
     <groupId>org.apache.hadoop</groupId>
     <artifactId>hadoop-swift</artifactId>
     <version>0.1-SNAPSHOT</version>
-    <name>SwiftFileSystem</name>
-    <url>http://maven.apache.org</url>
+    <name>Swift FileSystem for Apache Hadoop</name>
+    <url>http://hadoop.apache.org</url>
+    <description>
+      This library lets Hadoop applications -including MapReduce jobs-
+      to read data from and write data to an OpenStack Swift object store.
+    </description>
 
     <repositories>
 
