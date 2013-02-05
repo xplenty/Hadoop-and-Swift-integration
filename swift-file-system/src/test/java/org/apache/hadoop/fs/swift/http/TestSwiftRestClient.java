@@ -26,6 +26,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.swift.SwiftTestUtils;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,58 +52,51 @@ public class TestSwiftRestClient {
     }
   }
 
+  protected void assumeEnabled() {
+    Assume.assumeTrue(runTests);
+  }
+
   @Test
   public void testCreate() throws Throwable {
-    if (runTests()) {
-      SwiftRestClient client = createClient();
-    }
+    assumeEnabled();
+    SwiftRestClient client = createClient();
   }
 
   private SwiftRestClient createClient() throws IOException {
     return SwiftRestClient.getInstance(serviceURI, conf);
   }
 
-
   @Test
   public void testAuthenticate() throws Throwable {
-    if (runTests()) {
-      SwiftRestClient client = createClient();
-      client.authenticate();
-    }
+    assumeEnabled();
+    SwiftRestClient client = createClient();
+    client.authenticate();
   }
 
   @Test
   public void testPutAndDelete() throws Throwable {
-    if (runTests()) {
-      SwiftRestClient client = createClient();
-      client.authenticate();
-      Path path = new Path("restTestPutAndDelete");
-      SwiftObjectPath sobject = SwiftObjectPath.fromPath(serviceURI, path);
-      byte[] stuff = new byte[1];
-      stuff[0]='a';
-      client.upload(sobject,new ByteArrayInputStream(stuff),stuff.length);
-      //check file exists
-      client.headRequest(sobject, SwiftRestClient.NEWEST);
-      //delete the file
-      client.delete(sobject);
-      //check file is gone
-      try {
-        Header[] headers = client.headRequest(sobject, SwiftRestClient.NEWEST);
-        Assert.fail("Expected deleted file, but object is still present: "
-                    + sobject);
-      } catch (FileNotFoundException e) {
-        //expected
-      }
-
+    assumeEnabled();
+    SwiftRestClient client = createClient();
+    client.authenticate();
+    Path path = new Path("restTestPutAndDelete");
+    SwiftObjectPath sobject = SwiftObjectPath.fromPath(serviceURI, path);
+    byte[] stuff = new byte[1];
+    stuff[0] = 'a';
+    client.upload(sobject, new ByteArrayInputStream(stuff), stuff.length);
+    //check file exists
+    client.headRequest(sobject, SwiftRestClient.NEWEST);
+    //delete the file
+    client.delete(sobject);
+    //check file is gone
+    try {
+      Header[] headers = client.headRequest(sobject, SwiftRestClient.NEWEST);
+      Assert.fail("Expected deleted file, but object is still present: "
+                  + sobject);
+    } catch (FileNotFoundException e) {
+      //expected
     }
 
-  }
 
-  private boolean runTests() {
-    if (!runTests) {
-      LOG.info("Skipping test");
-    }
-    return runTests;
   }
 
 

@@ -1,7 +1,22 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.hadoop.fs.swift;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -26,27 +41,33 @@ import static org.junit.Assert.*;
  * these tests currently are unit tests, but will be
  * moved to functional/integration tests
  */
-public class TestSwiftFileSystemPartitionedUploads {
-  private static final Log LOG =
-    LogFactory.getLog(TestSwiftFileSystemPartitionedUploads.class);
+public class TestSwiftFileSystemPartitionedUploads extends SwiftFileSystemBaseTest {
 
   private URI uri;
   private Configuration conf;
-  protected SwiftFileSystemForFunctionalTests fs;
+  private SwiftFileSystemForFunctionalTests swiftFS;
 
   @Before
   public void setUp() throws Exception {
+    super.setUp();
     uri = getFilesystemURI();
     conf = new Configuration();
     //patch the configuration with the factory of the new driver
 
 
-    SwiftFileSystemForFunctionalTests swiftFS = new SwiftFileSystemForFunctionalTests();
+    swiftFS = new SwiftFileSystemForFunctionalTests();
     swiftFS.setPartitionSize(1024L);
     fs = swiftFS;
     fs.initialize(uri, conf);
   }
 
+
+  @Override
+  protected SwiftNativeFileSystem createSwiftFS() throws IOException {
+    swiftFS = new SwiftFileSystemForFunctionalTests();
+    swiftFS.setPartitionSize(1024L);
+    return swiftFS;
+  }
 
   @After
   public void tearDown() throws Exception {
@@ -74,18 +95,18 @@ public class TestSwiftFileSystemPartitionedUploads {
                                        (short) 1,
                                        1024);
     assertEquals("wrong number of partitons written",
-                 0, fs.getPartitionsWritten(out));
+                 0, swiftFS.getPartitionsWritten(out));
     //write first half
-    out.write(src, 0, len/2);
+    out.write(src, 0, len / 2);
     assertEquals("wrong number of partitons written",
-                 1, fs.getPartitionsWritten(out));
+                 1, swiftFS.getPartitionsWritten(out));
     //write second half
     out.write(src, len / 2, len / 2);
     assertEquals("wrong number of partitons written",
-                 2, fs.getPartitionsWritten(out));
+                 2, swiftFS.getPartitionsWritten(out));
     out.close();
     assertEquals("wrong number of partitons written",
-                 3, fs.getPartitionsWritten(out));
+                 3, swiftFS.getPartitionsWritten(out));
 
     assertTrue("Exists", fs.exists(path));
     assertEquals("Length", len, fs.getFileStatus(path).getLen());
@@ -104,7 +125,7 @@ public class TestSwiftFileSystemPartitionedUploads {
    */
   @Test(expected = FileNotFoundException.class)
   public void raceConditionOnDirDeleteTest() throws IOException, URISyntaxException, InterruptedException {
-    final SwiftNativeFileSystem fileSystem = fs;
+    final SwiftNativeFileSystem fileSystem = swiftFS;
 
     final String message = "message";
     final Path fileToRead = new Path("/home/huge/files/many-files/file");
@@ -140,28 +161,6 @@ public class TestSwiftFileSystemPartitionedUploads {
 
     fileSystem.open(fileToRead);
 
-  }
-
-  @Test
-  public void testRenameDirWithSubDis() throws IOException {
-    final SwiftNativeFileSystem fileSystem = fs;
-
-    final String message = "message";
-    final Path filePath = new Path("/home/user/documents/file.txt");
-    final Path newFilePath = new Path("/home/user/files/file.txt");
-
-    final FSDataOutputStream fsDataOutputStream = fileSystem.create(filePath);
-    fsDataOutputStream.write(message.getBytes());
-    fsDataOutputStream.close();
-
-    fileSystem.rename(filePath, newFilePath);
-
-    final FSDataInputStream inputStream = fileSystem.open(newFilePath);
-    final byte[] data = new byte[20];
-    final int read = inputStream.read(data);
-
-    assertEquals(message.length(), read);
-    assertEquals(message, new String(data, 0, read));
   }
 
 }
