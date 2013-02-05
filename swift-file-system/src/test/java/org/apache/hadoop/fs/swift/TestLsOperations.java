@@ -50,9 +50,7 @@ public class TestLsOperations extends SwiftFileSystemBaseTest {
 
   @Test
   public void testListLevelTest() throws Exception {
-    LOG.info("===============================================================");
     FileStatus[] paths = fs.listStatus(path("/test"));
-    LOG.info("===============================================================");
     assertEquals(SwiftTestUtils.dumpStats("/test", paths), 1, paths.length);
     assertEquals(path("/test/hadoop"), paths[0].getPath());
   }
@@ -60,9 +58,7 @@ public class TestLsOperations extends SwiftFileSystemBaseTest {
   @Test
   public void testListLevelTestHadoop() throws Exception {
     FileStatus[] paths;
-    LOG.info("===============================================================");
     paths = fs.listStatus(path("/test/hadoop"));
-    LOG.info("===============================================================");
     String stats = SwiftTestUtils.dumpStats("/test/hadoop", paths);
     assertEquals(stats, 3, paths.length);
     assertEquals(stats, path("/test/hadoop/a"), paths[0].getPath());
@@ -74,9 +70,7 @@ public class TestLsOperations extends SwiftFileSystemBaseTest {
   @Test
   public void testListStatusEmptyDirectory() throws Exception {
     FileStatus[] paths;
-    LOG.info("===============================================================");
     paths = fs.listStatus(path("/test/hadoop/a"));
-    LOG.info("===============================================================");
     assertEquals(SwiftTestUtils.dumpStats("/test/hadoop/a", paths), 0,
                  paths.length);
   }
@@ -85,11 +79,13 @@ public class TestLsOperations extends SwiftFileSystemBaseTest {
   public void testListStatusFile() throws Exception {
     Path file = path("/test/filename");
     createFile(file);
-    LOG.info("===============================================================");
     FileStatus[] paths = fs.listStatus(file);
-    LOG.info("===============================================================");
     assertEquals(SwiftTestUtils.dumpStats("/test/", paths), 1,
                  paths.length);
   }
 
+  @Test
+  public void testListRoot() throws Throwable {
+    fs.listStatus(path("/"));
+  }
 }
