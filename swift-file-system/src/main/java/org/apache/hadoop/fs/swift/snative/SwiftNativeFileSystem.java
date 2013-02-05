@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -250,14 +250,7 @@ public class SwiftNativeFileSystem extends FileSystem {
    */
   private boolean mkdir(Path path) throws IOException {
     Path absolutePath = makeAbsolute(path);
-//    if (!store.objectExists(absolutePath)) {
-//      store.createDirectory(absolutePath);
-//    }
 
-    //TODO: define a consistent semantic for a directory/subdirectory
-    //in the hadoop:swift bridge. Hadoop FS assumes that there
-    //are files and directories, whereas SwiftFS assumes
-    //that there are just "objects"
 
     FileStatus fileStatus;
     try {
@@ -357,6 +350,22 @@ public class SwiftNativeFileSystem extends FileSystem {
         new SwiftNativeInputStream(store, statistics, path), bufferSize));
   }
 
+  private static String pathToKey(Path path) {
+    if (path.toUri().getScheme() != null && path.toUri().getPath().isEmpty()) {
+      // allow uris without trailing slash after bucket to refer to root,
+      // like s3n://mybucket
+      return "";
+    }
+    if (!path.isAbsolute()) {
+      throw new IllegalArgumentException("Path must be absolute: " + path);
+    }
+    String ret = path.toUri().getPath().substring(1); // remove initial slash
+    if (ret.endsWith("/") && (ret.indexOf("/") != ret.length() - 1)) {
+      ret = ret.substring(0, ret.length() - 1);
+    }
+    return path.toUri().getPath();
+  }
+
   /**
    * Renames Path src to Path dst. On swift this uses copy-and-delete
    * and <i>is not atomic</i>.
@@ -372,6 +381,160 @@ public class SwiftNativeFileSystem extends FileSystem {
     return store.renameDirectory(src, dst);
   }
 
+/*
+  @Override
+  public boolean rename(Path src, Path dst) throws IOException {
+    //this rename is from S3 after the HADOOP-9265 changes
+    String srcKey = pathToKey(makeAbsolute(src));
+    final String debugPreamble = "Renaming '" + src + "' to '" + dst + "' - ";
+
+
+    if (srcKey.isEmpty()) {
+      // Cannot rename root of file system
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(debugPreamble +
+                  "returning false as cannot rename the root of a filesystem");
+      }
+      return false;
+    }
+
+    //get status of source
+    boolean srcIsFile;
+    try {
+      srcIsFile = getFileStatus(src).isFile();
+    } catch (FileNotFoundException e) {
+      //bail out fast if the source does not exist
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(debugPreamble + "returning false as src does not exist");
+      }
+      return false;
+    }
+    // Figure out the final destination
+    String dstKey = pathToKey(makeAbsolute(dst));
+    //check for rename here, before probes for file type take place
+    // -this is needed to stop rename(dir,dir) creating the path dir/dir
+    // and then rejectig that operation
+
+    if (srcKey.equals(dstKey)) {
+      //fully resolved destination key matches source: fail
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(debugPreamble + "renamingToSelf; returning true");
+      }
+      return true;
+    }
+
+    try {
+      boolean dstIsFile = getFileStatus(dst).isFile();
+      if (dstIsFile) {
+        //destination is a file.
+        //you can't copy a file or a directory onto an existing file
+        //except for the special case of dest==src
+        if (LOG.isDebugEnabled()) {
+          LOG.debug(debugPreamble +
+                    "returning dst is an already existing file");
+        }
+        return srcKey.equals(dstKey);
+      } else {
+        //destination exists and is a directory
+        if (LOG.isDebugEnabled()) {
+          LOG.debug(debugPreamble + "using dst as output directory");
+        }
+        //destination goes under the dst path, with the name of the
+        //source entry
+        dstKey = pathToKey(makeAbsolute(new Path(dst, src.getName())));
+      }
+    } catch (FileNotFoundException e) {
+      //destination does not exist => the source file or directory
+      //is copied over with the name of the destination
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(debugPreamble + "using dst as output destination");
+      }
+      try {
+        if (getFileStatus(dst.getParent()).isFile()) {
+          if (LOG.isDebugEnabled()) {
+            LOG.debug(debugPreamble +
+                      "returning false as dst parent exists and is a file");
+          }
+          return false;
+        }
+      } catch (FileNotFoundException ex) {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug(debugPreamble +
+                    "returning false as dst parent does not exist");
+        }
+        return false;
+      }
+    }
+
+    //rename to self behavior follows Posix rules and is different
+    //for directories and files -the return code is driven by src type
+    if (srcKey.equals(dstKey)) {
+      //fully resolved destination key matches source: fail
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(debugPreamble + "renamingToSelf; returning true");
+      }
+      return true;
+    }
+
+    //here all path checks are complete, srcKey and dstKey are ready for use
+
+    if (srcIsFile) {
+      //source is a file; COPY then DELETE
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(debugPreamble +
+                  "src is file, so doing copy then delete in S3");
+      }
+      store.copy(srcKey, dstKey);
+      store.delete(srcKey);
+    } else {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(debugPreamble + "src is directory, so copying contents");
+      }
+      //Verify dest is not a child of the parent
+      if (dstKey.startsWith(srcKey + "/")) {
+        if (LOG.isDebugEnabled()) {
+          LOG.debug(
+            debugPreamble + "cannot rename a directory to a subdirectory");
+        }
+        return false;
+      }
+      store.storeEmptyFile(dstKey + FOLDER_SUFFIX);
+
+      List<String> keysToDelete = new ArrayList<String>();
+      String priorLastKey = null;
+      do {
+        PartialListing listing =
+          store.list(srcKey, S3_MAX_LISTING_LENGTH, priorLastKey, true);
+        for (FileMetadata file : listing.getFiles()) {
+          keysToDelete.add(file.getKey());
+          store.copy(file.getKey(),
+                     dstKey + file.getKey().substring(srcKey.length()));
+        }
+        priorLastKey = listing.getPriorLastKey();
+      } while (priorLastKey != null);
+
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(debugPreamble +
+                  "all files in src copied, now removing src files");
+      }
+      for (String key : keysToDelete) {
+        store.delete(key);
+      }
+
+      try {
+        store.delete(srcKey + FOLDER_SUFFIX);
+      } catch (FileNotFoundException e) {
+        //this is fine, we don't require a marker
+      }
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(debugPreamble + "done");
+      }
+    }
+
+    return true;
+  }
+
+*/
 
   /**
    * Delete a file or directory

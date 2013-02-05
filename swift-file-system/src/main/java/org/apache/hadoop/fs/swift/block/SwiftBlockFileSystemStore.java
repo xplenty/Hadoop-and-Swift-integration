@@ -227,7 +227,8 @@ public class SwiftBlockFileSystemStore implements FileSystemStore {
     final byte[] buffer;
     try {
       buffer =
-        swiftRestClient.findObjectsByPrefix(SwiftObjectPath.fromPath(uri, path));
+        swiftRestClient.findObjectsByPrefix(SwiftObjectPath.fromPath(uri, path),
+                                            null);
     } catch (FileNotFoundException e) {
       return Collections.emptySet();
     }

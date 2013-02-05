@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -275,7 +275,8 @@ public final class SwiftRestClient {
   }
 
   /**
-   * Create operation
+   * Copy operation.
+   * The only valid response is CREATED
    * @param <R>
    */
   private static abstract class CopyMethodProcessor<R> extends HttpMethodProcessor<CopyMethod, R> {
@@ -530,31 +531,35 @@ public final class SwiftRestClient {
 
   /**
    * Find objects under a prefix
+   *
    * @param path path prefix
-   * @param requestHeaders optional request headers
-   * @return byte[] file data or null if the object was not found
+   * @param delimiter
+   *@param requestHeaders optional request headers  @return byte[] file data or null if the object was not found
    * @throws IOException on IO Faults
    * @throws FileNotFoundException if nothing is at the end of the URI -that is,
    * the directory is empty
    */
   public byte[] findObjectsByPrefix(SwiftObjectPath path,
+                                    String delimiter,
                                     final Header... requestHeaders) throws IOException {
     preRemoteCommand("findObjectsByPrefix");
     URI uri;
-    String dataLocationURI = getEndpointURI().toString();
+    String endpoint = getEndpointURI().toString();
+    StringBuilder dataLocationURI = new StringBuilder();
+    dataLocationURI.append(endpoint);
+    String object = path.getObject();
+    if (object.startsWith("/")) {
+      object = object.substring(1);
+    }
+    dataLocationURI = dataLocationURI.append("/")
+                                     .append(path.getContainer())
+                                     .append("/?prefix=")
+                                     .append(object);
+    if (delimiter != null) {
+      dataLocationURI.append("&delimiter=/").append(delimiter);
+    }
     try {
-      String object = path.getObject();
-      if (object.startsWith("/")) {
-        object = object.substring(1);
-      }
-
-      dataLocationURI = dataLocationURI.concat("/")
-                                       .concat(path.getContainer())
-                                       .concat("/?prefix=")
-                                       .concat(object)
-//                                       .concat("&delimiter=/")
-                                      ;
-      uri = new URI(dataLocationURI);
+      uri = new URI(dataLocationURI.toString());
     } catch (URISyntaxException e) {
       throw new SwiftException("Bad URI: " + dataLocationURI, e);
     }
@@ -601,7 +606,7 @@ public final class SwiftRestClient {
     return perform(pathToURI(src), new CopyMethodProcessor<Boolean>() {
       @Override
       public Boolean extractResult(CopyMethod method) throws IOException {
-        return method.getStatusCode() != SC_NOT_FOUND;
+        return true;
       }
 
       @Override
@@ -611,6 +616,7 @@ public final class SwiftRestClient {
       }
     });
   }
+
 
   /**
    * Uploads file as Input Stream to Swift
@@ -1053,7 +1059,7 @@ public final class SwiftRestClient {
         if (method.getStatusCode() == HttpStatus.SC_NOT_FOUND) {
           throw new FileNotFoundException("No content at the URL " + uri);
         }
-        return new HttpMethodReleaseInputStream(method);
+        return new HttpInputStreamWithRelease(uri, method);
       }
 
       @Override

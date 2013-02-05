@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.hadoop.fs.swift.snative;
 
 import org.apache.commons.httpclient.Header;
@@ -187,6 +204,13 @@ public class SwiftNativeFileSystemStore {
       toObjectPath(path), byteRangeStart, length);
   }
 
+  /**
+   * List all elements in this directory
+   * @param path path to work with
+   * @return the file statuses, or an empty list if there are no children
+   * @throws IOException on IO problems
+   * @throws FileNotFoundException if the path is nonexistent
+   */
   public FileStatus[] listSubPaths(Path path) throws IOException {
     final Collection<FileStatus> fileStatuses;
     fileStatuses = listDirectory(toDirPath(path));
@@ -350,12 +374,8 @@ public class SwiftNativeFileSystemStore {
       }
 
 
-      boolean copySucceeded = swiftRestClient.copyObject(srcObject, destPath);
-      if (copySucceeded) {
-        //if the copy worked delete the original
-        swiftRestClient.delete(srcObject);
-      }
-      return copySucceeded;
+      copyThenDeleteObject(srcObject, destPath);
+      return true;
 
 
     } else {
@@ -390,12 +410,14 @@ public class SwiftNativeFileSystemStore {
       //iterative copy of everything under the directory
       for (FileStatus fileStatus : fileStatuses) {
         if (!fileStatus.isDir()) {
-          boolean copied =
-            swiftRestClient.copyObject(toObjectPath(fileStatus.getPath()),
-                                       targetObjectPath);
-          result &= copied;
-
-          swiftRestClient.delete(toObjectPath(fileStatus.getPath()));
+          try {
+            copyThenDeleteObject(toObjectPath(fileStatus.getPath()),
+                                 targetObjectPath);
+          } catch (FileNotFoundException e) {
+            LOG.info("Skipping rename of " + fileStatus.getPath());
+          }
+        } else {
+          //this is a subdirectory
         }
       }
 
@@ -404,7 +426,43 @@ public class SwiftNativeFileSystemStore {
   }
 
   /**
-   * List a directory
+   * Copy and object then, if the copy worked, delete it.
+   * If the copy failed, the source object is not deleted.
+   * No checks are made on the validity of the arguments,
+   * the assumption is that the caller has already done this.
+   * @param srcObject source object path
+   * @param destObject destination object path
+   * @return
+   * @throws IOException
+   */
+  private void copyThenDeleteObject(SwiftObjectPath srcObject,
+                                      SwiftObjectPath destObject) throws
+                                                                IOException {
+    boolean copySucceeded = swiftRestClient.copyObject(srcObject, destObject);
+    if (copySucceeded) {
+      //if the copy worked delete the original
+      swiftRestClient.delete(srcObject);
+    } else {
+      throw new SwiftException("Copy of "+srcObject + " to "
+                                  + destObject + "failed");
+    }
+  }
+
+  public void delete(Path key) throws IOException {
+    SwiftObjectPath srcObject = toObjectPath(key);
+    swiftRestClient.delete(srcObject);
+  }
+
+  public void copy(Path srcKey, Path dstKey) throws IOException {
+    SwiftObjectPath srcObject = toObjectPath(srcKey);
+    SwiftObjectPath destObject = toObjectPath(dstKey);
+    swiftRestClient.copyObject(srcObject, destObject);
+  }
+
+
+  /**
+   * List a directory.
+   * This is O(n) for the number of objects in this path.
    * @param path path to list
    * @return the filestats of all the entities in the directory -or
    * an empty list if no objects were found listed under that prefix
@@ -418,7 +476,7 @@ public class SwiftNativeFileSystemStore {
 
     final byte[] bytes;
     try {
-      bytes = swiftRestClient.findObjectsByPrefix(path);
+      bytes = swiftRestClient.findObjectsByPrefix(path, null);
     } catch (FileNotFoundException e) {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Directory not found " + path);
@@ -435,20 +493,23 @@ public class SwiftNativeFileSystemStore {
         if (LOG.isDebugEnabled()) {
           LOG.debug("lsdir " + path +
                     " status code says NO_CONTENT; "
-                    + e.toString());
+                    + e.toString(),
+                    e);
         }
         if (SwiftUtils.isRootDir(path)) {
           return Collections.emptyList();
-        }
-        else {
+        } else {
+          //NO_CONTENT returned on something other than the root directory;
+          //convert to a FileNotFound
           throw new FileNotFoundException("Not found: " + path);
         }
-      }
-      else {
+      } else {
+        //a different status code: rethrow immediately
         throw e;
       }
     }
 
+    //the bytre array contains the files separated by newlines
     final StringTokenizer tokenizer = new StringTokenizer(new String(bytes), "\n");
     final ArrayList<FileStatus> files = new ArrayList<FileStatus>();
 
@@ -457,7 +518,7 @@ public class SwiftNativeFileSystemStore {
       if (!pathInSwift.startsWith("/")) {
         pathInSwift = "/".concat(pathInSwift);
       }
-      //this contains all
+      //For each entry, get the metadata.
       final FileStatus metadata = getObjectMetadata(new Path(pathInSwift));
       if (metadata != null) {
         files.add(metadata);

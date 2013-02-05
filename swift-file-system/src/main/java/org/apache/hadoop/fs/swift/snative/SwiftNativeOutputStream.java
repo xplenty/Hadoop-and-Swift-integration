@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -26,7 +26,12 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.swift.exceptions.SwiftException;
 
-import java.io.*;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * Output stream, buffers data on local disk.
@@ -63,7 +68,7 @@ class SwiftNativeOutputStream extends OutputStream {
     if (!dir.mkdirs() && !dir.exists()) {
       throw new SwiftException("Cannot create Swift buffer directory: " + dir);
     }
-    File result = File.createTempFile("output-", ".tmp", dir);
+    File result = File.createTempFile("swift-output-", ".tmp", dir);
     result.deleteOnExit();
     return result;
   }
