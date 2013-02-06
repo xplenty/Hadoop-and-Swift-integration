@@ -23,34 +23,38 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.swift.exceptions.SwiftOperationFailedException;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
+import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystemStore;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class SwiftFileSystemBaseTest {
   protected static final Log LOG =
     LogFactory.getLog(TestSwiftFileSystemExtendedContract.class);
-  protected FileSystem fs;
+  protected SwiftNativeFileSystem fs;
   protected byte[] data = SwiftTestUtils.dataset(getBlockSize() * 2, 0, 255);
 
   @Before
   public void setUp() throws Exception {
+    SwiftTestUtils.noteAction("setup");
     final URI uri = getFilesystemURI();
     final Configuration conf = new Configuration();
 
-    SwiftNativeFileSystem swiftFS = createSwiftFS();
-    fs = swiftFS;
+    fs = createSwiftFS();
     fs.initialize(uri, conf);
+    SwiftTestUtils.noteAction("setup complete");
   }
 
   @After
@@ -89,20 +93,68 @@ public class SwiftFileSystemBaseTest {
     out.write(data, 0, data.length);
     out.close();
   }
+  protected void createEmptyFile(Path path) throws IOException {
+    FSDataOutputStream out = fs.create(path);
+    out.close();
+  }
 
-  protected void rename(Path src, Path dst, boolean renameSucceeded,
+  /**
+   * Get the inner store -useful for lower level operations
+   * @return the store
+   */
+  protected SwiftNativeFileSystemStore getStore() {
+    return fs.getStore();
+  }
+
+  protected void rename(Path src, Path dst, boolean renameMustSucceed,
                         boolean srcExists, boolean dstExists) throws IOException {
-    boolean renamed = fs.rename(src, dst);
+    if (renameMustSucceed) {
+      renameToSuccess(src, dst, srcExists, dstExists);
+    } else {
+      renameToFailure(src, dst);
+    }
+  }
+
+  private String getRenameOutcome(Path src, Path dst) throws IOException {
     String lsDst = ls(dst);
     Path parent = dst.getParent();
     String lsParent = parent != null ? ls(parent) : "";
-    String outcome = "  result of " + src + " => " + dst
+    return "  result of " + src + " => " + dst
                      + " - " + lsDst
                      + " \n" + lsParent;
-    LOG.info(outcome);
-    assertEquals("Rename " + outcome,
-                 renameSucceeded, renamed);
-    assertEquals("Source " + src + "exists: "+ outcome,
+  }
+
+  /**
+   * Rename, expecting an exception to be thrown
+   * @param src source
+   * @param dst dest
+   * @throws IOException a failure other than an
+   * expected SwiftRenameException or FileNotFoundException
+   */
+  protected void renameToFailure(Path src, Path dst) throws IOException {
+    try {
+      getStore().rename(src, dst);
+      fail("Expected failure renaming " + src + " to " + dst
+           +"- but got success");
+    } catch (SwiftOperationFailedException e) {
+      LOG.debug("Rename failed (expected):" + e,e );
+    } catch (FileNotFoundException e) {
+      LOG.debug("Rename failed (expected):" + e, e);
+    }  }
+
+  /**
+   * Rename, expecting an exception to be thrown
+   * @param src source
+   * @param dst dest
+   * @throws SwiftOperationFailedException
+   * @throws IOException
+   */
+  protected void renameToSuccess(Path src, Path dst,
+                                 boolean srcExists, boolean dstExists)
+      throws SwiftOperationFailedException, IOException {
+    getStore().rename(src, dst);
+    String outcome = getRenameOutcome(src, dst);
+    assertEquals("Source " + src + "exists: " + outcome,
                  srcExists, fs.exists(src));
     assertEquals("Destination " + dstExists + " exists" + outcome,
                  dstExists, fs.exists(dst));
@@ -138,8 +190,15 @@ public class SwiftFileSystemBaseTest {
    * @throws IOException IO problems during file operations
    */
   protected void mkdirs(Path path) throws IOException {
-    assertTrue("Failed to mkdir" + path,fs.mkdirs(path));
+    assertTrue("Failed to mkdir" + path, fs.mkdirs(path));
   }
 
 
+  protected void assertDeleted(Path file, boolean recursive) throws IOException {
+    assertExists("about to be deleted file", file);
+    boolean deleted = fs.delete(file, recursive);
+    String dir = ls(file.getParent());
+    assertTrue("Delete failed on " + file + ": " + dir, deleted);
+    assertPathDoesNotExist("Deleted file", file);
+  }
 }

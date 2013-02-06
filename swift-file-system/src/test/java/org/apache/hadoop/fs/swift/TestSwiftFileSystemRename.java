@@ -42,8 +42,12 @@ import static org.junit.Assert.fail;
 public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
 
 
+  /**
+   * Rename a file into a directory
+   * @throws Exception
+   */
   @Test
-  public void testRenameFileAsExistingDirectory() throws Exception {
+  public void testRenameFileIntoExistingDirectory() throws Exception {
     assumeRenameSupported();
 
     Path src = path("/test/hadoop/file");

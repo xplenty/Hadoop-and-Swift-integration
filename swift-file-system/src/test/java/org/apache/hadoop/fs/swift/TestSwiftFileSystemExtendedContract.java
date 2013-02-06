@@ -68,18 +68,6 @@ public class TestSwiftFileSystemExtendedContract extends SwiftFileSystemBaseTest
     assertExists("created file", f);
   }
 
-  @Test
-  public void testDeleteFile() throws IOException {
-    final Path f = new Path("/test/testDeleteFile");
-    final FSDataOutputStream fsDataOutputStream = fs.create(f);
-    fsDataOutputStream.close();
-
-    assertExists("about to be deleted file", f);
-
-    boolean deleted = fs.delete(f, true);
-    assertTrue("Delete failed on " + f, deleted);
-    assertFalse(fs.exists(f));
-  }
 
   @Test
   public void testWriteReadFile() throws Exception {
@@ -177,9 +165,4 @@ public class TestSwiftFileSystemExtendedContract extends SwiftFileSystemBaseTest
     assertIsFile(src);
   }
 
-  @Test
-  public void testRmRootDirRecursiveIsForbidden() throws Throwable {
-    Path root = path("/");
-    assertFalse("Just deleted root directory!", fs.delete(root, true));
-  }
 }

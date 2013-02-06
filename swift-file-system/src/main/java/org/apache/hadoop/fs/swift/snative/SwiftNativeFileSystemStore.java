@@ -27,6 +27,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftInvalidResponseException;
+import org.apache.hadoop.fs.swift.exceptions.SwiftOperationFailedException;
 import org.apache.hadoop.fs.swift.http.SwiftProtocolConstants;
 import org.apache.hadoop.fs.swift.http.SwiftRestClient;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
@@ -245,7 +246,12 @@ public class SwiftNativeFileSystemStore {
    * @throws IOException
    */
   public void createDirectory(Path path) throws IOException {
-    swiftRestClient.putRequest(toDirPath(path));
+    innerCreateDirectory(toDirPath(path));
+  }
+
+  private void innerCreateDirectory(SwiftObjectPath swiftObjectPath) throws
+                                                                     IOException {
+    swiftRestClient.putRequest(swiftObjectPath);
   }
 
   private SwiftObjectPath toDirPath(Path path) throws
@@ -272,18 +278,27 @@ public class SwiftNativeFileSystemStore {
    * @throws IOException on a failure
    */
   public boolean deleteObject(Path path) throws IOException {
-    return swiftRestClient.delete(toObjectPath(path));
+    SwiftObjectPath swiftObjectPath = toObjectPath(path);
+    if (!SwiftUtils.isRootDir(swiftObjectPath)) {
+      return swiftRestClient.delete(swiftObjectPath);
+    } else {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Not deleting root directory entry");
+      }
+      return true;
+    }
   }
 
   /**
-   * deletes a directory from Swift
+   * deletes a directory from Swift. This is not recursive
    *
    * @param path path to delete
-   * @return true if the path was deleted by this specific operation.
+   * @return true if the path was deleted by this specific operation -or
+   * the path was root and not acted on.
    * @throws IOException on a failure
    */
   public boolean rmdir(Path path) throws IOException {
-    return swiftRestClient.delete(toDirPath(path));
+    return deleteObject(path);
   }
 
   /**
@@ -317,46 +332,41 @@ public class SwiftNativeFileSystemStore {
   }
 
   /**
-   * Rename through copy-and-delete. this is clearly very inefficient, and
-   * is a consequence of the classic Swift filesystem using the path as the hash
+   * Rename through copy-and-delete. this is a consequence of the
+   * Swift filesystem using the path as the hash
    * into the Distributed Hash Table, "the ring" of filenames.
    * <p/>
    * Because of the nature of the operation, it is not atomic.
    *
    * @param src source file/dir
    * @param dst destination
-   * @return true if the entire rename was successful.
-   * @throws IOException
+   * @throws IOException IO failure
+   * @throws SwiftOperationFailedException if the rename failed
+   * @throws FileNotFoundException if the source directory is missing, or
+   * the parent directory of the destination
    */
-  public boolean renameDirectory(Path src, Path dst) throws IOException {
+  public void rename(Path src, Path dst)
+    throws FileNotFoundException, SwiftOperationFailedException, IOException {
     if (LOG.isDebugEnabled()) {
       LOG.debug("mv " + src + " " + dst);
     }
     if (src.equals(dst)) {
-      LOG.debug("Destination==source -failing");
-      return false;
+      throw new SwiftOperationFailedException("Destination==source -failing");
     }
 
     SwiftObjectPath srcObject = toObjectPath(src);
     SwiftObjectPath destObject = toObjectPath(dst);
 
     if (SwiftUtils.isRootDir(srcObject)) {
-      LOG.debug("cannot rename root dir");
-      return false;
+      throw new SwiftOperationFailedException("cannot rename root dir");
     }
 
     if (SwiftUtils.isChildOf(srcObject, destObject)) {
-      LOG.debug("cannot move a directory under itself");
-      return false;
+      throw new SwiftOperationFailedException("cannot move a directory under itself");
     }
 
     final FileStatus srcMetadata;
-    try {
-      srcMetadata = getObjectMetadata(src);
-    } catch (FileNotFoundException e) {
-      LOG.debug("source path not found -failing");
-      return false;
-    }
+    srcMetadata = getObjectMetadata(src);
     FileStatus dstMetadata;
     try {
       dstMetadata = getObjectMetadata(dst);
@@ -373,13 +383,7 @@ public class SwiftNativeFileSystemStore {
     //parent dir (in which case the dest dir exists), or the destination
     //directory is root, in which case it must also exist
     if (dstParent !=null && !dstParent.equals(srcParent)) {
-      try {
         getObjectMetadata(dstParent);
-      } catch (FileNotFoundException e) {
-        //destination parent doesn't exist; bail out
-        LOG.debug("destination parent directory "+ dstParent + " doesn't exist");
-        return false;
-      }
     }
 
     boolean destExists = dstMetadata != null;
@@ -404,8 +408,8 @@ public class SwiftNativeFileSystemStore {
           destPath = toObjectPath(new Path(dst, src.getName()));
         } else {
           //outcome #1 dest it's a file: fail
-          LOG.debug("cannot rename a file over one that already exists");
-          return false;
+          throw new SwiftOperationFailedException(
+            "cannot rename a file over one that already exists");
         }
       } else {
         //outcome #3 -new entry
@@ -414,8 +418,6 @@ public class SwiftNativeFileSystemStore {
 
 
       copyThenDeleteObject(srcObject, destPath);
-      return true;
-
 
     } else {
 
@@ -427,8 +429,8 @@ public class SwiftNativeFileSystemStore {
 
       if (destExists && !destIsDir) {
         // #1 destination is a file: fail
-        LOG.debug("the source is a directory, but not the destination");
-        return false;
+        throw new SwiftOperationFailedException(
+          "the source is a directory, but not the destination");
       }
 
       Path targetPath;
@@ -441,27 +443,30 @@ public class SwiftNativeFileSystemStore {
       }
       SwiftObjectPath targetObjectPath = toObjectPath(targetPath);
 
-      //enum the child entries amd everything underneath
+      //enum the child entries and everything underneath
       List<FileStatus> fileStatuses = listDirectory(toObjectPath(src.getParent()),
                                                    true, false);
 
-      boolean result = true;
-
       //iterative copy of everything under the directory
       for (FileStatus fileStatus : fileStatuses) {
-        if (!fileStatus.isDir()) {
           try {
             copyThenDeleteObject(toObjectPath(fileStatus.getPath()),
                                  targetObjectPath);
           } catch (FileNotFoundException e) {
             LOG.info("Skipping rename of " + fileStatus.getPath());
           }
-        } else {
-          //this is a subdirectory
+      }
+      //now rename self. If missing, create the dest directory and warn
+      if (!SwiftUtils.isRootDir(srcObject)) {
+        try {
+          copyThenDeleteObject(toObjectPath(src),
+                               targetObjectPath);
+        } catch (FileNotFoundException e) {
+          //create the destination directory
+          LOG.warn("Source directory deleted during rename", e);
+          innerCreateDirectory(destObject);
         }
       }
-
-      return result;
     }
   }
 

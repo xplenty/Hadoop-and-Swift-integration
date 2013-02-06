@@ -120,47 +120,5 @@ public class TestSwiftFileSystemPartitionedUploads extends SwiftFileSystemBaseTe
 
   }
 
-  /**
-   * test on concurrent file system changes
-   */
-  @Test(expected = FileNotFoundException.class)
-  public void raceConditionOnDirDeleteTest() throws IOException, URISyntaxException, InterruptedException {
-    final SwiftNativeFileSystem fileSystem = swiftFS;
-
-    final String message = "message";
-    final Path fileToRead = new Path("/home/huge/files/many-files/file");
-    final ExecutorService executorService = Executors.newFixedThreadPool(2);
-    fileSystem.create(new Path("/home/huge/file/test/file1"));
-    fileSystem.create(new Path("/home/huge/documents/doc1"));
-    fileSystem.create(new Path("/home/huge/pictures/picture"));
-
-    executorService.execute(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          fileSystem.delete(new Path("/home/huge"), true);
-        } catch (IOException e) {
-          throw new RuntimeException("test failed", e);
-        }
-      }
-    });
-    executorService.execute(new Runnable() {
-      @Override
-      public void run() {
-        try {
-          final FSDataOutputStream outputStream = fileSystem.create(fileToRead);
-          outputStream.write(message.getBytes());
-          outputStream.close();
-        } catch (IOException e) {
-          throw new RuntimeException("test failed", e);
-        }
-      }
-    });
-
-    executorService.awaitTermination(2, TimeUnit.MINUTES);
-
-    fileSystem.open(fileToRead);
-
-  }
 
 }

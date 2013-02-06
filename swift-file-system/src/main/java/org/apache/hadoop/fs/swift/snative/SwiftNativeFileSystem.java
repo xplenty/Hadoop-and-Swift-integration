@@ -20,11 +20,13 @@ package org.apache.hadoop.fs.swift.snative;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.fs.swift.exceptions.SwiftException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftNotDirectoryException;
+import org.apache.hadoop.fs.swift.exceptions.SwiftOperationFailedException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftUnsupportedFeatureException;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
 import org.apache.hadoop.fs.swift.util.SwiftUtils;
@@ -73,6 +75,15 @@ public class SwiftNativeFileSystem extends FileSystem {
   public SwiftNativeFileSystem(SwiftNativeFileSystemStore store)
           throws IOException {
     this.store = store;
+  }
+
+  /**
+   * This is for testing
+   * @return the inner store class
+   */
+  @InterfaceAudience.Private
+  public SwiftNativeFileSystemStore getStore() {
+    return store;
   }
 
   /**
@@ -373,7 +384,23 @@ public class SwiftNativeFileSystem extends FileSystem {
   @Override
   public boolean rename(Path src, Path dst) throws IOException {
 
-    return store.renameDirectory(src, dst);
+    try {
+      store.rename(makeAbsolute(src), makeAbsolute(dst));
+      //success
+      return true;
+    } catch (SwiftOperationFailedException e) {
+      //downgrade to a failure
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Failure to rename: " +e,e);
+      }
+      return false;
+    } catch (FileNotFoundException e) {
+      //downgrade to a failure
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Failure to rename: " + e, e);
+      }
+      return false;
+    }
   }
 
 /*
@@ -577,7 +604,7 @@ public class SwiftNativeFileSystem extends FileSystem {
    *                               and recursive is true)
    */
   private boolean innerDelete(Path path, boolean recursive) throws IOException {
-    Path absolutePath = makeAbsolute(path);
+    Path target = makeAbsolute(path);
     final FileStatus fileStatus;
     fileStatus = getFileStatus(path);
     if (LOG.isDebugEnabled()) {
@@ -588,7 +615,7 @@ public class SwiftNativeFileSystem extends FileSystem {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Deleting simple file '" + path + "'");
       }
-      store.deleteObject(absolutePath);
+      store.deleteObject(target);
     } else {
       //it's a directory
       if (LOG.isDebugEnabled()) {
@@ -596,56 +623,19 @@ public class SwiftNativeFileSystem extends FileSystem {
       }
 
       //get all entries
-      List<FileStatus> children = store.listDirectory(absolutePath, true, true);
-      if (children.isEmpty()) {
-        //the directory went away during the non-atomic stages of the operation.
-        // Return false as it was not this thread doing the deletion.
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Path '" + path + "' has no status -it has 'gone away'");
-        }
-        return false;
-      }
-      //now build a list without ourselves in it
-      Path dirPath = fileStatus.getPath();
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Found " + children.size() + " child entries under " + dirPath);
-      }
-      List<FileStatus> targets = new ArrayList<FileStatus>(children.size());
-      for (FileStatus child : children) {
-        if (!child.getPath().equals(dirPath)) {
-          if (LOG.isDebugEnabled()) {
-            LOG.debug("Child entry: " + child);
-          }
-          targets.add(child);
-        } else {
-          if (LOG.isDebugEnabled()) {
-            LOG.debug("skipping own entry:" + child);
-          }
-        }
-      }
-
+      List<FileStatus> children = store.listDirectory(target, true, true);
 
       //look to see if there are now any children
-      if (!targets.isEmpty() && !recursive) {
+      if (!children.isEmpty() && !recursive) {
         //if there are children, unless this is a recursive operation, fail immediately
-        throw new SwiftException("Directory " + path + " is not empty.");
+        throw new SwiftOperationFailedException("Directory " + path + " is not empty.");
       }
 
-
-
       //delete the children
-      for (FileStatus child : targets) {
+      for (FileStatus child : children) {
         Path childPath = child.getPath();
         try {
           store.deleteObject(childPath);
-/*
-          if (!innerDelete(childPath, true)) {
-            if (LOG.isDebugEnabled()) {
-              LOG.debug("Failed to  recursively delete '" + childPath + "'");
-            }
-            return false;
-          }
-*/
         } catch (FileNotFoundException e) {
           //the path went away -race conditions.
           //do not fail, as the outcome is still OK.
@@ -653,8 +643,8 @@ public class SwiftNativeFileSystem extends FileSystem {
         }
       }
       //here any children that existed have been deleted
-      //so rm the directory
-      store.rmdir(absolutePath);
+      //so rm the directory (which is a no-op for /)
+      store.rmdir(target);
     }
 
     return true;

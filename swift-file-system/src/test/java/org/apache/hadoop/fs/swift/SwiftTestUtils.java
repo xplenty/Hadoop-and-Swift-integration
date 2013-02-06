@@ -85,8 +85,7 @@ public class SwiftTestUtils {
     String val = props.getProperty(key);
     if (expected == null) {
       assertNull("Non null property " + key + " = " + val, val);
-    }
-    else {
+    } else {
       assertEquals("property " + key + " = " + val,
                    expected,
                    val);
@@ -116,12 +115,12 @@ public class SwiftTestUtils {
    * @throws IOException IO problems
    */
   public static void writeAndRead(FileSystem fs,
-                              Path path,
-                              byte[] src,
-                              int len,
-                              int blocksize,
-                              boolean overwrite,
-                              boolean delete) throws IOException {
+                                  Path path,
+                                  byte[] src,
+                                  int len,
+                                  int blocksize,
+                                  boolean overwrite,
+                                  boolean delete) throws IOException {
     assertTrue("Not enough data in source array to write " + len + " bytes",
                src.length >= len);
     fs.mkdirs(path.getParent());
@@ -206,15 +205,14 @@ public class SwiftTestUtils {
   public static String toChar(byte b) {
     if (b >= 0x20) {
       return Character.toString((char) b);
-    }
-    else {
+    } else {
       return String.format("%02x", b);
     }
   }
 
   public static String toChar(byte[] buffer) {
     StringBuilder builder = new StringBuilder(buffer.length);
-    for (byte b:buffer) {
+    for (byte b : buffer) {
       builder.append(toChar(b));
     }
     return builder.toString();
@@ -224,21 +222,28 @@ public class SwiftTestUtils {
     char[] chars = s.toCharArray();
     int len = chars.length;
     byte[] buffer = new byte[len];
-    for (int i=0; i<len; i++) {
-      buffer[i]=(byte)(chars[i]&0xff);
+    for (int i = 0; i < len; i++) {
+      buffer[i] = (byte) (chars[i] & 0xff);
     }
     return buffer;
   }
 
   public static void cleanupInTeardown(FileSystem fileSystem,
                                        String cleanupPath) {
+    noteAction("TEARDOWN");
     try {
       if (fileSystem != null) {
         fileSystem.delete(new Path(cleanupPath).makeQualified(fileSystem),
                           true);
       }
     } catch (Exception e) {
-      LOG.error("Error deleting "+cleanupPath+": " + e, e);
+      LOG.error("Error deleting in teardown " + cleanupPath + ": " + e, e);
+    }
+  }
+
+  public static void noteAction(String action) {
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("==============  "+ action +" =============");
     }
   }
 
@@ -263,7 +268,7 @@ public class SwiftTestUtils {
    * @param message message to use in the text
    * @throws AssumptionViolatedException
    */
-  public static void unsupported(String message){
+  public static void unsupported(String message) {
     throw new AssumptionViolatedException(message);
   }
 
@@ -299,17 +304,17 @@ public class SwiftTestUtils {
   }
 
   public static void writeTextFile(SwiftNativeFileSystem fs,
-                            Path path,
-                            String text,
-                            boolean overwrite) throws IOException {
+                                   Path path,
+                                   String text,
+                                   boolean overwrite) throws IOException {
     FSDataOutputStream stream = fs.create(path, overwrite);
     stream.write(toAsciiByteArray(text));
     stream.close();
   }
 
   public static void assertDeleted(FileSystem fs,
-                               Path path,
-                               boolean recursive) throws IOException {
+                                   Path path,
+                                   boolean recursive) throws IOException {
     assertTrue(fs.delete(path, recursive));
     assertFalse("failed to delete " + path, fs.exists(path));
   }
@@ -373,7 +378,7 @@ public class SwiftTestUtils {
    * @throws IOException IO problems during file operations
    */
   static void assertIsFile(FileSystem fileSystem, Path filename) throws
-                                                           IOException {
+                                                                 IOException {
     assertPathExists("Expected file", fileSystem, filename);
     FileStatus status = fileSystem.getFileStatus(filename);
     String fileInfo = filename + "  " + status;
@@ -411,12 +416,13 @@ public class SwiftTestUtils {
   static void assertPathExists(String message,
                                FileSystem fileSystem,
                                Path path) throws IOException {
-    if(!fileSystem.exists(path)) {
+    if (!fileSystem.exists(path)) {
       //failure, report it
       fail(message + ": not found " + path + " in "
            + ls(fileSystem, path.getParent()));
     }
   }
+
   /**
    * Assert that a path does not exist
    * @param message message to include in the assertion failure message
@@ -425,8 +431,8 @@ public class SwiftTestUtils {
    * @throws IOException IO problems
    */
   static void assertPathDoesNotExist(String message,
-                               FileSystem fileSystem,
-                               Path path) throws IOException {
+                                     FileSystem fileSystem,
+                                     Path path) throws IOException {
     try {
       FileStatus status = fileSystem.getFileStatus(path);
       fail(message + ": unexpectedly found " + path + " as  " + status);

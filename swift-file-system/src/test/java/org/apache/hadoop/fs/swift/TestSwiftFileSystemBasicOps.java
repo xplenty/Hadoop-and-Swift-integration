@@ -296,6 +296,8 @@ public class TestSwiftFileSystemBasicOps {
     try {
       //create the dir
       fs.mkdirs(path);
+      //assert the parent has the directory nature
+      assertDirectory(fs, path);
       //create the child dir
       writeTextFile(fs, child, "child file", true);
       //assert the parent has the directory nature
