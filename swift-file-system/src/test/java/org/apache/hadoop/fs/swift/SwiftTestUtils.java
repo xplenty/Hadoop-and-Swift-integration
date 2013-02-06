@@ -31,13 +31,12 @@ import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
 import org.junit.internal.AssumptionViolatedException;
 
 import static org.junit.Assert.*;
-
 import java.io.FileNotFoundException;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Properties;
+
 
 /**
  * Utilities used across test cases
@@ -56,7 +55,7 @@ public class SwiftTestUtils {
    */
   public static URI getServiceURI(Configuration conf) throws
                                                       SwiftConfigurationException {
-    String instance = conf.getTrimmed(TEST_FS_SWIFT);
+    String instance = conf.get(TEST_FS_SWIFT);
     if (instance == null) {
       throw new SwiftConfigurationException(
         "Missing configuration entry " + TEST_FS_SWIFT);
@@ -69,7 +68,7 @@ public class SwiftTestUtils {
   }
 
   public static boolean hasServiceURI(Configuration conf) {
-    String instance = conf.getTrimmed(TEST_FS_SWIFT);
+    String instance = conf.get(TEST_FS_SWIFT);
     return instance != null;
   }
 

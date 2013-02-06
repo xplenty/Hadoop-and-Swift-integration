@@ -190,7 +190,7 @@ public final class RestClientBindings {
   public static void copy(Configuration conf, String confkey, Properties props,
                           String propsKey,
                           boolean required) throws SwiftConfigurationException {
-    String val = conf.getTrimmed(confkey);
+    String val = conf.get(confkey);
     if (required && val == null) {
       throw new SwiftConfigurationException(
         "Missing mandatory configuration option: "

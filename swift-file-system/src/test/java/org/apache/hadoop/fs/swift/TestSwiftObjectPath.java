@@ -27,7 +27,7 @@ import org.junit.Test;
 
 import java.net.URI;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Unit tests for SwiftObjectPath class.

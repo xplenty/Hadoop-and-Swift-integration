@@ -22,6 +22,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystemContractBaseTest;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
+import org.junit.internal.AssumptionViolatedException;
 
 import java.io.IOException;
 import java.net.URI;
@@ -41,9 +42,7 @@ public abstract class NativeSwiftFileSystemContractBaseTest
   protected void setUp() throws Exception {
     final URI uri = getFilesystemURI();
     final Configuration conf = new Configuration();
-
-    SwiftNativeFileSystem swiftFS = createSwiftFS();
-    fs = swiftFS;
+    fs = createSwiftFS();
     fs.initialize(uri, conf);
     super.setUp();
   }
@@ -64,9 +63,13 @@ public abstract class NativeSwiftFileSystemContractBaseTest
    */
   protected abstract SwiftNativeFileSystem createSwiftFS() throws IOException;
 
+  /**
+   * overriding to disable; test runner should mark as skipped
+   * @throws AssumptionViolatedException
+   */
   @Override
   public void testMkdirsWithUmask() {
-    //overriding to disable
+    throw new AssumptionViolatedException("not supported");
   }
 
 }

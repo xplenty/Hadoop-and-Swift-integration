@@ -569,7 +569,6 @@ public class SwiftNativeFileSystem extends FileSystem {
    * @return true if the object was deleted
    * @throws IOException IO problems
    */
-  @Override
   public boolean delete(Path path, boolean recursive) throws IOException {
     try {
       return innerDelete(path, recursive);
@@ -577,6 +576,15 @@ public class SwiftNativeFileSystem extends FileSystem {
       //base path was not found.
       return false;
     }
+  }
+
+  /**
+   * Delete a file
+   * @deprecated Use {@link #delete(Path, boolean)} instead.
+   */
+  @Deprecated
+  public boolean delete(Path f) throws IOException {
+    return delete(f, true);
   }
 
   /**
