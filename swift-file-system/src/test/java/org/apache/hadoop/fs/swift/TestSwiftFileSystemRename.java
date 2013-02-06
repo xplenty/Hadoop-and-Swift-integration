@@ -112,7 +112,7 @@ public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
   }
 
   @Test
-  public void testRenameDirectoryAsExistingDirectory() throws Exception {
+  public void testRenameDirectoryIntoExistingDirectory() throws Exception {
     assumeRenameSupported();
 
     Path src = path("/test/hadoop/dir");
@@ -126,10 +126,12 @@ public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
     rename(src, dst, true, false, true);
     assertExists("new dir", path("/test/new/newdir/dir"));
     assertExists("Renamed nested file1", path("/test/new/newdir/dir/file1"));
-    assertExists("Renamed nested subdir",
-                 path("/test/new/newdir/dir/subdir/file2"));
     assertPathDoesNotExist("Nested file1 should have been deleted",
-                path("/test/hadoop/dir/file1"));
+                           path("/test/hadoop/dir/file1"));
+    assertExists("Renamed nested subdir",
+                 path("/test/new/newdir/dir/subdir/"));
+    assertExists("file under subdir",
+                 path("/test/new/newdir/dir/subdir/file2"));
 
     assertPathDoesNotExist("Nested /test/hadoop/dir/subdir/file2 still exists",
                 path("/test/hadoop/dir/subdir/file2"));

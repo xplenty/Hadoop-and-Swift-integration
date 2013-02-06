@@ -451,11 +451,14 @@ public class SwiftNativeFileSystemStore {
       logDirectory("Directory to copy",srcObject, fileStatuses);
       //iterative copy of everything under the directory
       for (FileStatus fileStatus : fileStatuses) {
-          try {
-            copyThenDeleteObject(toObjectPath(fileStatus.getPath()),
-                                 targetObjectPath);
+        Path copySourcePath = fileStatus.getPath();
+        SwiftObjectPath copyDestination = toObjectPath(
+          new Path(targetPath, copySourcePath.getName()));
+        try {
+            copyThenDeleteObject(toObjectPath(copySourcePath),
+                                copyDestination);
           } catch (FileNotFoundException e) {
-            LOG.info("Skipping rename of " + fileStatus.getPath());
+            LOG.info("Skipping rename of " + copySourcePath);
           }
       }
       //now rename self. If missing, create the dest directory and warn

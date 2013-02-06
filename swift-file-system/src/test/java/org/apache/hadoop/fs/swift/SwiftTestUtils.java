@@ -349,11 +349,13 @@ public class SwiftTestUtils {
       //surfaces when someone calls getParent() on something at the top of the path
       return "/";
     }
-    FileStatus[] stats = new FileStatus[0];
+    FileStatus[] stats;
     try {
       stats = fileSystem.listStatus(path);
     } catch (FileNotFoundException e) {
       return "ls " + path + " -file not found";
+    } catch (IOException e) {
+      return "ls " + path + " -failed: "+ e;
     }
     String pathname = path.toString();
     return dumpStats(pathname, stats);
@@ -418,8 +420,8 @@ public class SwiftTestUtils {
                                Path path) throws IOException {
     if (!fileSystem.exists(path)) {
       //failure, report it
-      fail(message + ": not found " + path + " in "
-           + ls(fileSystem, path.getParent()));
+      fail(message + ": not found " + path + " in " + path.getParent());
+           ls(fileSystem, path.getParent());
     }
   }
 
