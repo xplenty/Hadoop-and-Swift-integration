@@ -382,8 +382,8 @@ public class SwiftNativeFileSystemStore {
     //skip the overhead of a HEAD call if the src and dest share the same
     //parent dir (in which case the dest dir exists), or the destination
     //directory is root, in which case it must also exist
-    if (dstParent !=null && !dstParent.equals(srcParent)) {
-        getObjectMetadata(dstParent);
+    if (dstParent != null && !dstParent.equals(srcParent)) {
+      getObjectMetadata(dstParent);
     }
 
     boolean destExists = dstMetadata != null;
@@ -444,9 +444,11 @@ public class SwiftNativeFileSystemStore {
       SwiftObjectPath targetObjectPath = toObjectPath(targetPath);
 
       //enum the child entries and everything underneath
-      List<FileStatus> fileStatuses = listDirectory(toObjectPath(src.getParent()),
-                                                   true, false);
+      List<FileStatus> fileStatuses = listDirectory(srcObject,
+                                                   true,
+                                                   false);
 
+      logDirectory("Directory to copy",srcObject, fileStatuses);
       //iterative copy of everything under the directory
       for (FileStatus fileStatus : fileStatuses) {
           try {
@@ -459,7 +461,7 @@ public class SwiftNativeFileSystemStore {
       //now rename self. If missing, create the dest directory and warn
       if (!SwiftUtils.isRootDir(srcObject)) {
         try {
-          copyThenDeleteObject(toObjectPath(src),
+          copyThenDeleteObject(srcObject,
                                targetObjectPath);
         } catch (FileNotFoundException e) {
           //create the destination directory
@@ -471,13 +473,29 @@ public class SwiftNativeFileSystemStore {
   }
 
   /**
+   * Debug action to dump directory statuses to the debug log
+   * @param message explanation
+   * @param objectPath object path (can be null)
+   * @param statuses listing output
+   */
+  private void logDirectory(String message, SwiftObjectPath objectPath,
+                            Iterable<FileStatus> statuses) {
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug(message+": listing of " + objectPath);
+      for (FileStatus fileStatus : statuses) {
+          LOG.debug(fileStatus.getPath());
+      }
+    }
+  }
+
+  /**
    * Copy and object then, if the copy worked, delete it.
    * If the copy failed, the source object is not deleted.
    * No checks are made on the validity of the arguments,
    * the assumption is that the caller has already done this.
    * @param srcObject source object path
    * @param destObject destination object path
-   * @return
    * @throws IOException
    */
   private void copyThenDeleteObject(SwiftObjectPath srcObject,

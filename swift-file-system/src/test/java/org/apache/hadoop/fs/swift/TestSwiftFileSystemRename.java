@@ -122,6 +122,7 @@ public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
 
     Path dst = path("/test/new/newdir");
     fs.mkdirs(dst);
+    //this renames into a child
     rename(src, dst, true, false, true);
     assertExists("new dir", path("/test/new/newdir/dir"));
     assertExists("Renamed nested file1", path("/test/new/newdir/dir/file1"));
@@ -146,7 +147,7 @@ public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
     Path child = new Path(parentdir, "child");
     createFile(child);
 
-    rename(parentdir, parentdir, true, true, true);
+    rename(parentdir, parentdir, false, true, true);
     //verify the child is still there
     assertIsFile(child);
   }

@@ -1015,8 +1015,8 @@ public final class SwiftRestClient {
    * @throws IOException
    */
   private void preRemoteCommand(String operation) throws IOException {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Executing " + operation);
+    if (LOG.isTraceEnabled()) {
+      LOG.trace("Executing " + operation);
     }
     authIfNeeded();
   }
@@ -1282,7 +1282,12 @@ public final class SwiftRestClient {
                                                          HttpClient client)
                                                         throws IOException {
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Executing " + method.getName() + " " + method.getURI());
+      StringBuilder builder = new StringBuilder(
+        method.getName() + " " + method.getURI()+"\n");
+      for (Header header:method.getRequestHeaders()) {
+        builder.append(header.toString());
+      }
+      LOG.debug(builder);
     }
     int statusCode = client.executeMethod(method);
     if (LOG.isDebugEnabled()) {
