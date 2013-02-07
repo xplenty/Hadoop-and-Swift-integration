@@ -62,7 +62,6 @@ import org.apache.hadoop.fs.swift.ssl.EasySSLProtocolSocketFactory;
 import org.apache.hadoop.fs.swift.util.JSONUtil;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
 import org.apache.hadoop.fs.swift.util.SwiftUtils;
-import org.apache.http.conn.params.ConnRoutePNames;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
