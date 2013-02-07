@@ -63,6 +63,7 @@ import org.apache.hadoop.fs.swift.util.JSONUtil;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
 import org.apache.hadoop.fs.swift.util.SwiftUtils;
 
+import java.io.EOFException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -1124,10 +1125,6 @@ public final class SwiftRestClient {
       //Valid is more than a simple 200; even 404 "not found" is considered
       //valid -which it is for many methods.
 
-      if (statusCode == SC_BAD_REQUEST) {
-        throw new SwiftBadRequestException("Bad request against " + uri);
-      }
-
       //validate the allowed status code for this operation
       int[] allowedStatusCodes = processor.getAllowedStatusCodes();
       boolean validResponse = isStatusCodeExpected(statusCode,
@@ -1150,6 +1147,7 @@ public final class SwiftRestClient {
   /**
    * Build an exception from a failed operation. This can include generating
    * specific exceptions (e.g. FileNotFound), as well as the default
+   * {@link SwiftInvalidResponseException}
    * {@link SwiftInvalidResponseException}.
    * @param uri URI for operation
    * @param method operation that failed
@@ -1179,6 +1177,17 @@ public final class SwiftRestClient {
         fault = new FileNotFoundException("Operation " + method.getName()
                                           + " on " + uri);
         break;
+      case SC_BAD_REQUEST:
+        //bad HTTP request
+        fault =  new SwiftBadRequestException("Bad request against " + uri);
+        break;
+
+      case SC_REQUESTED_RANGE_NOT_SATISFIABLE:
+        //out of range: end of the message
+        fault = new EOFException(method.getStatusText());
+        break;
+
+
       default:
         fault = new SwiftInvalidResponseException(
           errorMessage,
@@ -1202,9 +1211,6 @@ public final class SwiftRestClient {
     return perform(uri, new GetMethodProcessor<InputStream>() {
       @Override
       public InputStream extractResult(GetMethod method) throws IOException {
-        if (method.getStatusCode() == HttpStatus.SC_NOT_FOUND) {
-          throw new FileNotFoundException("No content at the URL " + uri);
-        }
         return new HttpInputStreamWithRelease(uri, method);
       }
 
