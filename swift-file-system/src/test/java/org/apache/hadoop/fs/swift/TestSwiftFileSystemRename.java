@@ -18,24 +18,15 @@
 
 package org.apache.hadoop.fs.swift;
 
-import org.apache.hadoop.conf.Configuration;
+import static org.apache.hadoop.fs.swift.SwiftTestUtils.*;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.swift.http.RestClientBindings;
 import org.junit.Test;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.URI;
-import java.util.Locale;
-import java.util.Properties;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -188,24 +179,67 @@ public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
     rename(parentdir, childchilddir, false, true, false);
   }
 
-
   @Test
-  public void testRenameDirWithSubDirs() throws IOException {
+  public void testRenameFileAndVerifyContents() throws IOException {
     assumeRenameSupported();
 
-    final String message = "message";
     final Path filePath = new Path("/test/home/user/documents/file.txt");
     final Path newFilePath = new Path("/test/home/user/files/file.txt");
     mkdirs(newFilePath.getParent());
-    SwiftTestUtils.writeTextFile(fs, filePath, message, false);
+    int len = 1024;
+    byte[] dataset = dataset(len,'A',26);
+    writeDataset(fs, filePath,dataset, len,len, false);
     rename(filePath, newFilePath, true, false, true);
-
-    String reread = SwiftTestUtils.readBytesToString(fs, newFilePath, 20);
-    final FSDataInputStream inputStream = fs.open(newFilePath);
-
-    assertEquals("Wrong content read back from " + newFilePath, message,
-                 reread);
+    byte[] dest = readDataset(fs, newFilePath, len);
+    compareByteArrays(dataset, dest,len);
+    String reread = readBytesToString(fs, newFilePath, 20);
   }
 
+
+  @Test
+  public void testMoveFileUnderParent() throws Throwable {
+    if (!renameSupported()) return;
+    Path filepath = path("test/file");
+    createFile(filepath);
+    //HDFS expects rename src, src -> true
+    rename(filepath, filepath, true, true, true);
+    //verify the file is still there
+    assertIsFile(filepath);
+  }
+
+  /**
+   * trying to rename a file onto itself should succeed (it's a no-op)
+   *
+   */
+  @Test
+  public void testRenameFileToSelf() throws Throwable {
+    if (!renameSupported()) return;
+    Path filepath = path("test/file");
+    createFile(filepath);
+    //HDFS expects rename src, src -> true
+    rename(filepath, filepath, true, true, true);
+    //verify the file is still there
+    assertIsFile(filepath);
+  }
+
+  @Test
+  public void testRenamedConsistence() throws IOException {
+    assumeRenameSupported();
+    describe("verify that overwriting a file with new data doesn't impact" +
+             " the existing content");
+
+    final Path filePath = new Path("/test/home/user/documents/file.txt");
+    final Path newFilePath = new Path("/test/home/user/files/file.txt");
+    mkdirs(newFilePath.getParent());
+    int len = 1024;
+    byte[] dataset = dataset(len, 'A', 26);
+    byte[] dataset2 = dataset(len, 'a', 26);
+    writeDataset(fs, filePath, dataset, len, len, false);
+    rename(filePath, newFilePath, true, false, true);
+    SwiftTestUtils.writeAndRead(fs,filePath, dataset2, len,len,false,true);
+    byte[] dest = readDataset(fs, newFilePath, len);
+    compareByteArrays(dataset, dest, len);
+    String reread = readBytesToString(fs, newFilePath, 20);
+  }
 
 }

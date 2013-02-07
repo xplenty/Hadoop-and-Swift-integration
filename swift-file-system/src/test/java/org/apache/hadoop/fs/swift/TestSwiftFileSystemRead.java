@@ -23,34 +23,24 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-import static org.junit.Assert.assertTrue;
+import static org.apache.hadoop.fs.swift.SwiftTestUtils.readBytesToString;
+import static org.apache.hadoop.fs.swift.SwiftTestUtils.writeTextFile;
+import static org.junit.Assert.assertEquals;
 
-public class TestSwiftFileSystemDelete extends SwiftFileSystemBaseTest {
+public class TestSwiftFileSystemRead extends SwiftFileSystemBaseTest {
 
-  @Test
-  public void testDeleteEmptyFile() throws IOException {
-    final Path file = new Path("/test/testDeleteFile");
-    createEmptyFile(file);
-    SwiftTestUtils.noteAction("about to delete");
-    assertDeleted(file, true);
-  }
 
   @Test
-  public void testDeleteNonEmptyFile() throws IOException {
-    final Path file = new Path("/test/testDeleteFile");
-    createFile(file);
-    assertDeleted(file, true);
-  }
+  public void testOverRead() throws IOException {
+    final String message = "message";
+    final Path filePath = new Path("/test/file.txt");
 
-  @Test
-  public void testRmRootDirRecursiveIsForbidden() throws Throwable {
-    Path root = path("/");
-    Path testFile = path("/test");
-    createFile(testFile);
-    assertTrue("rm(/) returned false", fs.delete(root, true));
-    assertExists("Root dir is missing",root);
-    assertPathDoesNotExist("test file not deleted", testFile);
-  }
+    writeTextFile(fs, filePath, message, false);
 
+    String reread = readBytesToString(fs, filePath, 20);
+    assertEquals("Wrong content read back from " + false,
+                 message,
+                 reread);
+  }
 
 }

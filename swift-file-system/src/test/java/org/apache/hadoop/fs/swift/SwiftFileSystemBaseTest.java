@@ -27,6 +27,9 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.swift.exceptions.SwiftOperationFailedException;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystemStore;
+
+import static org.apache.hadoop.fs.swift.SwiftTestUtils.*;
+
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
@@ -48,22 +51,31 @@ public class SwiftFileSystemBaseTest {
 
   @Before
   public void setUp() throws Exception {
-    SwiftTestUtils.noteAction("setup");
+    noteAction("setup");
     final URI uri = getFilesystemURI();
     final Configuration conf = new Configuration();
 
     fs = createSwiftFS();
     fs.initialize(uri, conf);
-    SwiftTestUtils.noteAction("setup complete");
+    noteAction("setup complete");
   }
 
   @After
   public void tearDown() throws Exception {
-    SwiftTestUtils.cleanupInTeardown(fs, "/test");
+    cleanupInTeardown(fs, "/test");
+  }
+
+  /**
+   * Describe the test, combining some logging with details
+   * for people reading the code
+   * @param description test description
+   */
+  protected void describe(String description) {
+    noteAction(description);
   }
 
   protected URI getFilesystemURI() throws URISyntaxException, IOException {
-    return SwiftTestUtils.getServiceURI(new Configuration());
+    return getServiceURI(new Configuration());
   }
 
   protected SwiftNativeFileSystem createSwiftFS() throws IOException {
@@ -166,11 +178,12 @@ public class SwiftFileSystemBaseTest {
   }
 
   public void assertExists(String message, Path path) throws IOException {
-    SwiftTestUtils.assertPathExists(message, fs, path);
+    assertPathExists(fs, message, path);
   }
 
-  public void assertPathDoesNotExist(String message, Path path) throws IOException {
-    SwiftTestUtils.assertPathDoesNotExist(message, fs, path);
+  public void assertPathDoesNotExist(String message, Path path) throws
+                                                                IOException {
+    SwiftTestUtils.assertPathDoesNotExist(fs, message, path);
   }
 
   /**
@@ -180,7 +193,7 @@ public class SwiftFileSystemBaseTest {
    * @throws IOException IO problems during file operations
    */
   protected void assertIsFile(Path filename) throws IOException {
-    SwiftTestUtils.assertIsFile(fs, filename);
+   SwiftTestUtils.assertIsFile(fs, filename);
   }
 
 
@@ -196,10 +209,7 @@ public class SwiftFileSystemBaseTest {
 
 
   protected void assertDeleted(Path file, boolean recursive) throws IOException {
-    assertExists("about to be deleted file", file);
-    boolean deleted = fs.delete(file, recursive);
-    String dir = ls(file.getParent());
-    assertTrue("Delete failed on " + file + ": " + dir, deleted);
-    assertPathDoesNotExist("Deleted file", file);
+    SwiftTestUtils.assertDeleted(fs, file, recursive);
+
   }
 }

@@ -356,9 +356,7 @@ public class SwiftNativeFileSystemStore {
     if (LOG.isDebugEnabled()) {
       LOG.debug("mv " + src + " " + dst);
     }
-    if (src.equals(dst)) {
-      throw new SwiftOperationFailedException("Destination==source -failing");
-    }
+    boolean renamingOnToSelf = src.equals(dst);
 
     SwiftObjectPath srcObject = toObjectPath(src);
     SwiftObjectPath destObject = toObjectPath(dst);
@@ -418,9 +416,14 @@ public class SwiftNativeFileSystemStore {
           //outcome #2 -move to subdir of dest
           destPath = toObjectPath(new Path(dst, src.getName()));
         } else {
-          //outcome #1 dest it's a file: fail
-          throw new SwiftOperationFailedException(
-            "cannot rename a file over one that already exists");
+          //outcome #1 dest it's a file: fail if differeent
+          if (!renamingOnToSelf) {
+            throw new SwiftOperationFailedException(
+              "cannot rename a file over one that already exists");
+          } else {
+            //is mv self self where self is a file. this becomes a no-op
+            return;
+          }
         }
       } else {
         //outcome #3 -new entry
@@ -442,6 +445,10 @@ public class SwiftNativeFileSystemStore {
           "the source is a directory, but not the destination");
       }
 
+      if (renamingOnToSelf) {
+        //you can't rename a directory onto itself
+        throw new SwiftOperationFailedException("Destination==source -failing");
+      }
       Path targetPath;
       if (destExists) {
         // #2 destination is a directory: create a new dir under that one
@@ -587,12 +594,6 @@ public class SwiftNativeFileSystemStore {
       //bad HTTP error code
       if (e.getStatusCode() == HttpStatus.SC_NO_CONTENT) {
         //this can come back on a root list if the container is empty
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("lsdir " + path +
-                  " status code says NO_CONTENT; "
-                  + e.toString(),
-                  e);
-        }
         if (SwiftUtils.isRootDir(path)) {
           return Collections.emptyList();
         } else {

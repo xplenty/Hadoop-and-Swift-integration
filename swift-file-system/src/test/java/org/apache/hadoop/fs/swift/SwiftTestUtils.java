@@ -25,17 +25,24 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
 import org.junit.internal.AssumptionViolatedException;
 
-import static org.junit.Assert.*;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Properties;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 
 /**
@@ -47,6 +54,7 @@ public class SwiftTestUtils {
     LogFactory.getLog(SwiftTestUtils.class);
 
   protected static final String TEST_FS_SWIFT = "test.fs.swift.name";
+  public static final String IO_FILE_BUFFER_SIZE = "io.file.buffer.size";
 
   /**
    * Get the test URI
@@ -105,6 +113,7 @@ public class SwiftTestUtils {
    * sequential runs to the same path use datasets with different character
    * moduli.
    *
+   * @param fs filesystem
    * @param path path to write to
    * @param len length of data
    * @param overwrite should the create option allow overwrites?
@@ -120,35 +129,75 @@ public class SwiftTestUtils {
                                   int blocksize,
                                   boolean overwrite,
                                   boolean delete) throws IOException {
-    assertTrue("Not enough data in source array to write " + len + " bytes",
-               src.length >= len);
     fs.mkdirs(path.getParent());
 
-    FSDataOutputStream out = fs.create(path, overwrite,
-                                       fs.getConf()
-                                         .getInt("io.file.buffer.size",
-                                                 4096),
-                                       (short) 1,
-                                       blocksize);
-    out.write(src, 0, len);
-    out.close();
+    writeDataset(fs, path, src, len, blocksize, overwrite);
 
-    assertFileHasLength(fs, path, len);
-
-    FSDataInputStream in = fs.open(path);
-    byte[] dest = new byte[len];
-    in.readFully(0, dest);
-    in.close();
+    byte[] dest = readDataset(fs, path, len);
 
     compareByteArrays(src, dest, len);
 
     if (delete) {
       boolean deleted = fs.delete(path, false);
       assertTrue("Deleted", deleted);
-      assertPathDoesNotExist("Cleanup failed", fs, path);
+      assertPathDoesNotExist(fs, "Cleanup failed", path);
     }
   }
 
+  /**
+   * Write a file.
+   * Optional flags control
+   * whether file overwrite operations should be enabled
+   * @param fs filesystem
+   * @param path path to write to
+   * @param len length of data
+   * @param overwrite should the create option allow overwrites?
+   * @throws IOException IO problems
+   */
+  public static void writeDataset(FileSystem fs,
+                                   Path path,
+                                   byte[] src,
+                                   int len,
+                                   int blocksize,
+                                   boolean overwrite) throws IOException {
+    assertTrue("Not enough data in source array to write " + len + " bytes",
+               src.length >= len);
+    FSDataOutputStream out = fs.create(path,
+                                       overwrite,
+                                       fs.getConf()
+                                         .getInt(IO_FILE_BUFFER_SIZE,
+                                                 4096),
+                                       (short) 1,
+                                       blocksize);
+    out.write(src, 0, len);
+    out.close();
+    assertFileHasLength(fs, path, len);
+  }
+
+
+  /**
+   * Read the file and convert to a byte dataaset
+   * @param fs filesystem
+   * @param path path to read from
+   * @param len length of data to read
+   * @return the bytes
+   * @throws IOException IO problems
+   */
+  public static byte[] readDataset(FileSystem fs, Path path, int len)
+      throws IOException {
+    FSDataInputStream in = fs.open(path);
+    byte[] dest = new byte[len];
+    in.readFully(0, dest);
+    in.close();
+    return dest;
+  }
+
+  /**
+   * Assert that tthe array src[0..len] and dest[] are equal
+   * @param src source data
+   * @param dest actual
+   * @param len length of bytes to compare
+   */
   public static void compareByteArrays(byte[] src,
                                        byte[] dest,
                                        int len) {
@@ -302,20 +351,35 @@ public class SwiftTestUtils {
                fileStatus.isDirectory());
   }
 
-  public static void writeTextFile(SwiftNativeFileSystem fs,
+  /**
+   * Write the text to a file, returning the converted byte array
+   * for use in validating the round trip
+   * @param fs filesystem
+   * @param path path of file
+   * @param text text to write
+   * @param overwrite should the operation overwrite any existing file?
+   * @return the read bytes
+   * @throws IOException on IO problems
+   */
+  public static byte[] writeTextFile(SwiftNativeFileSystem fs,
                                    Path path,
                                    String text,
                                    boolean overwrite) throws IOException {
     FSDataOutputStream stream = fs.create(path, overwrite);
-    stream.write(toAsciiByteArray(text));
+    byte[] bytes = toAsciiByteArray(text);
+    stream.write(bytes);
     stream.close();
+    return bytes;
   }
 
   public static void assertDeleted(FileSystem fs,
-                                   Path path,
+                                   Path file,
                                    boolean recursive) throws IOException {
-    assertTrue(fs.delete(path, recursive));
-    assertFalse("failed to delete " + path, fs.exists(path));
+    assertPathExists(fs, "about to be deleted file", file);
+    boolean deleted = fs.delete(file, recursive);
+    String dir = ls(fs, file.getParent());
+    assertTrue("Delete failed on " + file + ": " + dir, deleted);
+    assertPathDoesNotExist(fs, "Deleted file", file);
   }
 
   /**
@@ -380,7 +444,7 @@ public class SwiftTestUtils {
    */
   static void assertIsFile(FileSystem fileSystem, Path filename) throws
                                                                  IOException {
-    assertPathExists("Expected file", fileSystem, filename);
+    assertPathExists(fileSystem, "Expected file", filename);
     FileStatus status = fileSystem.getFileStatus(filename);
     String fileInfo = filename + "  " + status;
     assertTrue("Not a file " + fileInfo, status.isFile());
@@ -409,13 +473,13 @@ public class SwiftTestUtils {
   /**
    * Assert that a path exists -but make no assertions as to the
    * type of that entry
-   * @param message message to include in the assertion failure message
+   *
    * @param fileSystem filesystem to examine
+   * @param message message to include in the assertion failure message
    * @param path path in the filesystem
    * @throws IOException IO problems
    */
-  static void assertPathExists(String message,
-                               FileSystem fileSystem,
+  static void assertPathExists(FileSystem fileSystem, String message,
                                Path path) throws IOException {
     if (!fileSystem.exists(path)) {
       //failure, report it
@@ -426,13 +490,13 @@ public class SwiftTestUtils {
 
   /**
    * Assert that a path does not exist
-   * @param message message to include in the assertion failure message
+   *
    * @param fileSystem filesystem to examine
+   * @param message message to include in the assertion failure message
    * @param path path in the filesystem
    * @throws IOException IO problems
    */
-  static void assertPathDoesNotExist(String message,
-                                     FileSystem fileSystem,
+  static void assertPathDoesNotExist(FileSystem fileSystem, String message,
                                      Path path) throws IOException {
     try {
       FileStatus status = fileSystem.getFileStatus(path);
@@ -442,4 +506,39 @@ public class SwiftTestUtils {
 
     }
   }
+
+  public static void assertListFilesFinds(FileSystem fs, Path dir,
+                                          Path subdir) throws IOException {
+    RemoteIterator<LocatedFileStatus> iterator =
+      fs.listFiles(dir, true);
+    boolean found = false;
+    StringBuilder builder = new StringBuilder();
+    while (iterator.hasNext()) {
+      LocatedFileStatus next = iterator.next();
+      builder.append(next.toString()).append('\n');
+      if (next.getPath().equals(subdir)) {
+        found = true;
+      }
+    }
+    assertTrue("Path " + subdir
+               + " not found in directory " + dir + ":" + builder,
+               found);
+  }
+
+  public static void assertListStatusFinds(FileSystem fs, Path dir,
+                                           Path subdir) throws IOException {
+    FileStatus[] stats = fs.listStatus(dir);
+    boolean found = false;
+    StringBuilder builder = new StringBuilder();
+    for (FileStatus stat : stats) {
+      builder.append(stat.toString()).append('\n');
+      if (stat.getPath().equals(subdir)) {
+        found = true;
+      }
+    }
+    assertTrue("Path " + subdir
+               + " not found in directory " + dir + ":" + builder,
+               found);
+  }
+
 }
