@@ -113,4 +113,6 @@ public class SwiftProtocolConstants {
 
   public static final String SWIFT_PROXY_HOST_PROPERTY = FS_SWIFT + DOT_PROXY_HOST;
   public static final String SWIFT_PROXY_PORT_PROPERTY = FS_SWIFT + DOT_PROXY_PORT;
+  public static final String HTTP_ROUTE_DEFAULT_PROXY =
+    "http.route.default-proxy";
 }

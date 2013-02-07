@@ -1342,7 +1342,7 @@ public final class SwiftRestClient {
       throws IOException, SwiftConnectionException {
     final HttpClient client = new HttpClient();
     if (proxyHost != null) {
-      client.getParams().setParameter(ConnRoutePNames.DEFAULT_PROXY,
+      client.getParams().setParameter(HTTP_ROUTE_DEFAULT_PROXY,
                                       new HttpHost(proxyHost, proxyPort));
     }
 

@@ -79,7 +79,7 @@ public class TestSwiftFileSystemConcurrency extends SwiftFileSystemBaseTest {
       }
     });
 
-    executorService.awaitTermination(2, TimeUnit.MINUTES);
+    executorService.awaitTermination(1, TimeUnit.MINUTES);
     if (thread1Ex != null) {
       throw thread1Ex;
     }

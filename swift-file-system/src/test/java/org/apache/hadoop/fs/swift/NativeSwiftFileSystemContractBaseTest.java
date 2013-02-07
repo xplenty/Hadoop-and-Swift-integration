@@ -22,7 +22,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystemContractBaseTest;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
-import org.junit.internal.AssumptionViolatedException;
 
 import java.io.IOException;
 import java.net.URI;
@@ -65,11 +64,9 @@ public abstract class NativeSwiftFileSystemContractBaseTest
 
   /**
    * overriding to disable; test runner should mark as skipped
-   * @throws AssumptionViolatedException
    */
   @Override
   public void testMkdirsWithUmask() {
-    throw new AssumptionViolatedException("not supported");
   }
 
 }

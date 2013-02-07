@@ -50,7 +50,7 @@ public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
   public void testRenameFileIntoExistingDirectory() throws Exception {
     assumeRenameSupported();
 
-    Path src = path("/test/hadoop/file");
+    Path src = path("/test/olddir/file");
     createFile(src);
     Path dst = path("/test/new/newdir");
     fs.mkdirs(dst);
@@ -115,10 +115,10 @@ public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
   public void testRenameDirectoryIntoExistingDirectory() throws Exception {
     assumeRenameSupported();
 
-    Path src = path("/test/hadoop/dir");
+    Path src = path("/test/olddir/dir");
     fs.mkdirs(src);
-    createFile(path("/test/hadoop/dir/file1"));
-    createFile(path("/test/hadoop/dir/subdir/file2"));
+    createFile(path("/test/olddir/dir/file1"));
+    createFile(path("/test/olddir/dir/subdir/file2"));
 
     Path dst = path("/test/new/newdir");
     fs.mkdirs(dst);
@@ -127,14 +127,14 @@ public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
     assertExists("new dir", path("/test/new/newdir/dir"));
     assertExists("Renamed nested file1", path("/test/new/newdir/dir/file1"));
     assertPathDoesNotExist("Nested file1 should have been deleted",
-                           path("/test/hadoop/dir/file1"));
+                           path("/test/olddir/dir/file1"));
     assertExists("Renamed nested subdir",
                  path("/test/new/newdir/dir/subdir/"));
     assertExists("file under subdir",
                  path("/test/new/newdir/dir/subdir/file2"));
 
     assertPathDoesNotExist("Nested /test/hadoop/dir/subdir/file2 still exists",
-                path("/test/hadoop/dir/subdir/file2"));
+                path("/test/olddir/dir/subdir/file2"));
   }
 
   /**
@@ -192,24 +192,19 @@ public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
   @Test
   public void testRenameDirWithSubDirs() throws IOException {
     assumeRenameSupported();
-    final FileSystem fileSystem = fs;
 
     final String message = "message";
-    final Path filePath = new Path("/home/user/documents/file.txt");
-    final Path newFilePath = new Path("/home/user/files/file.txt");
+    final Path filePath = new Path("/test/home/user/documents/file.txt");
+    final Path newFilePath = new Path("/test/home/user/files/file.txt");
+    mkdirs(newFilePath.getParent());
+    SwiftTestUtils.writeTextFile(fs, filePath, message, false);
+    rename(filePath, newFilePath, true, false, true);
 
-    final FSDataOutputStream fsDataOutputStream = fileSystem.create(filePath);
-    fsDataOutputStream.write(message.getBytes());
-    fsDataOutputStream.close();
+    String reread = SwiftTestUtils.readBytesToString(fs, newFilePath, 20);
+    final FSDataInputStream inputStream = fs.open(newFilePath);
 
-    fileSystem.rename(filePath, newFilePath);
-
-    final FSDataInputStream inputStream = fileSystem.open(newFilePath);
-    final byte[] data = new byte[20];
-    final int read = inputStream.read(data);
-
-    assertEquals(message.length(), read);
-    assertEquals(message, new String(data, 0, read));
+    assertEquals("Wrong content read back from " + newFilePath, message,
+                 reread);
   }
 
 

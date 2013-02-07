@@ -137,10 +137,11 @@ public class SwiftFileSystemBaseTest {
       fail("Expected failure renaming " + src + " to " + dst
            +"- but got success");
     } catch (SwiftOperationFailedException e) {
-      LOG.debug("Rename failed (expected):" + e,e );
+      LOG.debug("Rename failed (expected):" + e);
     } catch (FileNotFoundException e) {
-      LOG.debug("Rename failed (expected):" + e, e);
-    }  }
+      LOG.debug("Rename failed (expected):" + e);
+    }
+  }
 
   /**
    * Rename, expecting an exception to be thrown

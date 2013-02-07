@@ -459,12 +459,30 @@ public class SwiftNativeFileSystemStore {
 
       boolean result = true;
 
-      logDirectory("Directory to copy",srcObject, fileStatuses);
+      LOG.info("mv  " + srcObject+ " " + targetPath);
+
+      logDirectory("Directory to copy ", srcObject, fileStatuses);
+
       //iterative copy of everything under the directory
+      String srcURI = src.toUri().toString();
+      int prefixStripCount= srcURI.length()+1;
       for (FileStatus fileStatus : fileStatuses) {
         Path copySourcePath = fileStatus.getPath();
-        SwiftObjectPath copyDestination = toObjectPath(
-          new Path(targetPath, copySourcePath.getName()));
+        String copySourceURI = copySourcePath.toUri().toString();
+
+        String copyDestSubPath = copySourceURI.substring(prefixStripCount);
+
+        Path copyDestPath = new Path(targetPath, copyDestSubPath);
+        if (LOG.isTraceEnabled()) {
+          //trace to debug some low-level rename path problems; retained
+          //in case they ever come back.
+          LOG.trace("srcURI=" + srcURI
+                  + "; copySourceURI=" + copySourceURI
+                  + "; copyDestSubPath=" + copyDestSubPath
+                  + "; copyDestPath=" + copyDestPath);
+        }
+        SwiftObjectPath copyDestination = toObjectPath(copyDestPath);
+
         try {
             copyThenDeleteObject(toObjectPath(copySourcePath),
                                 copyDestination);
@@ -522,6 +540,7 @@ public class SwiftNativeFileSystemStore {
   private void copyThenDeleteObject(SwiftObjectPath srcObject,
                                       SwiftObjectPath destObject) throws
                                                                   IOException {
+    LOG.debug("Copying " + srcObject + " to " + destObject);
     boolean copySucceeded = swiftRestClient.copyObject(srcObject, destObject);
     if (copySucceeded) {
       //if the copy worked delete the original
@@ -628,8 +647,8 @@ public class SwiftNativeFileSystemStore {
           files.add(metadata);
         } catch (FileNotFoundException e) {
           //get Object metadata failed
-          LOG.info(
-                  "Object " + childPath + " was deleting during directory listing");
+          LOG.info( "Object " + childPath
+                    + " was deleted during directory listing");
         }
       } else {
         //hash map

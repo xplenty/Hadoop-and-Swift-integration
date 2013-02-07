@@ -390,15 +390,9 @@ public class SwiftNativeFileSystem extends FileSystem {
       return true;
     } catch (SwiftOperationFailedException e) {
       //downgrade to a failure
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Failure to rename: " +e,e);
-      }
       return false;
     } catch (FileNotFoundException e) {
       //downgrade to a failure
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Failure to rename: " + e, e);
-      }
       return false;
     }
   }
