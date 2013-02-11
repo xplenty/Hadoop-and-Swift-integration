@@ -233,10 +233,10 @@ public class SwiftNativeFileSystem extends FileSystem {
     Path absolutePath = makeAbsolute(path);
     //build a list of paths to create, with shortest one at the front
     List<Path> paths = new ArrayList<Path>();
-    do {
+    while (!absolutePath.isRoot()) {
       paths.add(0, absolutePath);
       absolutePath = absolutePath.getParent();
-    } while (absolutePath != null);
+    }
 
     boolean result = true;
     for (Path p : paths) {
@@ -256,8 +256,7 @@ public class SwiftNativeFileSystem extends FileSystem {
    */
   private boolean mkdir(Path path) throws IOException {
     Path absolutePath = makeAbsolute(path);
-
-
+    
     FileStatus fileStatus;
     try {
       fileStatus = getFileStatus(absolutePath);
@@ -329,7 +328,7 @@ public class SwiftNativeFileSystem extends FileSystem {
       }
     } else {
       Path parent = file.getParent();
-      if (parent != null) {
+      if (parent != null && !parent.isRoot()) {
         if (!mkdirs(parent)) {
           throw new SwiftException("Mkdirs failed to create " + parent.toString());
         }
