@@ -89,18 +89,17 @@ or providing different login details for the same object store(s).
 
 Hadoop uses URIs to refer to files within a filesystem. Some common examples are:
 
-	local://etc/hosts
-	hdfs://cluster1/users/example/data/set1
-	hdfs://cluster2.example.org:8020/users/example/data/set1
-	
+    local://etc/hosts
+    hdfs://cluster1/users/example/data/set1
+    hdfs://cluster2.example.org:8020/users/example/data/set1
 The Swift Filesystem Client adds a new URL type `swift`. In a Swift Filesystem URL, the hostname part of a URL identifies the container and the service to work with; the path the name of the object. Here are some examples
 
-	swift://container.rackspace/my-object.csv
-	swift://data.hpcloud/data/set1
-	swift://dmitry.privatecloud/out/results
-	
+    swift://container.rackspace/my-object.csv
+    swift://data.hpcloud/data/set1
+    swift://dmitry.privatecloud/out/results
+
 In the last two examples, the paths look like directories: it is not, they are simply the objects named `data/set1` and `out/results` respectively. 
-	
+
 ## Installing
 
 The `hadoop-swift` JAR must be on the classpath of the Hadoop program trying to talk to the Swift service. If installed in the classpath of the Hadoop MapReduce service, then all programs started by the MR engine will pick up the JAR automatically. This is the easiest way to give all Hadoop jobs access to Swift.
