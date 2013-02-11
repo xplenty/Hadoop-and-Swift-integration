@@ -278,14 +278,20 @@ public class SwiftTestUtils {
 
   public static void cleanupInTeardown(FileSystem fileSystem,
                                        String cleanupPath) {
-    noteAction("TEARDOWN");
+    cleanup("TEARDOWN", fileSystem, cleanupPath);
+  }
+
+  public static void cleanup(String action,
+                             FileSystem fileSystem,
+                             String cleanupPath) {
+    noteAction(action);
     try {
       if (fileSystem != null) {
         fileSystem.delete(new Path(cleanupPath).makeQualified(fileSystem),
                           true);
       }
     } catch (Exception e) {
-      LOG.error("Error deleting in teardown " + cleanupPath + ": " + e, e);
+      LOG.error("Error deleting in "+ action + " - "  + cleanupPath + ": " + e, e);
     }
   }
 
@@ -366,12 +372,26 @@ public class SwiftTestUtils {
                                    String text,
                                    boolean overwrite) throws IOException {
     FSDataOutputStream stream = fs.create(path, overwrite);
-    byte[] bytes = toAsciiByteArray(text);
-    stream.write(bytes);
+    byte[] bytes = new byte[0];
+    if (text != null) {
+      bytes = toAsciiByteArray(text);
+      stream.write(bytes);
+    }
     stream.close();
     return bytes;
   }
 
+  /**
+   * Touch a file: fails if it is already there
+   * @param fs filesystem
+   * @param path path
+   * @throws IOException IO problems
+   */
+  public static void touch(SwiftNativeFileSystem fs,
+                           Path path) throws IOException {
+    writeTextFile(fs, path, null, false);
+  }
+  
   public static void assertDeleted(FileSystem fs,
                                    Path file,
                                    boolean recursive) throws IOException {
