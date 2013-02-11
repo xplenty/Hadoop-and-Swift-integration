@@ -178,7 +178,7 @@ public class SwiftNativeFileSystemStore {
     }
 
     Path correctSwiftPath = getCorrectSwiftPath(path);
-    return new FileStatus(length, isDir, 0, 0L, lastModified, correctSwiftPath);
+    return new SwiftFileStatus(length, isDir, 0, 0L, lastModified, correctSwiftPath);
   }
 
 
@@ -641,7 +641,7 @@ public class SwiftNativeFileSystemStore {
         try {
           FileStatus metadata;
           if (nameOnly) {
-            metadata = new FileStatus(0, false, 0, 0, 0, childPath);
+            metadata = new SwiftFileStatus(0, false, 0, 0, 0, childPath);
           } else {
             metadata = getObjectMetadata(childPath);
           }
