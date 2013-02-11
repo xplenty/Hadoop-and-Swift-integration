@@ -21,11 +21,12 @@ package org.apache.hadoop.fs.swift;
 import org.apache.hadoop.fs.Path;
 import org.junit.Test;
 
+import java.io.EOFException;
 import java.io.IOException;
 
 import static org.apache.hadoop.fs.swift.SwiftTestUtils.readBytesToString;
 import static org.apache.hadoop.fs.swift.SwiftTestUtils.writeTextFile;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class TestSwiftFileSystemRead extends SwiftFileSystemBaseTest {
 
@@ -37,10 +38,12 @@ public class TestSwiftFileSystemRead extends SwiftFileSystemBaseTest {
 
     writeTextFile(fs, filePath, message, false);
 
-    String reread = readBytesToString(fs, filePath, 20);
-    assertEquals("Wrong content read back from " + false,
-                 message,
-                 reread);
+    try {
+      readBytesToString(fs, filePath, 20);
+      fail("expected an exception");
+    } catch (EOFException e) {
+      //expected
+    }
   }
 
 }

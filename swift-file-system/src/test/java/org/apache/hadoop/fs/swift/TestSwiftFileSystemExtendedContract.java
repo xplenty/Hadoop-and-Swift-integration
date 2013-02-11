@@ -45,7 +45,6 @@ public class TestSwiftFileSystemExtendedContract extends SwiftFileSystemBaseTest
     //open it as a file, should get FileNotFoundException
     try {
       final FSDataInputStream in = fs.open(p);
-      in.read();
       in.close();
       fail("didn't expect to get here");
     } catch (FileNotFoundException fnfe) {
@@ -134,34 +133,6 @@ public class TestSwiftFileSystemExtendedContract extends SwiftFileSystemBaseTest
                  + " actual status " + newStatus,
                  upperStatus.getLen(),
                  newStatus.getLen());
-  }
-
-  /**
-   * Asserts that a zero byte file has a status of file and not
-   * directory or symlink
-   * @throws Exception on failures
-   */
-  @Test
-  public void testZeroByteFilesAreFiles() throws Exception {
-    Path src = path("/test/testZeroByteFilesAreFiles");
-    //create a zero byte file
-    FSDataOutputStream out = fs.create(src);
-    out.close();
-    assertIsFile(src);
-  }
-
-  /**
-   * Asserts that a zero byte file has a status of file and not
-   * directory or symlink
-   * @throws Exception on failures
-   */
-  @Test
-  public void testMultiByteFilesAreFiles() throws Exception {
-    Path src = path("/test/testMultiByteFilesAreFiles");
-    FSDataOutputStream out = fs.create(src);
-    out.writeUTF("testMultiByteFilesAreFiles");
-    out.close();
-    assertIsFile(src);
   }
 
 }

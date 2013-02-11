@@ -345,29 +345,10 @@ public class TestSwiftFileSystemBasicOps {
 
   private void assertDirectory(SwiftNativeFileSystem fs, Path path) throws
                                                                     IOException {
-    FileStatus fileStatus = fs.getFileStatus(path);
-    assertFalse("Should be a dir, but is a file: " + fileStatus,
-                fileStatus.isFile());
-    assertTrue("Should be a dir -but isn't: " + fileStatus,
-               fileStatus.isDir());
+    SwiftTestUtils.assertIsDirectory(fs, path);
   }
 
 
-  @Test
-  public void testRenameMissingFile() throws Throwable {
-    SwiftNativeFileSystem fs = createInitedFS();
-    Path path = new Path("/testRenameMissingFile");
-    Path path2 = new Path("/testRenameMissingFileDest");
-    try {
-      fs.rename(path, path2);
-      fail("Expected rename of a missing file to fail");
-    } catch (FileNotFoundException fnfe) {
-      //success
-    } finally {
-      delete(fs, path);
-      delete(fs, path2);
-    }
-  }
 
   @Test
   public void testLongObjectNamesForbidden() throws Throwable {
@@ -382,12 +363,12 @@ public class TestSwiftFileSystemBasicOps {
     try {
       writeTextFile(fs, path, pathString, true);
       //if we get here, problems.
-      LOG.warn("Managed to create an object with a name of length "
-               + pathString.length());
       fs.delete(path, false);
+      fail("Managed to create an object with a name of length "
+               + pathString.length());
     } catch (SwiftBadRequestException e) {
       //expected
-      LOG.debug("Caught exception " + e, e);
+      //LOG.debug("Caught exception " + e, e);
     }
   }
 

@@ -22,21 +22,29 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.junit.Test;
 
+import static org.apache.hadoop.fs.swift.SwiftTestUtils.touch;
 import static org.junit.Assert.assertEquals;
 
 public class TestSwiftFileSystemLsOperations extends SwiftFileSystemBaseTest {
 
   private Path[] testDirs;
 
+  /**
+   * Setup creates dirs under test/hadoop
+   * @throws Exception
+   */
   @Override
   public void setUp() throws Exception {
     super.setUp();
+    //delete the test directory
+    Path test = path("/test");
+    fs.delete(test, true);
     testDirs = new Path[]{
       path("/test/hadoop/a"),
       path("/test/hadoop/b"),
       path("/test/hadoop/c/1"),
     };
-    assertPathDoesNotExist("test directory", testDirs[0]);
+    assertPathDoesNotExist("test directory setup", testDirs[0]);
     for (Path path : testDirs) {
       mkdirs(path);
     }
@@ -58,7 +66,6 @@ public class TestSwiftFileSystemLsOperations extends SwiftFileSystemBaseTest {
     assertEquals(stats, path("/test/hadoop/a"), paths[0].getPath());
     assertEquals(stats, path("/test/hadoop/b"), paths[1].getPath());
     assertEquals(stats, path("/test/hadoop/c"), paths[2].getPath());
-
   }
 
   @Test
@@ -79,15 +86,25 @@ public class TestSwiftFileSystemLsOperations extends SwiftFileSystemBaseTest {
   }
 
   @Test
-  public void testListRoot() throws Throwable {
-    fs.listStatus(path("/"));
+  public void testListEmptyRoot() throws Throwable {
+    FileStatus[] fileStatuses = fs.listStatus(path("/"));
+    assertEquals(0, fileStatuses.length);
+  }
+
+  @Test
+  public void testListNonEmptyRoot() throws Throwable {
+    Path file = path("/test");
+    touch(fs, file);
+    FileStatus[] fileStatuses = fs.listStatus(path("/"));
+    assertEquals(1, fileStatuses.length);
+    FileStatus status = fileStatuses[0];
+    assertEquals(file, status.getPath());
   }
 
   @Test
   public void testLSRootDir() throws Throwable {
     Path dir = path("/");
-    Path child = path("/test");
-    createFile(child);
+    Path child = new Path(dir, "test");
     SwiftTestUtils.assertListFilesFinds(fs, dir, child);
   }
 
@@ -95,7 +112,6 @@ public class TestSwiftFileSystemLsOperations extends SwiftFileSystemBaseTest {
   public void testListStatusRootDir() throws Throwable {
     Path dir = path("/");
     Path child = path("/test");
-    createFile(child);
     SwiftTestUtils.assertListStatusFinds(fs, dir, child);
   }
 }
