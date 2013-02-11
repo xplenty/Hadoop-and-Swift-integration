@@ -242,4 +242,13 @@ public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
     String reread = readBytesToString(fs, newFilePath, 20);
   }
 
+  @Test
+  public void testRenameMissingFile() throws Throwable {
+    assumeRenameSupported();
+    Path path = path("/test/RenameMissingFile");
+    Path path2 = path("/test/RenameMissingFileDest");
+    mkdirs(path("test"));
+    rename(path,path2,false,false,false);
+  }
+
 }
