@@ -135,7 +135,7 @@ public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
   @Test
   public void testRenameDirToSelf() throws Throwable {
     assumeRenameSupported();
-    Path parentdir = path("test/parentdir");
+    Path parentdir = path("/test/parentdir");
     fs.mkdirs(parentdir);
     Path child = new Path(parentdir, "child");
     createFile(child);
