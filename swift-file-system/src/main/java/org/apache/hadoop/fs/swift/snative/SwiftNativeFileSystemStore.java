@@ -598,7 +598,7 @@ public class SwiftNativeFileSystemStore {
           return Collections.emptyList();
         } else {
           //NO_CONTENT returned on something other than the root directory;
-          //see if it is there, and conver to empty list or not found
+          //see if it is there, and convert to empty list or not found
           //depending on whether the entry exists.
           FileStatus stat = getObjectMetadata(getCorrectSwiftPath(path));
 

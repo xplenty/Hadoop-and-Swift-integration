@@ -618,6 +618,10 @@ public final class SwiftRestClient {
                                     String delimiter,
                                     final Header... requestHeaders) throws IOException {
 
+    preRemoteCommand("findObjectsByPrefix");
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("findObjectsByPrefix path=" + path + " delimiter=" + delimiter);
+    }
     String endpoint = getEndpointURI().toString();
     StringBuilder dataLocationURI = new StringBuilder();
     dataLocationURI.append(endpoint);
@@ -626,13 +630,21 @@ public final class SwiftRestClient {
       object = object.substring(1);
     }
     dataLocationURI = dataLocationURI.append("/")
-                                     .append(path.getContainer())
-                                     .append("/?prefix=")
-                                     .append(object);
+                                     .append(path.getContainer());
+
+    maybeAppendPrefix(dataLocationURI, object);
+
     if (delimiter != null) {
       dataLocationURI.append("&delimiter=/").append(delimiter);
     }
     return findObjects(dataLocationURI.toString(), requestHeaders);
+  }
+
+  private void maybeAppendPrefix(StringBuilder dataLocationURI, String object) {
+    if (!object.isEmpty() && !"/".equals(object)) {
+      dataLocationURI.append("/?prefix=")
+                     .append(object);
+    }
   }
 
   /**
@@ -648,10 +660,12 @@ public final class SwiftRestClient {
   public byte[] listObjectsInDirectory(SwiftObjectPath path,
                                        final Header... requestHeaders) throws IOException {
     preRemoteCommand("listObjectsInPath");
-    URI uri;
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("listObjectsInDirectory path=" + path );
+    }
     String endpoint = getEndpointURI().toString();
-    StringBuilder dataLocationURI = new StringBuilder();
-    dataLocationURI.append(endpoint);
+    StringBuilder dataLocationURI1 = new StringBuilder();
+    dataLocationURI1.append(endpoint);
     String object = path.getObject();
     if (object.startsWith("/")) {
       object = object.substring(1);
@@ -660,12 +674,11 @@ public final class SwiftRestClient {
       object = object.concat("/");
     }
 
-    dataLocationURI = dataLocationURI.append("/")
-                                     .append(path.getContainer())
-                                     .append("/?prefix=")
-                                     .append(object)
-                                     .append("&delimiter=/")
-    ;
+    dataLocationURI1 = dataLocationURI1.append("/")
+                                     .append(path.getContainer());
+    maybeAppendPrefix(dataLocationURI1, object);
+    StringBuilder dataLocationURI = dataLocationURI1;
+    dataLocationURI.append("&delimiter=/");
     return findObjects(dataLocationURI.toString(), requestHeaders);
   }
 
@@ -678,8 +691,8 @@ public final class SwiftRestClient {
    */
   private byte[] findObjects(String location, final Header[] requestHeaders) throws
           IOException {
-    URI uri;
     preRemoteCommand("findObjects");
+    URI uri;
     try {
       uri = new URI(location);
     } catch (URISyntaxException e) {
