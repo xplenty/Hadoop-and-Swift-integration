@@ -206,14 +206,6 @@ public class SwiftNativeFileSystem extends FileSystem {
       throw new IllegalArgumentException("Negative start or len parameter" +
                                          " to getFileBlockLocations");
     }
-    if (status.isDirectory()) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Directory: failing" + status);
-      }
-      throw new IOException("Cannot get the block location of a directory "
-                            + status);
-    }
-
     if (status.getLen() <= start) {
       return new BlockLocation[0];
     }

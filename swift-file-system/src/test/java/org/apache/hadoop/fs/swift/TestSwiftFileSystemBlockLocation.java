@@ -109,6 +109,7 @@ public class TestSwiftFileSystemBlockLocation extends SwiftFileSystemBaseTest {
                                     0,
                                     data.length + 100);
     assertNotNull(locations);
+    assertTrue(locations.length>0);
   }
 
   @Test
@@ -118,9 +119,15 @@ public class TestSwiftFileSystemBlockLocation extends SwiftFileSystemBaseTest {
     BlockLocation[] locations =
       getFs().getFileBlockLocations(createFileAndGetStatus(),
                                     data.length + 100,
-                                    0);
+                                    1);
+    assertEmptyBlockLocations(locations);
+  }
+
+  private void assertEmptyBlockLocations(BlockLocation[] locations) {
     assertNotNull(locations);
-    assertEquals(0, locations.length);
+    if (locations.length!=0) {
+      fail("non empty locations[] with first entry of " + locations[0]);
+    }
   }
 
   @Test
@@ -130,16 +137,11 @@ public class TestSwiftFileSystemBlockLocation extends SwiftFileSystemBaseTest {
     FileStatus status = fs.getFileStatus(path("/test"));
     LOG.info("Filesystem is " + fs + "; target is " + status);
     SwiftTestUtils.assertIsDirectory(status);
-    try {
-      BlockLocation[] locations;
-      locations = getFs().getFileBlockLocations(status,
-                                                0,
-                                                1);
-      fail("Expected an exception, got locations array of size "
-           + locations.length);
-    } catch (IOException e) {
-      //expected
-    }
+    BlockLocation[] locations;
+    locations = getFs().getFileBlockLocations(status,
+                                              0,
+                                              1);
+    assertEmptyBlockLocations(locations);
   }
 
 
@@ -148,15 +150,11 @@ public class TestSwiftFileSystemBlockLocation extends SwiftFileSystemBaseTest {
     describe("verify that locating the root directory is an error");
     FileStatus status = fs.getFileStatus(path("/"));
     SwiftTestUtils.assertIsDirectory(status);
-    try {
-      BlockLocation[] locations;
-      locations = getFs().getFileBlockLocations(status,
-                                                0,
-                                                1);
-      fail("Expected an exception, got " + locations.length + " locations");
-    } catch (IOException e) {
-      //expected
-    }
+    BlockLocation[] locations;
+    locations = getFs().getFileBlockLocations(status,
+                                              0,
+                                              1);
+    assertEmptyBlockLocations(locations);
   }
 
 
