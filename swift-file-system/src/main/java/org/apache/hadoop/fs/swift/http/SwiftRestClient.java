@@ -586,7 +586,7 @@ public final class SwiftRestClient {
                    });
   }
 
-  private URI pathToObjectLocation(SwiftObjectPath path) {
+  private URI pathToObjectLocation(SwiftObjectPath path) throws SwiftException {
     URI uri;
     String dataLocationURI = objectLocationURI.toString();
     try {
@@ -598,7 +598,7 @@ public final class SwiftRestClient {
 
       uri = new URI(dataLocationURI);
     } catch (URISyntaxException e) {
-      throw new RuntimeException(e);
+      throw new SwiftException(e);
     }
     return uri;
   }
