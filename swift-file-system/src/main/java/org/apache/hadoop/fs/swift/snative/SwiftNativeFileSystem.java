@@ -192,11 +192,10 @@ public class SwiftNativeFileSystem extends FileSystem {
   public BlockLocation[] getFileBlockLocations(FileStatus file,
                                                long start,
                                                long len) throws IOException {
-    return super.getFileBlockLocations(file, start, len);
+//    return super.getFileBlockLocations(file, start, len);
     // Check if requested file in Swift is more than 5Gb. In this case
     // each block has its own location -which may be determinable
     // from the Swift client API, depending on the remote server
-/* disabled until this degrades properly to non-block aware filesystems
     final FileStatus[] listOfFileBlocks = store.listSubPaths(file.getPath(),
                                                              false,
                                                              true);
@@ -223,7 +222,7 @@ public class SwiftNativeFileSystem extends FileSystem {
     }
     return new BlockLocation[]{
             new BlockLocation(names, hosts, 0, file.getLen())
-    };*/
+    };
   }
 
   @Override
