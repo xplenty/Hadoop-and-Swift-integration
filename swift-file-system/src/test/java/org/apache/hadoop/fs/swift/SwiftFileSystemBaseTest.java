@@ -230,4 +230,15 @@ public class SwiftFileSystemBaseTest extends Assert {
     SwiftTestUtils.assertDeleted(fs, file, recursive);
 
   }
+
+  /**
+   * Assert that a value is not equal to the expected value
+   * @param message message if the two values are equal
+   * @param expected expected value
+   * @param actual actual value
+   */
+  protected void assertNotEqual(String message, int expected, int actual) {
+    assertTrue(message,
+               actual != expected);
+  }
 }

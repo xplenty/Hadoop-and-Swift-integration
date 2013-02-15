@@ -348,9 +348,17 @@ public class SwiftTestUtils {
    * @param path path of the directory
    * @throws IOException on File IO problems
    */
-  public static void assertIsDirectory(SwiftNativeFileSystem fs,
+  public static void assertIsDirectory(FileSystem fs,
                                        Path path) throws IOException {
     FileStatus fileStatus = fs.getFileStatus(path);
+    assertIsDirectory(fileStatus);
+  }
+
+  /**
+   * Assert that a path refers to a directory
+   * @param fileStatus stats to check
+   */
+  public static void assertIsDirectory(FileStatus fileStatus) {
     assertFalse("Should be a dir, but is a file: " + fileStatus,
                 fileStatus.isFile());
     assertTrue("Should be a dir -but isn't: " + fileStatus,

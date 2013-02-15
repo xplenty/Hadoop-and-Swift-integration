@@ -586,6 +586,12 @@ public final class SwiftRestClient {
                    });
   }
 
+  /**
+   * Create the URI needed to query the location of an object
+   * @param path object path to retrieve information about
+   * @return the URI for the location operation
+   * @throws SwiftException if the URI could not be constructed
+   */
   private URI pathToObjectLocation(SwiftObjectPath path) throws SwiftException {
     URI uri;
     String dataLocationURI = objectLocationURI.toString();
