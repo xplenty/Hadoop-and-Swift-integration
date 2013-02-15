@@ -31,6 +31,7 @@ import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystemStore;
 import static org.apache.hadoop.fs.swift.SwiftTestUtils.*;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
 
@@ -39,11 +40,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-public class SwiftFileSystemBaseTest {
+public class SwiftFileSystemBaseTest extends Assert {
   protected static final Log LOG =
     LogFactory.getLog(TestSwiftFileSystemExtendedContract.class);
   protected SwiftNativeFileSystem fs;
@@ -100,11 +97,32 @@ public class SwiftFileSystemBaseTest {
     return new Path(pathString).makeQualified(fs);
   }
 
+  public SwiftNativeFileSystem getFs() {
+    return fs;
+  }
+
+  /**
+   * Create a file using the standard {@link #data} bytes.
+   * @param path path to write
+   * @throws IOException on any problem
+   */
   protected void createFile(Path path) throws IOException {
+    byte[] sourceData = data;
+    createFile(path, sourceData);
+  }
+
+  /**
+   * Create a file with the given data.
+   * @param path path to write
+   * @param sourceData source dataset
+   * @throws IOException on any problem
+   */
+  protected void createFile(Path path, byte[] sourceData) throws IOException {
     FSDataOutputStream out = fs.create(path);
-    out.write(data, 0, data.length);
+    out.write(sourceData, 0, sourceData.length);
     out.close();
   }
+
   protected void createEmptyFile(Path path) throws IOException {
     FSDataOutputStream out = fs.create(path);
     out.close();
