@@ -580,7 +580,7 @@ public final class SwiftRestClient {
 
                      @Override
                      protected void setup(GetMethod method)
-                        throws SwiftInternalStateException {
+                       throws SwiftInternalStateException {
                        setHeaders(method, requestHeaders);
                      }
                    });
@@ -638,18 +638,28 @@ public final class SwiftRestClient {
     dataLocationURI = dataLocationURI.append("/")
                                      .append(path.getContainer());
 
-    maybeAppendPrefix(dataLocationURI, object);
+    boolean appended = maybeAppendPrefix(dataLocationURI, object);
+    dataLocationURI.append(appended ? "&" : "?");
 
     if (delimiter != null) {
-      dataLocationURI.append("&delimiter=/").append(delimiter);
+      dataLocationURI.append("delimiter=/").append(delimiter);
     }
     return findObjects(dataLocationURI.toString(), requestHeaders);
   }
 
-  private void maybeAppendPrefix(StringBuilder dataLocationURI, String object) {
+  /**
+   * Append the directory prefix if the directory is not rook
+   * @param dataLocationURI URI being built up.
+   * @param object directory that is being looked for
+   * @return true iff a prefix was appended. This should be used in deciding whether or not 
+   */
+  private boolean maybeAppendPrefix(StringBuilder dataLocationURI, String object) {
     if (!object.isEmpty() && !"/".equals(object)) {
       dataLocationURI.append("/?prefix=")
                      .append(object);
+      return true;
+    } else {
+      return false;
     }
   }
 
@@ -670,8 +680,8 @@ public final class SwiftRestClient {
       LOG.debug("listObjectsInDirectory path=" + path );
     }
     String endpoint = getEndpointURI().toString();
-    StringBuilder dataLocationURI1 = new StringBuilder();
-    dataLocationURI1.append(endpoint);
+    StringBuilder dataLocationURI = new StringBuilder();
+    dataLocationURI.append(endpoint);
     String object = path.getObject();
     if (object.startsWith("/")) {
       object = object.substring(1);
@@ -680,11 +690,11 @@ public final class SwiftRestClient {
       object = object.concat("/");
     }
 
-    dataLocationURI1 = dataLocationURI1.append("/")
+    dataLocationURI = dataLocationURI.append("/")
                                      .append(path.getContainer());
-    maybeAppendPrefix(dataLocationURI1, object);
-    StringBuilder dataLocationURI = dataLocationURI1;
-    dataLocationURI.append("&delimiter=/");
+    boolean appended = maybeAppendPrefix(dataLocationURI, object);
+    dataLocationURI.append(appended ? "&" : "?");
+    dataLocationURI.append("delimiter=/");
     return findObjects(dataLocationURI.toString(), requestHeaders);
   }
 
@@ -969,7 +979,7 @@ public final class SwiftRestClient {
                 LOG.debug("Endpoint " + descr);
               }
               if (region == null || endpointRegion.equals(region)) {
-                endpointURI = usePublicURL  ?publicURL: internalURL;
+                endpointURI = usePublicURL ? publicURL : internalURL;
                 swiftEndpoint = endpoint;
                 break;
               }

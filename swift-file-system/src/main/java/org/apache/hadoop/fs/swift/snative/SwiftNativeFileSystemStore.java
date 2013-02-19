@@ -576,7 +576,7 @@ public class SwiftNativeFileSystemStore {
     final ArrayList<FileStatus> files = new ArrayList<FileStatus>();
     try {
       if (recursive) {
-      bytes = swiftRestClient.findObjectsByPrefix(path, null);
+        bytes = swiftRestClient.findObjectsByPrefix(path, null);
       } else {
         bytes = swiftRestClient.listObjectsInDirectory(path);
       }

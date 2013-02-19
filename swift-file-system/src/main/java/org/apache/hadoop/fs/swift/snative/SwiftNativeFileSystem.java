@@ -117,7 +117,6 @@ public class SwiftNativeFileSystem extends FileSystem {
    */
   @Override
   public URI getUri() {
-
     return uri;
   }
 

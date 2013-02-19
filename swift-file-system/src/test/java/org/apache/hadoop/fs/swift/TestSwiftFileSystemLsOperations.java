@@ -22,8 +22,9 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.junit.Test;
 
+import java.io.IOException;
+
 import static org.apache.hadoop.fs.swift.SwiftTestUtils.touch;
-import static org.junit.Assert.assertEquals;
 
 public class TestSwiftFileSystemLsOperations extends SwiftFileSystemBaseTest {
 
@@ -39,6 +40,16 @@ public class TestSwiftFileSystemLsOperations extends SwiftFileSystemBaseTest {
     //delete the test directory
     Path test = path("/test");
     fs.delete(test, true);
+    mkdirs(test);
+  }
+
+  /**
+   * Create subdirectories and files under test/ for those tests 
+   * that want them. Doing so adds overhead to setup and teardown,
+   * so should only be done for those tests that need them.
+   * @throws IOException on an IO problem
+   */
+  private void createTestSubdirs() throws IOException {
     testDirs = new Path[]{
       path("/test/hadoop/a"),
       path("/test/hadoop/b"),
@@ -52,6 +63,7 @@ public class TestSwiftFileSystemLsOperations extends SwiftFileSystemBaseTest {
 
   @Test
   public void testListLevelTest() throws Exception {
+    createTestSubdirs();
     FileStatus[] paths = fs.listStatus(path("/test"));
     assertEquals(SwiftTestUtils.dumpStats("/test", paths), 1, paths.length);
     assertEquals(path("/test/hadoop"), paths[0].getPath());
@@ -59,6 +71,7 @@ public class TestSwiftFileSystemLsOperations extends SwiftFileSystemBaseTest {
 
   @Test
   public void testListLevelTestHadoop() throws Exception {
+    createTestSubdirs();
     FileStatus[] paths;
     paths = fs.listStatus(path("/test/hadoop"));
     String stats = SwiftTestUtils.dumpStats("/test/hadoop", paths);
@@ -70,6 +83,7 @@ public class TestSwiftFileSystemLsOperations extends SwiftFileSystemBaseTest {
 
   @Test
   public void testListStatusEmptyDirectory() throws Exception {
+    createTestSubdirs();
     FileStatus[] paths;
     paths = fs.listStatus(path("/test/hadoop/a"));
     assertEquals(SwiftTestUtils.dumpStats("/test/hadoop/a", paths), 0,
@@ -78,21 +92,28 @@ public class TestSwiftFileSystemLsOperations extends SwiftFileSystemBaseTest {
 
   @Test
   public void testListStatusFile() throws Exception {
+    describe("Create a single file under /test;" +
+             " assert that listStatus(/test) finds it");
     Path file = path("/test/filename");
     createFile(file);
     FileStatus[] paths = fs.listStatus(file);
-    assertEquals(SwiftTestUtils.dumpStats("/test/", paths), 1,
+    assertEquals(SwiftTestUtils.dumpStats("/test/", paths),
+                 1,
                  paths.length);
   }
 
   @Test
   public void testListEmptyRoot() throws Throwable {
+    describe("Empty the root dir and verify that an LS / returns {}");
+    SwiftTestUtils.cleanup("testListEmptyRoot", fs, "/test");
+    SwiftTestUtils.cleanup("testListEmptyRoot", fs, "/user");
     FileStatus[] fileStatuses = fs.listStatus(path("/"));
     assertEquals(0, fileStatuses.length);
   }
 
   @Test
   public void testListNonEmptyRoot() throws Throwable {
+    
     Path file = path("/test");
     touch(fs, file);
     FileStatus[] fileStatuses = fs.listStatus(path("/"));
@@ -103,6 +124,7 @@ public class TestSwiftFileSystemLsOperations extends SwiftFileSystemBaseTest {
 
   @Test
   public void testLSRootDir() throws Throwable {
+//    createTestSubdirs();
     Path dir = path("/");
     Path child = new Path(dir, "test");
     SwiftTestUtils.assertListFilesFinds(fs, dir, child);
@@ -112,6 +134,7 @@ public class TestSwiftFileSystemLsOperations extends SwiftFileSystemBaseTest {
   public void testListStatusRootDir() throws Throwable {
     Path dir = path("/");
     Path child = path("/test");
+    touch(fs, child);
     SwiftTestUtils.assertListStatusFinds(fs, dir, child);
   }
 }
