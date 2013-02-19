@@ -223,7 +223,10 @@ A reference to this service would use the `hpcloud` service name:
 
 ### Class not found exception
 
-
+The swift filesystem JAR may not be on your classpath. If it is a remote MR
+job that is failing, make sure that the JAR is installed on the servers in
+the cluster -or that the job submission process uploads the JAR file
+to the distributed cache.
 
 ### Failure to Authenticate
 
