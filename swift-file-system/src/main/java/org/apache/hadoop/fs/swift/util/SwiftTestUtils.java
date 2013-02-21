@@ -16,7 +16,7 @@
  *  limitations under the License.
  */
 
-package org.apache.hadoop.fs.swift;
+package org.apache.hadoop.fs.swift.util;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -25,11 +25,8 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
-import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
 import org.junit.internal.AssumptionViolatedException;
 
 import java.io.FileNotFoundException;
@@ -38,22 +35,15 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Properties;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-
 /**
  * Utilities used across test cases
  */
-public class SwiftTestUtils {
+public class SwiftTestUtils extends org.junit.Assert {
 
   private static final Log LOG =
     LogFactory.getLog(SwiftTestUtils.class);
 
-  protected static final String TEST_FS_SWIFT = "test.fs.swift.name";
+  public static final String TEST_FS_SWIFT = "test.fs.swift.name";
   public static final String IO_FILE_BUFFER_SIZE = "io.file.buffer.size";
 
   /**
@@ -94,8 +84,8 @@ public class SwiftTestUtils {
       assertNull("Non null property " + key + " = " + val, val);
     } else {
       assertEquals("property " + key + " = " + val,
-                   expected,
-                   val);
+                          expected,
+                          val);
     }
   }
 
@@ -160,8 +150,9 @@ public class SwiftTestUtils {
                                    int len,
                                    int blocksize,
                                    boolean overwrite) throws IOException {
-    assertTrue("Not enough data in source array to write " + len + " bytes",
-               src.length >= len);
+    assertTrue(
+      "Not enough data in source array to write " + len + " bytes",
+      src.length >= len);
     FSDataOutputStream out = fs.create(path,
                                        overwrite,
                                        fs.getConf()
@@ -202,7 +193,7 @@ public class SwiftTestUtils {
                                        byte[] dest,
                                        int len) {
     assertEquals("Number of bytes read != number written",
-                 len, dest.length);
+                        len, dest.length);
     int errors = 0;
     int first_error_byte = -1;
     for (int i = 0; i < len; i++) {
@@ -312,17 +303,25 @@ public class SwiftTestUtils {
   public static void downgrade(String message, Throwable failure) {
     LOG.warn("Downgrading test " + message, failure);
     AssumptionViolatedException ave =
-      new AssumptionViolatedException(message);
-    ave.initCause(failure);
+      new AssumptionViolatedException(failure, null);
     throw ave;
   }
 
   /**
    * report an overridden test as unsupported
    * @param message message to use in the text
-   * @throws AssumptionViolatedException
+   * @throws AssumptionViolatedException always
    */
   public static void unsupported(String message) {
+    throw new AssumptionViolatedException(message);
+  }
+  
+  /**
+   * report a test has been skipped for some reason
+   * @param message message to use in the text
+   * @throws AssumptionViolatedException always
+   */
+  public static void skip(String message) {
     throw new AssumptionViolatedException(message);
   }
 
@@ -337,9 +336,10 @@ public class SwiftTestUtils {
   public static void assertFileHasLength(FileSystem fs, Path path,
                                          int expected) throws IOException {
     FileStatus status = fs.getFileStatus(path);
-    assertEquals("Wrong file length of file " + path + " status: " + status,
-                 expected,
-                 status.getLen());
+    assertEquals(
+      "Wrong file length of file " + path + " status: " + status,
+      expected,
+      status.getLen());
   }
 
   /**
@@ -359,10 +359,8 @@ public class SwiftTestUtils {
    * @param fileStatus stats to check
    */
   public static void assertIsDirectory(FileStatus fileStatus) {
-    assertFalse("Should be a dir, but is a file: " + fileStatus,
-                fileStatus.isFile());
     assertTrue("Should be a dir -but isn't: " + fileStatus,
-               fileStatus.isDirectory());
+                      fileStatus.isDir());
   }
 
   /**
@@ -375,7 +373,7 @@ public class SwiftTestUtils {
    * @return the read bytes
    * @throws IOException on IO problems
    */
-  public static byte[] writeTextFile(SwiftNativeFileSystem fs,
+  public static byte[] writeTextFile(FileSystem fs,
                                    Path path,
                                    String text,
                                    boolean overwrite) throws IOException {
@@ -395,7 +393,7 @@ public class SwiftTestUtils {
    * @param path path
    * @throws IOException IO problems
    */
-  public static void touch(SwiftNativeFileSystem fs,
+  public static void touch(FileSystem fs,
                            Path path) throws IOException {
     writeTextFile(fs, path, null, false);
   }
@@ -418,7 +416,7 @@ public class SwiftTestUtils {
    * @return the bytes read and converted to a string
    * @throws IOException
    */
-  static String readBytesToString(SwiftNativeFileSystem fs,
+  public static String readBytesToString(FileSystem fs,
                                   Path path,
                                   int length) throws IOException {
     FSDataInputStream in = fs.open(path);
@@ -431,11 +429,11 @@ public class SwiftTestUtils {
     }
   }
 
-  protected static String getDefaultWorkingDirectory() {
+  public static String getDefaultWorkingDirectory() {
     return "/user/" + System.getProperty("user.name");
   }
 
-  static String ls(FileSystem fileSystem, Path path) throws IOException {
+  public static String ls(FileSystem fileSystem, Path path) throws IOException {
     if (path == null) {
       //surfaces when someone calls getParent() on something at the top of the path
       return "/";
@@ -452,7 +450,7 @@ public class SwiftTestUtils {
     return dumpStats(pathname, stats);
   }
 
-  static String dumpStats(String pathname, FileStatus[] stats) {
+  public static String dumpStats(String pathname, FileStatus[] stats) {
     StringBuilder buf = new StringBuilder(stats.length * 128);
     buf.append("ls ").append(pathname).append(": ").append(stats.length)
        .append("\n");
@@ -470,16 +468,17 @@ public class SwiftTestUtils {
    * @param filename name of the file
    * @throws IOException IO problems during file operations
    */
-  static void assertIsFile(FileSystem fileSystem, Path filename) throws
+  public static void assertIsFile(FileSystem fileSystem, Path filename) throws
                                                                  IOException {
     assertPathExists(fileSystem, "Expected file", filename);
     FileStatus status = fileSystem.getFileStatus(filename);
     String fileInfo = filename + "  " + status;
-    assertTrue("Not a file " + fileInfo, status.isFile());
-    assertFalse("File claims to be a symlink " + fileInfo,
-                status.isSymlink());
     assertFalse("File claims to be a directory " + fileInfo,
-                status.isDirectory());
+                status.isDir());
+/*
+    assertFalse("File claims to be a symlink " + fileInfo,
+                       status.isSymlink());
+*/
   }
 
   /**
@@ -490,7 +489,7 @@ public class SwiftTestUtils {
    * @param modulo the modulo
    * @return the newly generated dataset
    */
-  protected static byte[] dataset(int len, int base, int modulo) {
+  public static byte[] dataset(int len, int base, int modulo) {
     byte[] dataset = new byte[len];
     for (int i = 0; i < len; i++) {
       dataset[i] = (byte) (base + (i % modulo));
@@ -507,7 +506,7 @@ public class SwiftTestUtils {
    * @param path path in the filesystem
    * @throws IOException IO problems
    */
-  static void assertPathExists(FileSystem fileSystem, String message,
+  public static void assertPathExists(FileSystem fileSystem, String message,
                                Path path) throws IOException {
     if (!fileSystem.exists(path)) {
       //failure, report it
@@ -524,7 +523,8 @@ public class SwiftTestUtils {
    * @param path path in the filesystem
    * @throws IOException IO problems
    */
-  static void assertPathDoesNotExist(FileSystem fileSystem, String message,
+  public static void assertPathDoesNotExist(FileSystem fileSystem,
+                                            String message,
                                      Path path) throws IOException {
     try {
       FileStatus status = fileSystem.getFileStatus(path);
@@ -535,23 +535,6 @@ public class SwiftTestUtils {
     }
   }
 
-  public static void assertListFilesFinds(FileSystem fs, Path dir,
-                                          Path subdir) throws IOException {
-    RemoteIterator<LocatedFileStatus> iterator =
-      fs.listFiles(dir, true);
-    boolean found = false;
-    StringBuilder builder = new StringBuilder();
-    while (iterator.hasNext()) {
-      LocatedFileStatus next = iterator.next();
-      builder.append(next.toString()).append('\n');
-      if (next.getPath().equals(subdir)) {
-        found = true;
-      }
-    }
-    assertTrue("Path " + subdir
-               + " not found in directory " + dir + ":" + builder,
-               found);
-  }
 
   public static void assertListStatusFinds(FileSystem fs, Path dir,
                                            Path subdir) throws IOException {
@@ -565,8 +548,8 @@ public class SwiftTestUtils {
       }
     }
     assertTrue("Path " + subdir
-               + " not found in directory " + dir + ":" + builder,
-               found);
+                      + " not found in directory " + dir + ":" + builder,
+                      found);
   }
 
 }

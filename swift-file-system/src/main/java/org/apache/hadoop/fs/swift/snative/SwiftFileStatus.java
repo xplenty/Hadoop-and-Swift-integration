@@ -49,6 +49,7 @@ public class SwiftFileStatus extends FileStatus {
     super(length, isdir, block_replication, blocksize, modification_time,
           access_time, permission, owner, group, path);
   }
+/*
 
   public SwiftFileStatus(long length,
                          boolean isdir,
@@ -61,6 +62,7 @@ public class SwiftFileStatus extends FileStatus {
     super(length, isdir, block_replication, blocksize, modification_time,
           access_time, permission, owner, group, symlink, path);
   }
+*/
 
   /**
    * Declare that the path represents a directory, which in the
@@ -73,10 +75,11 @@ public class SwiftFileStatus extends FileStatus {
   }
 
   /**
-   * A entry is a file if it is not a directory
+   * A entry is a file if it is not a directory.
+   * By implementing it <i>and not marking as an override</i> this
+   * subclass builds and runs in both Hadoop versions.
    * @return the opposite value to {@link #isDir()}
    */
-  @Override
   public boolean isFile() {
     return !isDir();
   }

@@ -20,6 +20,7 @@
         <commons.lang.version>2.6</commons.lang.version>
         <commons.io.version>2.3</commons.io.version>
         <hadoop.version>3.0.0-SNAPSHOT</hadoop.version>
+        <hadoop1.version>1.1.1</hadoop1.version>
         <httpcomponents.version>4.2.3</httpcomponents.version>
         <jackson.version>1.9.7</jackson.version>
         <junit.version>4.10</junit.version>
@@ -86,18 +87,46 @@
 
   </reporting>
     <dependencies>
-        <dependency>
-            <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-common</artifactId>
-            <version>${hadoop.version}</version>
-        </dependency>
-         <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-common</artifactId>
-          <version>${hadoop.version}</version>
-          <scope>test</scope>
-        <type>test-jar</type>
-        </dependency>
+
+      <dependency>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-core</artifactId>
+        <version>${hadoop1.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-test</artifactId>
+        <version>${hadoop1.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-examples</artifactId>
+        <version>${hadoop1.version}</version>
+        <scope>test</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hadoop</groupId>
+        <artifactId>hadoop-tools</artifactId>
+        <version>${hadoop1.version}</version>
+      </dependency>
+
+
+      <!--
+              <dependency>
+                  <groupId>org.apache.hadoop</groupId>
+                  <artifactId>hadoop-common</artifactId>
+                  <version>${hadoop.version}</version>
+              </dependency>
+          
+               <dependency>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-common</artifactId>
+                <version>${hadoop.version}</version>
+              <type>test-jar</type>
+              </dependency>
+      -->
+      
+      
         <dependency>
             <groupId>org.codehaus.jackson</groupId>
             <artifactId>jackson-mapper-asl</artifactId>
@@ -121,14 +150,6 @@
             <version>${commons.io.version}</version>
         </dependency>
 
-        <!-- Used for unit testing -->
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit-dep</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
-        </dependency>
-
         <!-- Used for mocking dependencies -->
         <dependency>
             <groupId>org.mockito</groupId>
@@ -137,12 +158,14 @@
             <scope>test</scope>
         </dependency>
 
+      <!-- used for the test and, at compiled time,
+      test helper classes that are redistributed for others-->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>${junit.version}</version>
-            <scope>test</scope>
         </dependency>
+      
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>

@@ -18,10 +18,11 @@
 
 package org.apache.hadoop.fs.swift;
 
-import static org.apache.hadoop.fs.swift.SwiftTestUtils.*;
+import static org.apache.hadoop.fs.swift.util.SwiftTestUtils.*;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.swift.util.SwiftTestUtils;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -236,7 +237,7 @@ public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
     byte[] dataset2 = dataset(len, 'a', 26);
     writeDataset(fs, filePath, dataset, len, len, false);
     rename(filePath, newFilePath, true, false, true);
-    SwiftTestUtils.writeAndRead(fs,filePath, dataset2, len,len,false,true);
+    SwiftTestUtils.writeAndRead(fs, filePath, dataset2, len, len, false, true);
     byte[] dest = readDataset(fs, newFilePath, len);
     compareByteArrays(dataset, dest, len);
     String reread = readBytesToString(fs, newFilePath, 20);

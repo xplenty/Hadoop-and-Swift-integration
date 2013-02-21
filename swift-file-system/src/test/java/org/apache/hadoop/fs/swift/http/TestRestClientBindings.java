@@ -28,7 +28,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Properties;
 
-import static org.apache.hadoop.fs.swift.SwiftTestUtils.assertPropertyEquals;
+import static org.apache.hadoop.fs.swift.util.SwiftTestUtils.assertPropertyEquals;
 import static org.apache.hadoop.fs.swift.http.SwiftProtocolConstants.*;
 
 public class TestRestClientBindings extends Assert {
@@ -101,22 +101,27 @@ public class TestRestClientBindings extends Assert {
     }
   }
 
+  @Test
   public void testBindAgainstConfMissingInstance() throws Exception {
     Configuration badConf = new Configuration();
     expectBindingFailure(filesysURI, badConf);
   }
 
 
+/*
   public void testBindAgainstConfIncompleteInstance() throws Exception {
     String instance = RestClientBindings.buildSwiftInstancePrefix(SERVICE);
     conf.unset(instance + DOT_PASSWORD);
     expectBindingFailure(filesysURI, conf);
   }
+*/
 
+  @Test
   public void testDottedServiceURL() throws Exception {
     expectBindingFailure(new URI("swift://hadoop.apache.org/"), conf);
   }
 
+  @Test
   public void testMissingServiceURL() throws Exception {
     expectBindingFailure(new URI("swift:///"), conf);
   }

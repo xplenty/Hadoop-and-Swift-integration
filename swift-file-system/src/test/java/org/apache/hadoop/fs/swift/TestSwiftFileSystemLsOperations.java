@@ -20,11 +20,13 @@ package org.apache.hadoop.fs.swift;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.swift.util.SwiftTestUtils;
 import org.junit.Test;
 
 import java.io.IOException;
 
-import static org.apache.hadoop.fs.swift.SwiftTestUtils.touch;
+import static org.apache.hadoop.fs.swift.util.SwiftTestUtils.touch;
+
 
 public class TestSwiftFileSystemLsOperations extends SwiftFileSystemBaseTest {
 
@@ -120,14 +122,6 @@ public class TestSwiftFileSystemLsOperations extends SwiftFileSystemBaseTest {
     assertEquals(1, fileStatuses.length);
     FileStatus status = fileStatuses[0];
     assertEquals(file, status.getPath());
-  }
-
-  @Test
-  public void testLSRootDir() throws Throwable {
-//    createTestSubdirs();
-    Path dir = path("/");
-    Path child = new Path(dir, "test");
-    SwiftTestUtils.assertListFilesFinds(fs, dir, child);
   }
 
   @Test

@@ -23,6 +23,7 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.swift.snative.SwiftFileSystemForFunctionalTests;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
+import org.apache.hadoop.fs.swift.util.SwiftTestUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

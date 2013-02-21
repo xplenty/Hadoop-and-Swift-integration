@@ -25,12 +25,11 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.swift.exceptions.SwiftBadRequestException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftException;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
+import org.apache.hadoop.fs.swift.util.SwiftTestUtils;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -65,7 +64,7 @@ public class TestSwiftFileSystemBasicOps {
   @Test
   public void testCreate() throws Throwable {
     if (!runTests) {
-      return;
+      SwiftTestUtils.skip("tests offline");
     }
     createInitedFS();
   }
@@ -77,16 +76,6 @@ public class TestSwiftFileSystemBasicOps {
   }
 
 
-  @Test
-  public void testListRoot() throws Throwable {
-    SwiftNativeFileSystem fs = createInitedFS();
-    RemoteIterator<LocatedFileStatus> files =
-      fs.listFiles(new Path("/"), true);
-    while (files.hasNext()) {
-      LocatedFileStatus status = files.next();
-      LOG.info(status.toString());
-    }
-  }
 
 
   @Test
@@ -261,9 +250,7 @@ public class TestSwiftFileSystemBasicOps {
       String text = "Testing File Status "
                     + System.currentTimeMillis();
       writeTextFile(fs, path, text, false);
-      FileStatus fileStatus = fs.getFileStatus(path);
-      assertTrue("Not a file: " + fileStatus, fileStatus.isFile());
-      assertFalse("A dir: " + fileStatus, fileStatus.isDir());
+      SwiftTestUtils.assertIsFile(fs,path);
     } finally {
       delete(fs, path);
     }

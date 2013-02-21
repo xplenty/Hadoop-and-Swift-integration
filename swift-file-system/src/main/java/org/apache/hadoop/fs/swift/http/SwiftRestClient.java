@@ -907,9 +907,14 @@ public final class SwiftRestClient {
         if (LOG.isDebugEnabled()) {
           LOG.debug("Authenticating with " + authRequest);
         }
+        //this trace statement is turned off as some back-ends to commons-logging
+        //upgrade trace to debug, which can leak secrets.
+        //
+/*
         if (LOG.isTraceEnabled()) {
           LOG.trace("JSON message: " + "\n" + data);
         }
+*/
         method.setRequestEntity(toJsonEntity(data));
       }
 

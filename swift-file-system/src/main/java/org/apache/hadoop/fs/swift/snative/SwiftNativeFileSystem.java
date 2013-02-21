@@ -27,6 +27,7 @@ import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.fs.swift.exceptions.SwiftException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftNotDirectoryException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftOperationFailedException;
+import org.apache.hadoop.fs.swift.exceptions.SwiftPathExistsException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftUnsupportedFeatureException;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
 import org.apache.hadoop.fs.swift.util.SwiftUtils;
@@ -248,49 +249,74 @@ public class SwiftNativeFileSystem extends FileSystem {
     };
   }
 
+  /**
+   * Create the parent directories.
+   * As an optimization, the entire hierarchy of parent
+   * directories is <i>Not</i> polled. Instead
+   * the tree is walked up from the last to the first,
+   * creating directories until one that exists is found.
+   * 
+   * This strategy means if a file is created in an existing directory,
+   * one quick poll sufficies.
+   * 
+   * There is a big assumption here: that all parent directories of an existing
+   * directory also exists. 
+   * @param path path to create.
+   * @param permission to apply to files
+   * @return true if the operation was successful
+   * @throws IOException on a problem
+   */
   @Override
   public boolean mkdirs(Path path, FsPermission permission) throws IOException {
     if (LOG.isDebugEnabled()) {
       LOG.debug("SwiftFileSystem.mkdirs: " + path);
     }
-    Path absolutePath = makeAbsolute(path);
-    //build a list of paths to create, with shortest one at the front
-    List<Path> paths = new ArrayList<Path>();
-    while (!absolutePath.isRoot()) {
-      paths.add(0, absolutePath);
-      absolutePath = absolutePath.getParent();
-    }
+    Path directory = makeAbsolute(path);
 
-    boolean result = true;
-    for (Path p : paths) {
-      if (p.getParent() != null) {
-        result &= mkdir(p);
+    while (directory.getParent() != null) {
+      //create the directory if needed
+      boolean created = mkdir(directory);
+      if (!created) {
+        //if it was not created, exit the loop
+        break;
       }
+      directory = directory.getParent();
     }
-    return result;
+    //if an exception was not thrown, this operation is considered
+    //a success
+    return true;
   }
 
   /**
-   * internal implementation of directory creation
+   * internal implementation of directory creation.
    *
    * @param path path to file
-   * @return boolean file is created
+   * @return boolean file is created; false: no need to create
    * @throws IOException if specified path is file instead of directory
    */
   private boolean mkdir(Path path) throws IOException {
     Path absolutePath = makeAbsolute(path);
-    
+    if (path.getParent() == null) {
+      //its the base dir, bail out immediately
+      return false;
+    }
     FileStatus fileStatus;
+    boolean created = false;
     try {
+      //find out about the path
       fileStatus = getFileStatus(absolutePath);
+      
       if (!SwiftUtils.isDirectory(fileStatus)) {
+        //if it's a file, raise an error
         throw new SwiftNotDirectoryException(path,
                 String.format(": can't mkdir since it is not a directory: %s",
                         fileStatus));
       } else {
+        //path exists, and it is a directory
         if (LOG.isDebugEnabled()) {
           LOG.debug("skipping mkdir(" + path + ") as it exists already");
         }
+        return false;
       }
     } catch (FileNotFoundException e) {
       if (LOG.isDebugEnabled()) {
@@ -298,8 +324,11 @@ public class SwiftNativeFileSystem extends FileSystem {
       }
       //file is not found: it must be created
       store.createDirectory(absolutePath);
+      created = true;
     }
-    return true;
+    //if the code got to this point, either the directory 
+    //was created
+    return created;
   }
 
   /**
@@ -347,11 +376,11 @@ public class SwiftNativeFileSystem extends FileSystem {
       if (overwrite) {
         delete(file, true);
       } else {
-        throw new SwiftException("File already exists: " + file);
+        throw new SwiftPathExistsException("File already exists: " + file);
       }
     } else {
       Path parent = file.getParent();
-      if (parent != null && !parent.isRoot()) {
+      if (parent != null /* &&!(parent.getParent() == null)*/) {
         if (!mkdirs(parent)) {
           throw new SwiftException("Mkdirs failed to create " + parent.toString());
         }
@@ -360,8 +389,7 @@ public class SwiftNativeFileSystem extends FileSystem {
 
     SwiftNativeOutputStream out = new SwiftNativeOutputStream(getConf(),
             store,
-            file.toUri()
-                    .toString());
+            file.toUri().toString());
     return new FSDataOutputStream(out, statistics);
   }
 

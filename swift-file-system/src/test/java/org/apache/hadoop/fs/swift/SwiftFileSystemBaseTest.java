@@ -28,8 +28,9 @@ import org.apache.hadoop.fs.swift.exceptions.SwiftOperationFailedException;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystemStore;
 
-import static org.apache.hadoop.fs.swift.SwiftTestUtils.*;
+import static org.apache.hadoop.fs.swift.util.SwiftTestUtils.*;
 
+import org.apache.hadoop.fs.swift.util.SwiftTestUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;

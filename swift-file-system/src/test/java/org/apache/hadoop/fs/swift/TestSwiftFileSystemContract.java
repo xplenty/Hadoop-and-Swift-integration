@@ -22,7 +22,10 @@ import junit.framework.AssertionFailedError;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.swift.exceptions.SwiftNotDirectoryException;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
+import org.apache.hadoop.fs.swift.util.SwiftTestUtils;
 
 import java.io.IOException;
 import java.net.URI;
@@ -49,14 +52,37 @@ public class TestSwiftFileSystemContract
     return swiftNativeFileSystem;
   }
 
-  public void testMkdirs() throws Exception {
+  @Override
+  public void testMkdirsFailsForSubdirectoryOfExistingFile() throws Exception {
+    Path testDir = path("/test/hadoop");
+    assertFalse(fs.exists(testDir));
+    assertTrue(fs.mkdirs(testDir));
+    assertTrue(fs.exists(testDir));
+
+    Path path = path("/test/hadoop/file");
+    SwiftTestUtils.writeTextFile(fs, path, "hello, world", false);
+
+    Path testSubDir = path("/test/hadoop/file/subdir");
     try {
-      super.testMkdirs();
-    } catch (AssertionFailedError e) {
-      SwiftTestUtils.downgrade("file/dir confusion", e);
+      fs.mkdirs(testSubDir);
+      fail("Should throw IOException.");
+    } catch (SwiftNotDirectoryException e) {
+      // expected
     }
+    SwiftTestUtils.assertPathDoesNotExist(fs, "subdir", testSubDir);
+
+    Path testDeepSubDir = path("/test/hadoop/file/deep/sub/dir");
+    try {
+      fs.mkdirs(testDeepSubDir);
+      fail("Should throw IOException.");
+    } catch (SwiftNotDirectoryException e) {
+      // expected
+    }
+    SwiftTestUtils.assertPathDoesNotExist(fs, "testDeepSubDir", testDeepSubDir);
+
   }
 
+  @Override
   public void testWriteReadAndDeleteEmptyFile() throws Exception {
     try {
       super.testWriteReadAndDeleteEmptyFile();
@@ -65,12 +91,14 @@ public class TestSwiftFileSystemContract
     }
   }
 
-  @Override
   public void testZeroByteFilesAreFiles() throws Exception {
+    SwiftTestUtils.unsupported("testZeroByteFilesAreFiles");
+/*
     try {
       super.testZeroByteFilesAreFiles();
     } catch (AssertionFailedError e) {
       SwiftTestUtils.downgrade("zero byte files get mistaken for directories", e);
     }
+*/
   }
 }
