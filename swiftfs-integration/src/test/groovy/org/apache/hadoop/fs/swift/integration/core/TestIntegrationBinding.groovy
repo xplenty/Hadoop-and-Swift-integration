@@ -18,22 +18,24 @@
  *  limitations under the License.
  */
 
-package org.apache.hadoop.fs.swift.integration.pig
+package org.apache.hadoop.fs.swift.integration.core
 
+import groovy.util.logging.Commons
+import org.apache.hadoop.fs.swift.integration.IntegrationTestBase
 import org.junit.Test
-import org.apache.pig.ExecType
-import org.apache.pig.PigServer
-import org.apache.pig.impl.PigContext
-import org.apache.pig.impl.util.PropertiesUtil
+import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem
 
-public class TestPig {
+/**
+ * Generate a swift doc
+ */
+@Commons
+class TestIntegrationBinding extends IntegrationTestBase {
 
   @Test
-  public void testCreateServerInstance() throws Throwable {
-    Properties properties = PropertiesUtil.loadDefaultProperties()
-    PigContext context = new PigContext(ExecType.LOCAL,
-                                        properties)
-    PigServer pig = new PigServer(ExecType.LOCAL);
-//    pig.registerScript("/path/to/test.pig");
+  public void testPropertyBound() throws Throwable {
+    SwiftNativeFileSystem fs = bindFilesystem()
+    log.info(fs.toString());
   }
+
+
 }

@@ -14,12 +14,17 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    
-    
+
+
     <groovy.version>1.8.6</groovy.version>
-    <hadoop.version>1.1.1</hadoop.version>
+    <hadoop.version>3.0.0-SNAPSHOT</hadoop.version>
+    <hadoop1.version>1.1.1</hadoop1.version>
+
     <hadoop-swift.version>0.1-SNAPSHOT</hadoop-swift.version>
+    <jackson.version>1.9.7</jackson.version>
     <junit.version>4.10</junit.version>
+    <log4j.version>1.2.16</log4j.version>
+
     <mockito.version>1.9.0</mockito.version>
     <pig.version>0.10.1</pig.version>
 
@@ -47,7 +52,7 @@
           </dependency>
         </dependencies>
       </plugin>
-      
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
@@ -62,34 +67,33 @@
       </plugin>
     </plugins>
   </build>
+
   <dependencies>
     <dependency>
-    <groupId>org.codehaus.groovy</groupId>
-    <artifactId>groovy-all</artifactId>
-    <version>${groovy.version}</version>
+      <groupId>org.codehaus.groovy</groupId>
+      <artifactId>groovy-all</artifactId>
+      <version>${groovy.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-core</artifactId>
-      <version>${hadoop.version}</version>
+      <version>${hadoop1.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-test</artifactId>
-      <version>${hadoop.version}</version>
-      <scope>test</scope>
+      <version>${hadoop1.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-examples</artifactId>
-      <version>${hadoop.version}</version>
+      <version>${hadoop1.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-tools</artifactId>
-      <version>${hadoop.version}</version>
-      <scope>test</scope>
+      <version>${hadoop1.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.pig</groupId>
@@ -110,7 +114,6 @@
               <groupId>org.apache.hadoop</groupId>
               <artifactId>hadoop-common</artifactId>
               <version>${hadoop.version}</version>
-              <scope>test</scope>
             <type>test-jar</type>
             </dependency>
     -->
@@ -119,11 +122,25 @@
       <artifactId>hadoop-swift</artifactId>
       <version>${hadoop-swift.version}</version>
     </dependency>
-
+    <dependency>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+      <version>${log4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-mapper-asl</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-core-asl</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
     <!-- Used for unit testing -->
     <dependency>
       <groupId>junit</groupId>
-      <artifactId>junit-dep</artifactId>
+      <artifactId>junit</artifactId>
       <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
@@ -136,12 +153,6 @@
       <scope>test</scope>
     </dependency>
 
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>${junit.version}</version>
-      <scope>test</scope>
-    </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>

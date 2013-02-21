@@ -18,22 +18,28 @@
  *  limitations under the License.
  */
 
-package org.apache.hadoop.fs.swift.integration.pig
+package org.apache.hadoop.fs.swift.integration
 
-import org.junit.Test
-import org.apache.pig.ExecType
-import org.apache.pig.PigServer
-import org.apache.pig.impl.PigContext
-import org.apache.pig.impl.util.PropertiesUtil
+import static org.apache.hadoop.fs.swift.util.SwiftTestUtils.*
+import org.junit.Assert
+import org.apache.hadoop.fs.swift.util.SwiftTestUtils
+import groovy.util.logging.Commons
+import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem
+import org.apache.hadoop.conf.Configuration
 
-public class TestPig {
+@Commons
+class IntegrationTestBase extends Assert {
+  /**
+   * name of the key in the config XML files defining the filesystem to work with
+   */
+  public static final String KEY_TEST_FS = SwiftTestUtils.TEST_FS_SWIFT;
 
-  @Test
-  public void testCreateServerInstance() throws Throwable {
-    Properties properties = PropertiesUtil.loadDefaultProperties()
-    PigContext context = new PigContext(ExecType.LOCAL,
-                                        properties)
-    PigServer pig = new PigServer(ExecType.LOCAL);
-//    pig.registerScript("/path/to/test.pig");
+  protected SwiftNativeFileSystem bindFilesystem() {
+    def conf = new Configuration();
+    def serviceURI = SwiftTestUtils.getServiceURI(conf);
+    SwiftNativeFileSystem fs = new SwiftNativeFileSystem();
+    fs.initialize(serviceURI, conf);
+    fs
   }
+  
 }
