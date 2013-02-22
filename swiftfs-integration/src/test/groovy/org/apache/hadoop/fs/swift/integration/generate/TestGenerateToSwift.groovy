@@ -27,6 +27,8 @@ import org.apache.hadoop.fs.FSDataOutputStream
 import org.apache.hadoop.fs.swift.integration.tools.DataGenerator
 import org.apache.hadoop.fs.swift.exceptions.SwiftPathExistsException
 import org.apache.hadoop.fs.swift.util.SwiftTestUtils
+import org.apache.hadoop.fs.FSDataInputStream
+import org.apache.hadoop.fs.FileSystem
 
 /**
  * Generate a swift doc
@@ -36,20 +38,35 @@ class TestGenerateToSwift extends IntegrationTestBase {
 
   public static final String GENERATED_DATA_DIR = "/data/generated"
   public static final String DATASET_CSV = "dataset.csv"
+  public static final String DATASET_CSV_PATH = "/data/generated/dataset.csv"
+  
 
   @Test
   public void testMaybeGenerate() throws Throwable {
-    SwiftNativeFileSystem fs = bindFilesystem()
+    FileSystem fs = getSharedFilesystem()
     Path generatedDir = new Path(GENERATED_DATA_DIR);
     Path generatedData = new Path(generatedDir, DATASET_CSV);
     fs.mkdirs(generatedDir);
+    int lines = 100
     try {
-      FSDataOutputStream out = fs.create(generatedData, false);
-      DataGenerator generator = new DataGenerator(100, 500);
+      boolean overwrite = true
+      FSDataOutputStream out = fs.create(generatedData, overwrite);
+      DataGenerator generator = new DataGenerator(lines, 500);
       generator.generate(out)
       out.close();
     } catch (SwiftPathExistsException e) {
       SwiftTestUtils.downgrade("Destination file ${generatedData} exists", e);
     }
+    
+    //now read it back in
+    FSDataInputStream instream = fs.open(generatedData)
+    BufferedReader reader = new BufferedReader(new InputStreamReader(instream))
+    def linesread = reader.eachLine { line, count ->
+      log.info("${count}: " + line)
+      count
+    }
+    reader.close()
+    assert lines == linesread
+    
   }
 }

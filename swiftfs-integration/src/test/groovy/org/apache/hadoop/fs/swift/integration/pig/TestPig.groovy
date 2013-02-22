@@ -21,19 +21,28 @@
 package org.apache.hadoop.fs.swift.integration.pig
 
 import org.junit.Test
-import org.apache.pig.ExecType
-import org.apache.pig.PigServer
-import org.apache.pig.impl.PigContext
-import org.apache.pig.impl.util.PropertiesUtil
 
-public class TestPig {
+import org.apache.pig.PigServer
+
+import org.apache.pig.data.Tuple
+import groovy.util.logging.Commons
+import org.apache.hadoop.fs.swift.integration.IntegrationTestBase
+
+@Commons
+public class TestPig  extends IntegrationTestBase {
 
   @Test
   public void testCreateServerInstance() throws Throwable {
-    Properties properties = PropertiesUtil.loadDefaultProperties()
-    PigContext context = new PigContext(ExecType.LOCAL,
-                                        properties)
-    PigServer pig = new PigServer(ExecType.LOCAL);
-//    pig.registerScript("/path/to/test.pig");
+    PigServer pig = createPigServer()
   }
+  
+  @Test
+  public void testLoadGeneratedData() throws Throwable {
+    PigServer pig = createPigServer()
+    registerPigResource(pig, "pig/loadgenerated.pig", paramMap())
+    Iterator<Tuple> iterator = pig.openIterator("generated")
+    dumpTuples(iterator)
+  }
+
+
 }

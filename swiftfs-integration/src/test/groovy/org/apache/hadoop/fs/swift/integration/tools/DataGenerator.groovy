@@ -49,9 +49,9 @@ class DataGenerator {
       double g = gaussian.nextGaussian()
       boolean b = boolRandom.nextBoolean()
       char c = (65 + charRandom.nextInt(64));
-      def row = "${line},${g},${b},${c}"
+      String row = "${line},${g},${b},${c}\n"
       log.info(row)
-      out.writeChars(row)
+      out.writeBytes(row)
     }
   }
 }

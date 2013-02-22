@@ -159,6 +159,13 @@
       <version>13.0.1</version>
       <scope>test</scope>
     </dependency>
+
+    <dependency>
+      <groupId>org.antlr</groupId>
+      <artifactId>antlr</artifactId>
+      <version>3.5</version>
+    </dependency>
+
   </dependencies>
 
 </project>
