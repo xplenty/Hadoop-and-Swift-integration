@@ -44,7 +44,8 @@ import java.util.List;
  */
 public class SwiftNativeFileSystem extends FileSystem {
 
-
+  /** filesystem prefix: {@value} */
+  public static final String SWIFT = "swift";
   private static final Log LOG =
           LogFactory.getLog(SwiftNativeFileSystem.class);
 

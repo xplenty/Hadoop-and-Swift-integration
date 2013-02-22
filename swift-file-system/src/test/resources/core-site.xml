@@ -24,29 +24,33 @@
 
 <configuration>
 
+  <property>
+    <name>fs.swift.impl</name>
+    <value>org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem</value>
+    <description>The FileSystem for swift: URIs.</description>
+  </property>
+
+  <property>
+    <name>hadoop.tmp.dir</name>
+    <value>target/build/test</value>
+    <description>A base for other temporary directories.</description>
+    <final>true</final>
+  </property>
+
+  <!-- Turn security off for tests by default -->
+  <property>
+    <name>hadoop.security.authentication</name>
+    <value>simple</value>
+  </property>
 
 
-    <property>
-        <name>hadoop.tmp.dir</name>
-        <value>target/build/test</value>
-        <description>A base for other temporary directories.</description>
-        <final>true</final>
-    </property>
+  <!--
+  To run these tests.
 
-    <!-- Turn security off for tests by default -->
-    <property>
-        <name>hadoop.security.authentication</name>
-        <value>simple</value>
-    </property>
-
-
-    <!--
-    To run these tests.
-
-    # Create a file auth-keys.xml  - DO NOT ADD TO REVISION CONTROL
-    # add the property test.fs.swift.name to point to a swift filesystem URL
-    # Add the credentials for the service you are testing against
-    -->
+  # Create a file auth-keys.xml  - DO NOT ADD TO REVISION CONTROL
+  # add the property test.fs.swift.name to point to a swift filesystem URL
+  # Add the credentials for the service you are testing against
+  -->
     <include xmlns="http://www.w3.org/2001/XInclude"
              href="auth-keys.xml"/>
 
