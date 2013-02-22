@@ -273,19 +273,39 @@ public class SwiftNativeFileSystem extends FileSystem {
     }
     Path directory = makeAbsolute(path);
 
-    while (directory.getParent() != null) {
-      //create the directory if needed
-      boolean created = mkdir(directory);
-      if (!created) {
-        //if it was not created, exit the loop
-        break;
-      }
+    //build a list of paths to create
+    List<Path> paths = new ArrayList<Path>();
+    while (shouldCreate(directory)) {
+      //this directory needs creation, add to the list
+      paths.add(0, directory);
+      //now see if the parent needs to be created
       directory = directory.getParent();
     }
+
+    //go through the list of directories to create
+    for (Path p : paths) {
+      if (isNotRoot(p)) {
+        //perform a mkdir operation without any polling of
+        //the far end first
+        forceMkdir(p);
+      }
+    }
+    
     //if an exception was not thrown, this operation is considered
     //a success
     return true;
+    
+    
   }
+
+  private boolean isNotRoot(Path absolutePath) {
+    return !isRoot(absolutePath);
+  }
+  
+  private boolean isRoot(Path absolutePath) {
+    return absolutePath.getParent() == null;
+  }
+
 
   /**
    * internal implementation of directory creation.
@@ -295,40 +315,68 @@ public class SwiftNativeFileSystem extends FileSystem {
    * @throws IOException if specified path is file instead of directory
    */
   private boolean mkdir(Path path) throws IOException {
-    Path absolutePath = makeAbsolute(path);
-    if (path.getParent() == null) {
+    Path directory = makeAbsolute(path);
+    boolean shouldCreate = shouldCreate(directory);
+    if (shouldCreate) {
+      forceMkdir(directory);
+    }
+    return shouldCreate;
+  }
+
+  /**
+   * Should mkdir create this directory. 
+   * If the directory is root : false
+   * If the entry exists and is a directory: false
+   * If the entry exists and is a file: exception
+   * else: true
+   * @param directory path to query
+   * @return true iff the directory should be created
+   * @throws IOException IO problems
+   * @throws SwiftNotDirectoryException if the path references a file
+   */
+  private boolean shouldCreate(Path directory) throws IOException {
+    FileStatus fileStatus;
+    boolean shouldCreate;
+    if (isRoot(directory)) {
       //its the base dir, bail out immediately
       return false;
     }
-    FileStatus fileStatus;
-    boolean created = false;
     try {
       //find out about the path
-      fileStatus = getFileStatus(absolutePath);
+      fileStatus = getFileStatus(directory);
       
       if (!SwiftUtils.isDirectory(fileStatus)) {
         //if it's a file, raise an error
-        throw new SwiftNotDirectoryException(path,
+        throw new SwiftNotDirectoryException(directory,
                 String.format(": can't mkdir since it is not a directory: %s",
                         fileStatus));
       } else {
         //path exists, and it is a directory
         if (LOG.isDebugEnabled()) {
-          LOG.debug("skipping mkdir(" + path + ") as it exists already");
+          LOG.debug("skipping mkdir(" + directory + ") as it exists already");
         }
-        return false;
+        shouldCreate = false;
       }
     } catch (FileNotFoundException e) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Making dir '" + path + "' in Swift");
-      }
-      //file is not found: it must be created
-      store.createDirectory(absolutePath);
-      created = true;
+      shouldCreate = true;
     }
-    //if the code got to this point, either the directory 
-    //was created
-    return created;
+    return shouldCreate;
+  }
+
+  /**
+   * mkdir of a directory -irrespective of what was there underneath.
+   * There are no checks for the directory existing, there not
+   * being a path there, etc. etc. Those are assumed to have
+   * taken place already
+   * @param absolutePath path to create
+   * @throws IOException IO problems
+   */
+  private void forceMkdir(Path absolutePath) throws IOException {
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Making dir '" + absolutePath + "' in Swift");
+    }
+    //file is not found: it must be created
+    store.createDirectory(absolutePath);
   }
 
   /**

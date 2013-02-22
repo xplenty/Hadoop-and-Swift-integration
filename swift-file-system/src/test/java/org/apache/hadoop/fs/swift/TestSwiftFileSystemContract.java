@@ -59,17 +59,23 @@ public class TestSwiftFileSystemContract
     assertTrue(fs.mkdirs(testDir));
     assertTrue(fs.exists(testDir));
 
-    Path path = path("/test/hadoop/file");
-    SwiftTestUtils.writeTextFile(fs, path, "hello, world", false);
+    Path filepath = path("/test/hadoop/file");
+    SwiftTestUtils.writeTextFile(fs, filepath, "hello, world", false);
 
-    Path testSubDir = path("/test/hadoop/file/subdir");
+    Path testSubDir = new Path(filepath, "subdir");
+    SwiftTestUtils.assertPathDoesNotExist(fs, "subdir before mkdir", testSubDir);
+
     try {
       fs.mkdirs(testSubDir);
       fail("Should throw IOException.");
     } catch (SwiftNotDirectoryException e) {
+      
       // expected
+      assertEquals(filepath,e.getPath());
+      
     }
-    SwiftTestUtils.assertPathDoesNotExist(fs, "subdir", testSubDir);
+    //now verify that the subdir path does not exist
+    SwiftTestUtils.assertPathDoesNotExist(fs, "subdir after mkdir", testSubDir);
 
     Path testDeepSubDir = path("/test/hadoop/file/deep/sub/dir");
     try {
@@ -78,7 +84,8 @@ public class TestSwiftFileSystemContract
     } catch (SwiftNotDirectoryException e) {
       // expected
     }
-    SwiftTestUtils.assertPathDoesNotExist(fs, "testDeepSubDir", testDeepSubDir);
+    SwiftTestUtils.assertPathDoesNotExist(fs, "testDeepSubDir  after mkdir",
+                                          testDeepSubDir);
 
   }
 

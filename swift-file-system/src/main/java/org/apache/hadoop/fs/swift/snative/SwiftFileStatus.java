@@ -49,7 +49,9 @@ public class SwiftFileStatus extends FileStatus {
     super(length, isdir, block_replication, blocksize, modification_time,
           access_time, permission, owner, group, path);
   }
-/*
+  
+  //HDFS2+ only
+/* 
 
   public SwiftFileStatus(long length,
                          boolean isdir,
@@ -93,5 +95,21 @@ public class SwiftFileStatus extends FileStatus {
    */
   public boolean isDirectory() {
     return isDir();
+  }
+
+
+  @Override
+  public String toString() {
+    StringBuilder sb = new StringBuilder();
+    sb.append(getClass().getSimpleName());
+    sb.append("{");
+    sb.append("path=").append(getPath());
+    sb.append("; isDirectory=").append(isDir());
+    if (!isDirectory()) {
+      sb.append("; length=").append(getLen());
+    }
+    sb.append("; modification_time=").append(getModificationTime());
+    sb.append("}");
+    return sb.toString();
   }
 }
