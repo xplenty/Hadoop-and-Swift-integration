@@ -19,16 +19,15 @@
 package org.apache.hadoop.fs.swift.integration.generate
 
 import groovy.util.logging.Commons
-import org.junit.Test
-import org.apache.hadoop.fs.swift.integration.IntegrationTestBase
-import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem
-import org.apache.hadoop.fs.Path
-import org.apache.hadoop.fs.FSDataOutputStream
-import org.apache.hadoop.fs.swift.integration.tools.DataGenerator
-import org.apache.hadoop.fs.swift.exceptions.SwiftPathExistsException
-import org.apache.hadoop.fs.swift.util.SwiftTestUtils
 import org.apache.hadoop.fs.FSDataInputStream
+import org.apache.hadoop.fs.FSDataOutputStream
 import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.swift.exceptions.SwiftPathExistsException
+import org.apache.hadoop.fs.swift.integration.IntegrationTestBase
+import org.apache.hadoop.fs.swift.integration.tools.DataGenerator
+import org.apache.hadoop.fs.swift.util.SwiftTestUtils
+import org.junit.Test
 
 /**
  * Generate a swift doc
@@ -39,7 +38,7 @@ class TestGenerateToSwift extends IntegrationTestBase {
   public static final String GENERATED_DATA_DIR = "/data/generated"
   public static final String DATASET_CSV = "dataset.csv"
   public static final String DATASET_CSV_PATH = "/data/generated/dataset.csv"
-  
+
 
   @Test
   public void testMaybeGenerate() throws Throwable {
@@ -57,7 +56,7 @@ class TestGenerateToSwift extends IntegrationTestBase {
     } catch (SwiftPathExistsException e) {
       SwiftTestUtils.downgrade("Destination file ${generatedData} exists", e);
     }
-    
+
     //now read it back in
     FSDataInputStream instream = fs.open(generatedData)
     BufferedReader reader = new BufferedReader(new InputStreamReader(instream))
@@ -67,6 +66,6 @@ class TestGenerateToSwift extends IntegrationTestBase {
     }
     reader.close()
     assert lines == linesread
-    
+
   }
 }

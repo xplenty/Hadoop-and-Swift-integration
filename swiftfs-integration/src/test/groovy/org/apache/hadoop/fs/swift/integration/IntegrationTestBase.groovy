@@ -18,18 +18,17 @@
 
 package org.apache.hadoop.fs.swift.integration
 
-import static org.apache.hadoop.fs.swift.util.SwiftTestUtils.*
-import org.junit.Assert
-import org.apache.hadoop.fs.swift.util.SwiftTestUtils
 import groovy.util.logging.Commons
-import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem
 import org.apache.hadoop.conf.Configuration
-import org.apache.pig.PigServer
-import org.apache.pig.impl.util.PropertiesUtil
-import org.apache.pig.impl.PigContext
-import org.apache.pig.ExecType
-import org.apache.pig.data.Tuple
 import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem
+import org.apache.hadoop.fs.swift.util.SwiftTestUtils
+import org.apache.pig.ExecType
+import org.apache.pig.PigServer
+import org.apache.pig.data.Tuple
+import org.apache.pig.impl.PigContext
+import org.apache.pig.impl.util.PropertiesUtil
+import org.junit.Assert
 
 @Commons
 class IntegrationTestBase extends Assert {
@@ -45,15 +44,15 @@ class IntegrationTestBase extends Assert {
     fs.initialize(serviceURI, conf);
     fs
   }
-  
+
 
   protected FileSystem getSharedFilesystem() {
     def conf = new Configuration();
     URI serviceURI = getSourceFS(conf);
-    return FileSystem.get(serviceURI,conf);
+    return FileSystem.get(serviceURI, conf);
   }
-  
-  
+
+
 
   protected URI getSourceFS(Configuration conf) {
     SwiftTestUtils.getServiceURI(conf)
