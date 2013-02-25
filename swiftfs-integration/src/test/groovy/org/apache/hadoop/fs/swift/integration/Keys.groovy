@@ -18,11 +18,21 @@
 
 package org.apache.hadoop.fs.swift.integration
 
-import org.apache.hadoop.fs.swift.util.SwiftTestUtils
-
-class Keys {
+interface Keys {
   /**
    * name of the key in the config XML files defining the filesystem to work with
    */
-  public static final String KEY_TEST_FS = SwiftTestUtils.TEST_FS_SWIFT;
+  String KEY_TEST_FS = "test.fs.name";
+  /**
+   * No of lines/records to generate
+   */
+  String KEY_TEST_LINES = "test.fs.lines";
+  int DEFAULT_TEST_LINES = 100;
+
+  String GENERATED_DATA_DIR = "/tmp/data/generated"
+  String DATASET_CSV = "dataset.csv"
+  String DATASET_CSV_PATH = "/tmp/data/generated/dataset.csv"
+  String DESTDIR = "/tmp/data/result"
+
+  public int DEFAULT_SEED = 500
 }

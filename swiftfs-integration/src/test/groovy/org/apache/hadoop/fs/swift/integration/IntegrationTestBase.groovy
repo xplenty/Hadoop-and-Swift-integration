@@ -21,55 +21,93 @@ package org.apache.hadoop.fs.swift.integration
 import groovy.util.logging.Commons
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileSystem
-import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem
-import org.apache.hadoop.fs.swift.util.SwiftTestUtils
 import org.apache.pig.ExecType
 import org.apache.pig.PigServer
 import org.apache.pig.data.Tuple
 import org.apache.pig.impl.PigContext
 import org.apache.pig.impl.util.PropertiesUtil
 import org.junit.Assert
+import org.junit.internal.AssumptionViolatedException
 
 @Commons
-class IntegrationTestBase extends Assert {
-  /**
-   * name of the key in the config XML files defining the filesystem to work with
-   */
-  public static final String KEY_TEST_FS = SwiftTestUtils.TEST_FS_SWIFT;
+class IntegrationTestBase extends Assert implements Keys {
 
-  protected SwiftNativeFileSystem bindFilesystem() {
-    def conf = new Configuration();
-    URI serviceURI = getSourceFS(conf);
-    SwiftNativeFileSystem fs = new SwiftNativeFileSystem();
-    fs.initialize(serviceURI, conf);
-    fs
+
+  protected FileSystem bindFilesystem() {
+    getSrcFilesystem();
   }
 
 
-  protected FileSystem getSharedFilesystem() {
+  protected FileSystem getSrcFilesystem() {
     def conf = new Configuration();
-    URI serviceURI = getSourceFS(conf);
+    URI serviceURI = getSrcFilesysURI(conf);
     return FileSystem.get(serviceURI, conf);
   }
 
-
-
-  protected URI getSourceFS(Configuration conf) {
-    SwiftTestUtils.getServiceURI(conf)
+  protected FileSystem getDestFilesystem() {
+    def conf = new Configuration();
+    URI serviceURI = getSrcFilesysURI(conf);
+    return FileSystem.get(serviceURI, conf);
   }
 
-  protected URI getDestFS(Configuration conf) {
-    SwiftTestUtils.getServiceURI(conf)
+  /**
+   * Get the test URI
+   * @param conf configuration
+   * @throws IOException missing parameter or bad URI
+   */
+  public static URI getServiceURI(Configuration conf, String key) throws
+      IOException {
+    String instance = conf.get(key);
+    if (instance == null) {
+      throw new IOException(
+          "Missing configuration entry " + key);
+    }
+    try {
+      return new URI(instance);
+    } catch (URISyntaxException e) {
+      throw new IOException("Bad URI: " + instance);
+    }
   }
 
+  protected URI getSrcFilesysURI(Configuration conf) {
+    getServiceURI(conf, Keys.KEY_TEST_FS);
+  }
 
+  protected URI getDestFilesysURI(Configuration conf) {
+    getSrcFilesysURI(conf)
+  }
 
+  /**
+   * Assume that a configuration option is set
+   * @param conf configuration
+   * @param key key to look for
+   * @throws AssumptionViolatedException -this is converted to a test skip
+   */
+  protected void assumeSet(Configuration conf, String key) {
+    skip(conf.get(key) == null, "Unset option " + key)
+  }
+
+  /**
+   * skip a test if a condition is set 
+   * @param condition condition to test
+   * @param message message to use
+   * @throws AssumptionViolatedException -this is converted to a test skip
+   */
+  protected void skip(boolean condition, String message) {
+    if (condition) {
+      throw new AssumptionViolatedException(message);
+    }
+  }
+
+  /**
+   * Create a pig server
+   * @return
+   */
   protected PigServer createPigServer() {
     Properties properties = PropertiesUtil.loadDefaultProperties()
-
     PigContext context = new PigContext(ExecType.LOCAL,
                                         properties)
-    PigServer pig = new PigServer(ExecType.LOCAL);
+    PigServer pig = new PigServer(context);
     pig
   }
 
@@ -79,14 +117,22 @@ class IntegrationTestBase extends Assert {
    * parameters
    * @return a map
    */
-  Map paramMap() {
+  Map<String, String> paramMap() {
     def conf = new Configuration();
-    URI sourceURI = getSourceFS(conf);
-    URI destURI = getDestFS(conf);
+    URI sourceURI = getSrcFilesysURI(conf);
+    URI destURI = getDestFilesysURI(conf);
     def map = [:]
-    map["source"] = sourceURI.toString();
+    map["src"] = sourceURI.toString();
     map["dest"] = destURI.toString();
+    map["srcfile"] = DATASET_CSV_PATH;
+    map["destdir"] = DESTDIR;
     map
+  }
+
+  protected void dumpMap(Map map) {
+    map.each { k, v ->
+      log.info("$k='$v'")
+    }
   }
 
   String stringify(Tuple t) {

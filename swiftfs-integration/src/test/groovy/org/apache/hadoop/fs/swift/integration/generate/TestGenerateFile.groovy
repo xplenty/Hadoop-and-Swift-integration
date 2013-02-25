@@ -19,6 +19,7 @@
 package org.apache.hadoop.fs.swift.integration.generate
 
 import groovy.util.logging.Commons
+import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FSDataInputStream
 import org.apache.hadoop.fs.FSDataOutputStream
 import org.apache.hadoop.fs.FileSystem
@@ -33,24 +34,21 @@ import org.junit.Test
  * Generate a swift doc
  */
 @Commons
-class TestGenerateToSwift extends IntegrationTestBase {
-
-  public static final String GENERATED_DATA_DIR = "/data/generated"
-  public static final String DATASET_CSV = "dataset.csv"
-  public static final String DATASET_CSV_PATH = "/data/generated/dataset.csv"
+class TestGenerateFile extends IntegrationTestBase {
 
 
   @Test
   public void testMaybeGenerate() throws Throwable {
-    FileSystem fs = getSharedFilesystem()
+    FileSystem fs = getSrcFilesystem();
     Path generatedDir = new Path(GENERATED_DATA_DIR);
     Path generatedData = new Path(generatedDir, DATASET_CSV);
     fs.mkdirs(generatedDir);
-    int lines = 100
+    Configuration conf = new Configuration();
+    int lines = conf.getInt(KEY_TEST_LINES, DEFAULT_TEST_LINES);
     try {
       boolean overwrite = true
       FSDataOutputStream out = fs.create(generatedData, overwrite);
-      DataGenerator generator = new DataGenerator(lines, 500);
+      DataGenerator generator = new DataGenerator(lines, DEFAULT_SEED);
       generator.generate(out)
       out.close();
     } catch (SwiftPathExistsException e) {
