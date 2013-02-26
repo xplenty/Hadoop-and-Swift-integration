@@ -20,8 +20,8 @@ package org.apache.hadoop.fs.swift.integration.core
 
 import groovy.util.logging.Commons
 import org.apache.hadoop.fs.swift.integration.IntegrationTestBase
-import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem
 import org.junit.Test
+import org.apache.hadoop.fs.FileSystem
 
 /**
  * Generate a swift doc
@@ -30,10 +30,15 @@ import org.junit.Test
 class TestIntegrationBinding extends IntegrationTestBase {
 
   @Test
-  public void testPropertyBound() throws Throwable {
-    SwiftNativeFileSystem fs = bindFilesystem()
+  public void testSrcPropertyBound() throws Throwable {
+    FileSystem fs = getSrcFilesystem();
     log.info(fs.toString());
   }
 
+  @Test
+  public void testDestPropertyBound() throws Throwable {
+    FileSystem fs = getDestFilesystem();
+    log.info(fs.toString());
+  }
 
 }
