@@ -4,7 +4,7 @@
 ## Introduction
 
 The swift-filesystem-integration project contains tests designed to test the
-higher layers of the Apache&trade; Hadoop&reg stack against the
+higher layers of the Apache&trade; Hadoop&reg; stack against the
 OpenStack&trade; Swift object Filesystem.
 
 The test are designed to work with other filesystems so that
@@ -96,9 +96,11 @@ Test can be run against the local filesystem by setting that as the test filesys
 	  <value>file:///</value>
 	</property>  
 
-All test cases work with files under `/tmp/data`. Accordingly, the directory `/tmp` must exist,
-with write access by the current user. Its subdirectory `data` may exist -in which case
-it must have same permissions. If not present, this subdirectory (and any others created during the tests)
+All test cases work with files under `/tmp/data`.
+Accordingly, the directory `/tmp` must exist,
+with write access by the current user. Its subdirectory `data` may exist
+-in which case it must have same permissions.
+If not present, this subdirectory (and any others created during the tests)
 will be created as needed.
 
 Local filesytem testing is ideal for developing and debugging new test scripts, as access
@@ -121,3 +123,30 @@ in by downstream tests.
 
 The log4J properties file in `swiftfs-integration/src/test/resources/log4j.properties`
 can be tuned to increase or decrease the log output.
+
+## Writing more tests
+
+More tests are always welcome. 
+
+1. Extend `org.apache.hadoop.fs.swift.integration.IntegrationTestBase` 
+2. Write the tests
+3. Run them with `mvn test`
+4. Fix the bugs that are found.
+
+Some tests may be skipped if a configuration option is unset; the 
+method `assumeSet(Configuration conf, String key)` can be used to 
+raise a test skip if `conf.get(key)==null`.
+
+Some tests may explicitly choose to skip themeselves if another
+external condition is not met. For example, some Pig tests
+depend on data generated in another test. 
+
+	FileSystem fs = getSrcFilesystem();
+	skip(!fs.exists(new Path(DATASET_CSV_PATH)),
+	    "No test data");
+
+This downgrades a test from a failure to a skip if the data is missing.
+Once the dependent test has completed, the data will be ready.
+
+(Why isn't this data generated in an `@Before` clause? To plan for future
+tests where the data size is measured in GB).
