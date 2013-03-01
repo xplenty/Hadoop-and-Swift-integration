@@ -47,6 +47,7 @@ class TestGenerateFile extends IntegrationTestBase {
     int lines = conf.getInt(KEY_TEST_LINES, DEFAULT_TEST_LINES);
     try {
       boolean overwrite = true
+      fs.delete(generatedData,false);
       FSDataOutputStream out = fs.create(generatedData, overwrite);
       DataGenerator generator = new DataGenerator(lines, DEFAULT_SEED);
       generator.generate(out)

@@ -480,15 +480,19 @@ public final class SwiftRestClient {
                                           long offset,
                                           long length) throws IOException {
     if (offset < 0) {
-      throw new IOException("Invalid offset: " + offset + ".");
+      throw new SwiftBadRequestException("Invalid offset: " + offset + ".");
     }
     if (length <= 0) {
-      throw new IOException("Invalid length: " + length + ".");
+      throw new SwiftBadRequestException("Invalid length: " + length + ".");
     }
 
     final String range = String.format(SWIFT_RANGE_HEADER_FORMAT_PATTERN,
                                        offset,
                                        offset + length - 1);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("getDataAsInputStream(" + offset + "," + length + ")");
+    }
+
     return getDataAsInputStream(path,
                                 new Header(HEADER_RANGE, range),
                                 SwiftRestClient.NEWEST);
@@ -543,8 +547,7 @@ public final class SwiftRestClient {
                                           final Header... requestHeaders)
       throws IOException {
     preRemoteCommand("getDataAsInputStream");
-    return doGet(pathToURI(path),
-                 requestHeaders);
+    return doGet(pathToURI(path), requestHeaders);
   }
 
   /**

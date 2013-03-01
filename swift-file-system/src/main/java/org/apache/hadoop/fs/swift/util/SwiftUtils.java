@@ -18,6 +18,7 @@
 
 package org.apache.hadoop.fs.swift.util;
 
+import org.apache.commons.logging.Log;
 import org.apache.hadoop.fs.FileStatus;
 
 /**
@@ -88,4 +89,18 @@ public final class SwiftUtils {
                                   SwiftObjectPath possibleChild) {
     return possibleChild.getObject().startsWith(parent.getObject() + "/");
   }
+  
+  public static void debug(Log log, String text, Object... args) {
+    if (log.isDebugEnabled()) {
+      log.debug(String.format(text, args));
+    }
+  }
+  
+  public static void trace(Log log, String text, Object... args) {
+    if (log.isTraceEnabled()) {
+      log.trace(String.format(text, args));
+    }
+  }
+  
+  
 }

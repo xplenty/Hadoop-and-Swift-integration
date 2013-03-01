@@ -56,7 +56,7 @@ public class HttpInputStreamWithRelease extends InputStream {
     this.uri = uri;
     this.method = method;
     if (method == null) {
-      throw new NullPointerException("Null 'method' parameter ");
+      throw new IllegalArgumentException("Null 'method' parameter ");
     }
     try {
       inStream = method.getResponseBodyAsStream();
