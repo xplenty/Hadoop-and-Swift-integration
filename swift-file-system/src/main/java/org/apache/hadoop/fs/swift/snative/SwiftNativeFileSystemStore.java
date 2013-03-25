@@ -386,7 +386,7 @@ public class SwiftNativeFileSystemStore {
     //skip the overhead of a HEAD call if the src and dest share the same
     //parent dir (in which case the dest dir exists), or the destination
     //directory is root, in which case it must also exist
-    if (dstParent !=null && !dstParent.equals(srcParent)) {
+    if (dstParent != null && !dstParent.equals(srcParent)) {
       try {
         getObjectMetadata(dstParent);
       } catch (FileNotFoundException e) {
@@ -438,7 +438,8 @@ public class SwiftNativeFileSystemStore {
       // #1 destination is a file: fail
       // #2 destination is a directory: create a new dir under that one
       // #3 destination doesn't exist: create a new dir with that name
-
+      // #3 and #4 are only allowed if the dest path is not == or under src
+      
       if (destExists && !destIsDir) {
         // #1 destination is a file: fail
         throw new SwiftOperationFailedException(
@@ -447,7 +448,7 @@ public class SwiftNativeFileSystemStore {
 
       if (renamingOnToSelf) {
         //you can't rename a directory onto itself
-        throw new SwiftOperationFailedException("Destination==source -failing");
+        throw new SwiftOperationFailedException("Dest==source && isDir");
       }
       Path targetPath;
       if (destExists) {
