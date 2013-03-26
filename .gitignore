@@ -9,6 +9,6 @@ MANIFEST.MF
 *.iml
 *.ipr
 *.iws
-
+auth-keys.xml
 /rest-api/index
 /rest-api/rest/index
