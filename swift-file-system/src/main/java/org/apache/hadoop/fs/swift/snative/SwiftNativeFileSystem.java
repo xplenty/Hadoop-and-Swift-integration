@@ -219,7 +219,6 @@ public class SwiftNativeFileSystem extends FileSystem {
     // Check if requested file in Swift is more than 5Gb. In this case
     // each block has its own location -which may be determinable
     // from the Swift client API, depending on the remote server
-
     final FileStatus[] listOfFileBlocks = store.listSubPaths(file.getPath());
     List<URI> locations = new ArrayList<URI>();
     if (listOfFileBlocks.length > 1) {
@@ -340,7 +339,6 @@ public class SwiftNativeFileSystem extends FileSystem {
    * @throws SwiftNotDirectoryException if the path references a file
    */
   private boolean shouldCreate(Path directory) throws IOException {
-
     FileStatus fileStatus;
     boolean shouldCreate;
     if (isRoot(directory)) {
@@ -600,7 +598,7 @@ public class SwiftNativeFileSystem extends FileSystem {
         try {
           if (!innerDelete(childPath, true)) {
             if (LOG.isDebugEnabled()) {
-              LOG.debug("Failed to  recursively delete '" + childPath + "'");
+              LOG.debug("Failed to recursively delete '" + childPath + "'");
             }
             return false;
           }

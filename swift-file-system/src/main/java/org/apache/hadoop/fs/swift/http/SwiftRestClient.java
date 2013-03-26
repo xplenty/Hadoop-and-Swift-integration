@@ -360,12 +360,13 @@ public final class SwiftRestClient {
    * Create a Swift Rest Client instance.
    *
    * @param filesystemURI filesystem URI
-   * @param conf          The URI
-   * @throws IOException
+   * @param conf The configuration to use to extract the binding
+   * @throws SwiftConfigurationException the configuration is not valid for
+   * defining a rest client against the service
    */
   private SwiftRestClient(URI filesystemURI,
                           Configuration conf)
-          throws IOException {
+      throws SwiftConfigurationException {
     this.filesystemURI = filesystemURI;
     Properties props = RestClientBindings.bind(filesystemURI, conf);
     String stringAuthUri = getOption(props, SWIFT_AUTH_PROPERTY);
@@ -549,11 +550,21 @@ public final class SwiftRestClient {
       return perform(pathToObjectLocation(path),
               new GetMethodProcessor<byte[]>() {
                 @Override
+                protected int[] getAllowedStatusCodes() {
+                  return new int[]{
+                    SC_OK,
+                    SC_FORBIDDEN,
+                    SC_NO_CONTENT
+                  };
+                }
+
+                @Override
                 public byte[] extractResult(GetMethod method) throws
                         IOException {
 
                   //TODO: remove SC_NO_CONTENT if it depends on Swift versions
-                  if (method.getStatusCode() == SC_NOT_FOUND || method.getStatusCode() == SC_FORBIDDEN ||
+                  if (method.getStatusCode() == SC_NOT_FOUND
+                      || method.getStatusCode() == SC_FORBIDDEN ||
                           method.getStatusCode() == SC_NO_CONTENT ||
                           method.getResponseBodyAsStream() == null) {
                     return null;
@@ -571,6 +582,7 @@ public final class SwiftRestClient {
                 }
               });
     } catch (IOException e) {
+      LOG.warn("Failed to get the location of " + path + ": " + e, e);
       return null;
     }
   }
@@ -668,7 +680,7 @@ public final class SwiftRestClient {
    */
   public byte[] listDeepObjectsInDirectory(SwiftObjectPath path,
                                        final Header... requestHeaders) throws IOException {
-    preRemoteCommand("listObjectsInPath");
+    preRemoteCommand("listDeepObjectsInDirectory");
 
     String endpoint = getEndpointURI().toString();
     StringBuilder dataLocationURI = new StringBuilder();
@@ -1134,7 +1146,10 @@ public final class SwiftRestClient {
    * is invalid
    * @throws FileNotFoundException a 404 response was returned
    */
-  private <M extends HttpMethod, R> R perform(URI uri, HttpMethodProcessor<M, R> processor) throws IOException {
+  private <M extends HttpMethod, R> R perform(URI uri,
+                      HttpMethodProcessor<M, R> processor)
+      throws IOException, SwiftBadRequestException, SwiftInternalStateException,
+             SwiftInvalidResponseException, FileNotFoundException {
     checkNotNull(uri);
     checkNotNull(processor);
 
@@ -1378,7 +1393,8 @@ public final class SwiftRestClient {
   private <M extends HttpMethod> int exec(M method) throws IOException {
     final HttpClient client = new HttpClient();
     if (proxyHost != null) {
-      client.getParams().setParameter(ConnRoutePNames.DEFAULT_PROXY, new HttpHost(proxyHost, proxyPort));
+      client.getParams().setParameter(ConnRoutePNames.DEFAULT_PROXY,
+                                      new HttpHost(proxyHost, proxyPort));
     }
 
     int statusCode = execWithDebugOutput(method, client);

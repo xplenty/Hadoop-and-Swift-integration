@@ -244,7 +244,7 @@ public class SwiftNativeFileSystemStore {
           //depending on whether the entry exists.
           FileStatus stat = getObjectMetadata(getCorrectSwiftPath(path));
 
-          if (SwiftUtils.isDirectory(stat)) {
+          if (stat.isDir()) {
             //it's an empty directory. state that
             return Collections.emptyList();
           } else {
