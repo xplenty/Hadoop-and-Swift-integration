@@ -615,6 +615,7 @@ public final class SwiftRestClient {
    * Find objects under a prefix
    *
    * @param path           path prefix
+   * @param delimiter delimiter of path, can be null
    * @param requestHeaders optional request headers
    * @return byte[] file data or null if the object was not found
    * @throws IOException           on IO Faults
@@ -622,23 +623,32 @@ public final class SwiftRestClient {
    *                               the directory is empty
    */
   public byte[] findObjectsByPrefix(SwiftObjectPath path,
+                                    String delimiter,
                                     final Header... requestHeaders) throws IOException {
     preRemoteCommand("findObjectsByPrefix");
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("findObjectsByPrefix path=" + path + " delimiter=" + delimiter);
+    }
     URI uri;
-    String dataLocationURI = getEndpointURI().toString();
+    String endpoint = getEndpointURI().toString();
+    StringBuilder dataLocationURI = new StringBuilder();
+    dataLocationURI.append(endpoint);
     try {
       String object = path.getObject();
       if (object.startsWith("/")) {
         object = object.substring(1);
       }
       object = encodeUrl(object);
-      dataLocationURI = dataLocationURI.concat("/")
-              .concat(path.getContainer())
-              .concat("/?prefix=")
-              .concat(object)
-//                                       .concat("&delimiter=/")
-      ;
-      uri = new URI(dataLocationURI);
+      dataLocationURI.append("/")
+              .append(path.getContainer());
+
+      boolean appended = maybeAppendPrefix(dataLocationURI, object);
+      dataLocationURI.append(appended ? "&" : "?");
+
+      if (delimiter != null) {
+        dataLocationURI.append("delimiter=/").append(delimiter);
+      }
+      uri = new URI(dataLocationURI.toString());
     } catch (URISyntaxException e) {
       throw new SwiftException("Bad URI: " + dataLocationURI, e);
     }
@@ -670,9 +680,26 @@ public final class SwiftRestClient {
   }
 
   /**
+   * Append the directory prefix if the directory is not rook
+   * @param dataLocationURI URI being built up.
+   * @param object directory that is being looked for
+   * @return true iff a prefix was appended.
+   */
+  private boolean maybeAppendPrefix(StringBuilder dataLocationURI,
+                                    String object) {
+    if (!object.isEmpty() && !"/".equals(object)) {
+      dataLocationURI.append("/?prefix=")
+                     .append(object);
+      return true;
+    } else {
+      return false;
+    }
+  }
+  /**
    * Find objects in a directory
    *
    * @param path           path prefix
+   * @param recursive      flag to indicate all child objects should be found
    * @param requestHeaders optional request headers
    * @return byte[] file data or null if the object was not found
    * @throws IOException           on IO Faults
@@ -680,6 +707,7 @@ public final class SwiftRestClient {
    *                               the directory is empty
    */
   public byte[] listDeepObjectsInDirectory(SwiftObjectPath path,
+                                           boolean recursive,
                                        final Header... requestHeaders) throws IOException {
     preRemoteCommand("listDeepObjectsInDirectory");
 
@@ -697,14 +725,15 @@ public final class SwiftRestClient {
     if (object.equals("/")) {
       object = "";
     }
-
     dataLocationURI = dataLocationURI.append("/")
-            .append(path.getContainer())
-            .append("/?prefix=")
-            .append(object)
-            //.append("&delimiter=/")
-            .append("&format=json");
-
+                                     .append(path.getContainer());
+    boolean appended = maybeAppendPrefix(dataLocationURI, object);
+    dataLocationURI.append(appended ? "&" : "?");
+    if (!recursive) {
+      dataLocationURI.append("delimiter=/");
+      dataLocationURI.append("&");
+    }
+    dataLocationURI.append("format=json");
     return findObjects(dataLocationURI.toString(), requestHeaders);
   }
 
@@ -922,7 +951,6 @@ public final class SwiftRestClient {
         }
         //WARNING: some back-ends to commons-logging
         //upgrade trace to debug, which can leak secrets.
-        //
         if (LOG.isTraceEnabled()) {
           LOG.trace("JSON message: " + "\n" + data);
         }

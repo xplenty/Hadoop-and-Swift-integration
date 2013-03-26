@@ -211,17 +211,35 @@ public class SwiftNativeFileSystemStore {
 
   /**
    * List a directory.
-   * This is O(n) for the number of objects in this path.
+
    *
-   * @param path working path
-   * @return Collection of file statuses
-   * @throws IOException IO problems
+   * @param path path to list
+   * @return the file statuses, or an empty array if there are no children
+   * @throws IOException on IO problems
+   * @throws FileNotFoundException if the path is nonexistent
    */
   private List<FileStatus> listDirectory(SwiftObjectPath path) throws IOException {
+    return listDirectory(path, false, false);
+  }
+  /**
+   * List a directory.
+
+   *
+   * @param path path to work with
+   * @param recursive should the listing be recursive?
+   * @param nameOnly should the status be minimal and not make any calls
+   * to the system to determine attributes beyond the name?
+   * @return the file statuses, or an empty array if there are no children
+   * @throws IOException on IO problems
+   * @throws FileNotFoundException if the path is nonexistent
+   */
+  private List<FileStatus> listDirectory(SwiftObjectPath path,
+                                         boolean recursive,
+                                         boolean nameOnly) throws IOException {
     final byte[] bytes;
     final ArrayList<FileStatus> files = new ArrayList<FileStatus>();
     try {
-      bytes = swiftRestClient.listDeepObjectsInDirectory(path);
+      bytes = swiftRestClient.listDeepObjectsInDirectory(path, recursive);
     } catch (FileNotFoundException e) {
       if (LOG.isDebugEnabled()) {
         LOG.debug("" +
@@ -515,7 +533,9 @@ public class SwiftNativeFileSystemStore {
       SwiftObjectPath targetObjectPath = toObjectPath(targetPath);
 
       //enum the child entries and everything underneath
-      List<FileStatus> fileStatuses = listDirectory(srcObject);
+      List<FileStatus> fileStatuses = listDirectory(srcObject,
+                                                   true,
+                                                   false);
 
       LOG.info("mv  " + srcObject + " " + targetPath);
 
