@@ -43,7 +43,7 @@ import java.net.URISyntaxException;
 
 public class SwiftFileSystemBaseTest extends Assert {
   protected static final Log LOG =
-          LogFactory.getLog(TestSwiftFileSystemExtendedContract.class);
+          LogFactory.getLog(SwiftFileSystemBaseTest.class);
   protected SwiftNativeFileSystem fs;
   protected byte[] data = SwiftTestUtils.dataset(getBlockSize() * 2, 0, 255);
 
