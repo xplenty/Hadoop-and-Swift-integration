@@ -99,13 +99,6 @@ public class TestSwiftFileSystemContract
   }
 
   public void testZeroByteFilesAreFiles() throws Exception {
-    SwiftTestUtils.unsupported("testZeroByteFilesAreFiles");
-/*
-    try {
-      super.testZeroByteFilesAreFiles();
-    } catch (AssertionFailedError e) {
-      SwiftTestUtils.downgrade("zero byte files get mistaken for directories", e);
-    }
-*/
+//    SwiftTestUtils.unsupported("testZeroByteFilesAreFiles");
   }
 }
