@@ -33,11 +33,6 @@ import java.net.URI;
 import java.util.Locale;
 import java.util.Properties;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
-
 public class TestSwiftFileSystemExtendedContract extends SwiftFileSystemBaseTest {
 
   @Test
@@ -49,7 +44,7 @@ public class TestSwiftFileSystemExtendedContract extends SwiftFileSystemBaseTest
       in.close();
       fail("didn't expect to get here");
     } catch (FileNotFoundException fnfe) {
-      LOG.info("This is expected.", fnfe);
+      LOG.debug("Expected: " + fnfe, fnfe);
     }
   }
 
@@ -91,14 +86,14 @@ public class TestSwiftFileSystemExtendedContract extends SwiftFileSystemBaseTest
   @Test
   public void testConfDefinesFilesystem() throws Throwable {
     Configuration conf = new Configuration();
-    URI fsURI = SwiftTestUtils.getServiceURI(conf);
+    SwiftTestUtils.getServiceURI(conf);
   }
 
   @Test
   public void testConfIsValid() throws Throwable {
     Configuration conf = new Configuration();
     URI fsURI = SwiftTestUtils.getServiceURI(conf);
-    Properties properties = RestClientBindings.bind(fsURI, conf);
+    RestClientBindings.bind(fsURI, conf);
   }
 
 

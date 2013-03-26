@@ -454,8 +454,8 @@ public class SwiftTestUtils extends org.junit.Assert {
     StringBuilder buf = new StringBuilder(stats.length * 128);
     buf.append("ls ").append(pathname).append(": ").append(stats.length)
        .append("\n");
-    for (FileStatus stat : stats) {
-      buf.append(stat.toString()).append("\n");
+    for (int i = 0; i < stats.length; i++) {
+      buf.append(String.format("[%02d] %s\n", i, stats[i]));
     }
     return buf.toString();
   }
@@ -475,7 +475,7 @@ public class SwiftTestUtils extends org.junit.Assert {
     String fileInfo = filename + "  " + status;
     assertFalse("File claims to be a directory " + fileInfo,
                 status.isDir());
-/*
+/* disabled for Hadoop v1 compatibility
     assertFalse("File claims to be a symlink " + fileInfo,
                        status.isSymlink());
 */
