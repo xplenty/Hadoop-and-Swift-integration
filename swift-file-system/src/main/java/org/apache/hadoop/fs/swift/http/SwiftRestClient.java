@@ -47,6 +47,7 @@ import org.apache.hadoop.fs.swift.auth.PasswordCredentials;
 import org.apache.hadoop.fs.swift.auth.entities.AccessToken;
 import org.apache.hadoop.fs.swift.auth.entities.Catalog;
 import org.apache.hadoop.fs.swift.auth.entities.Endpoint;
+import org.apache.hadoop.fs.swift.exceptions.SwiftAuthenticationFailedException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftBadRequestException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftConfigurationException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftConnectionException;
@@ -388,7 +389,7 @@ public final class SwiftRestClient {
 
     if (apiKey == null && password == null) {
         throw new SwiftConfigurationException(
-          "Configuration for "+ filesystemURI +" must contain either "
+          "Configuration for " + filesystemURI +" must contain either "
           + SWIFT_PASSWORD_PROPERTY + " or "
           + SWIFT_APIKEY_PROPERTY);
     }
@@ -937,6 +938,7 @@ public final class SwiftRestClient {
       protected int[] getAllowedStatusCodes() {
         return new int[]{
                 SC_OK,
+                SC_BAD_REQUEST,
                 SC_CREATED,
                 SC_ACCEPTED,
                 SC_NON_AUTHORITATIVE_INFORMATION,
@@ -949,6 +951,11 @@ public final class SwiftRestClient {
 
       @Override
       public AccessToken extractResult(PostMethod method) throws IOException {
+        //initial check for failure codes leading to authentication failures
+        if (method.getStatusCode() == SC_BAD_REQUEST) {
+          throw new SwiftAuthenticationFailedException(
+            "Failed to authenticate against " + authUri + " as " + username);
+        }
         final AuthenticationResponse access =
                 JSONUtil.toObject(method.getResponseBodyAsString(),
                         AuthenticationWrapper.class).getAccess();
@@ -1403,12 +1410,14 @@ public final class SwiftRestClient {
 
       if (method.getURI().toString().equals(authUri.toString())) {
         //unauth response from the AUTH URI itself.
-        throw new SwiftConnectionException(
-                "Authentication failed, URI credentials are incorrect,"
+        throw new SwiftAuthenticationFailedException(
+                "Authentication failed, URI or credentials are incorrect,"
                         + " or Openstack Keystone is configured incorrectly. URL='"
                         + authUri + "' "
                         + "username={" + username + "} "
-                        + "password length=" + password.length()
+                        + (password != null
+                          ? ("password length = " + password.length())
+                          : ("apikey length = " + apiKey.length()))
         );
       } else {
         //any other URL: try again

@@ -50,11 +50,17 @@ public class HttpInputStreamWithRelease extends InputStream {
   //volatile flag to verify that data is consumed.
   private volatile boolean dataConsumed;
   private InputStream inStream;
+  /**
+   * In debug builds, this is filled in with the construction-time
+   * stack, which is then included in logs from the finalize(), method.
+   */
+  private final Exception constructionStack;
 
   public HttpInputStreamWithRelease(URI uri, HttpMethod method) throws
                                                                 IOException {
     this.uri = uri;
     this.method = method;
+    constructionStack = LOG.isDebugEnabled() ? new Exception("stack") : null;
     if (method == null) {
       throw new IllegalArgumentException("Null 'method' parameter ");
     }
@@ -185,12 +191,11 @@ public class HttpInputStreamWithRelease extends InputStream {
   /**
    * Finalizer does release the stream, but also logs at WARN level
    * including the URI at fault
-   * @throws IOException if so
    */
   @Override
   protected void finalize() {
     try {
-      if (release("finalize()", null)) {
+      if (release("finalize()", constructionStack)) {
         LOG.warn("input stream of " + uri
                  + " not closed properly -cleaned up in finalize()");
       }

@@ -234,7 +234,7 @@ public class SwiftNativeFileSystem extends FileSystem {
     }
 
     if (locations.isEmpty()) {
-      LOG.info("No locations returned for " + file.getPath());
+      LOG.debug("No locations returned for " + file.getPath());
       //no locations were returned for the object
       //fall back to the superclass
       return super.getFileBlockLocations(file, start, len);
