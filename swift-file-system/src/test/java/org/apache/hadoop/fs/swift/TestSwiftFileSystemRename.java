@@ -207,6 +207,19 @@ public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
     assertIsFile(filepath);
   }
 
+  @Test
+  public void testMoveDirUnderParent() throws Throwable {
+    if (!renameSupported()) {
+      return;
+    }
+    Path testdir = path("test/dir");
+    fs.mkdirs(testdir);
+    Path parent = testdir.getParent();
+    //the outcome here is ambiguous, so is not checked
+    fs.rename(testdir, parent);
+    assertExists("Source directory has been deleted ", testdir);
+  }
+
   /**
    * trying to rename a file onto itself should succeed (it's a no-op)
    */
