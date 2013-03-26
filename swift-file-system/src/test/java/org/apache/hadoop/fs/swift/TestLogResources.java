@@ -18,12 +18,43 @@
 
 package org.apache.hadoop.fs.swift;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.junit.Test;
 
+import java.net.URL;
+
 public class TestLogResources {
+  protected static final Log LOG =
+    LogFactory.getLog(TestLogResources.class);
+  
+  private void printf(String format, Object... args) {
+    String msg = String.format(format, args);
+    System.out.printf(msg+"\n");
+    LOG.info(msg);  
+  }
 
   @Test
   public void testWhichLog4JPropsFile() throws Throwable {
-    this.getClass().getClassLoader().getResource("log4j.properties");
+    locateResource("log4j.properties");
+  }
+
+  @Test
+  public void testWhichLog4JXMLFile() throws Throwable {
+    locateResource("log4j.XML");
+  }
+
+  @Test
+  public void testCommonsLoggingProps() throws Throwable {
+    locateResource("commons-logging.properties");
+  }
+
+  private void locateResource(String resource) {
+    URL url = this.getClass().getClassLoader().getResource(resource);
+    if (url != null) {
+      printf("resource %s is at %s", resource, url);
+    } else {
+      printf("resource %s is not on the classpath", resource);
+    }
   }
 }
