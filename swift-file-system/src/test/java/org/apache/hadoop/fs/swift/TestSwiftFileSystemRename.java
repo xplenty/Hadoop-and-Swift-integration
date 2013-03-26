@@ -18,18 +18,14 @@
 
 package org.apache.hadoop.fs.swift;
 
-import static org.apache.hadoop.fs.swift.SwiftTestUtils.*;
-
+import static org.apache.hadoop.fs.swift.util.SwiftTestUtils.*;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.swift.util.SwiftTestUtils;
 import org.junit.Test;
 
 import java.io.IOException;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
 

@@ -21,11 +21,18 @@ package org.apache.hadoop.fs.swift.snative;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.BlockLocation;
+import org.apache.hadoop.fs.BufferedFSInputStream;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.fs.swift.exceptions.SwiftException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftNotDirectoryException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftOperationFailedException;
+import org.apache.hadoop.fs.swift.exceptions.SwiftPathExistsException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftUnsupportedFeatureException;
 import org.apache.hadoop.fs.swift.util.SwiftObjectPath;
 import org.apache.hadoop.fs.swift.util.SwiftUtils;
@@ -42,7 +49,8 @@ import java.util.List;
  */
 public class SwiftNativeFileSystem extends FileSystem {
 
-
+  /** filesystem prefix: {@value} */
+  public static final String SWIFT = "swift";
   private static final Log LOG =
           LogFactory.getLog(SwiftNativeFileSystem.class);
 
@@ -74,6 +82,14 @@ public class SwiftNativeFileSystem extends FileSystem {
   public SwiftNativeFileSystem(SwiftNativeFileSystemStore store)
           throws IOException {
     this.store = store;
+  }
+
+  /**
+   * This is for testing
+   * @return the inner store class
+   */
+  public SwiftNativeFileSystemStore getStore() {
+    return store;
   }
 
   /**
@@ -109,6 +125,11 @@ public class SwiftNativeFileSystem extends FileSystem {
   public URI getUri() {
 
     return uri;
+  }
+
+  @Override
+  public String toString() {
+    return "SwiftNativeFileSystem " + uri;
   }
 
   /**
@@ -182,6 +203,19 @@ public class SwiftNativeFileSystem extends FileSystem {
   public BlockLocation[] getFileBlockLocations(FileStatus file,
                                                long start,
                                                long len) throws IOException {
+    //argument checks
+    if (file == null) {
+      return null;
+    }
+
+    if (start < 0 || len < 0) {
+      throw new IllegalArgumentException("Negative start or len parameter" +
+                                         " to getFileBlockLocations");
+    }
+    if (file.getLen() <= start) {
+      return new BlockLocation[0];
+    }
+
     // Check if requested file in Swift is more than 5Gb. In this case
     // each block has its own location -which may be determinable
     // from the Swift client API, depending on the remote server
@@ -200,6 +234,13 @@ public class SwiftNativeFileSystem extends FileSystem {
       locations = store.getObjectLocation(file.getPath());
     }
 
+    if (locations.isEmpty()) {
+      LOG.info("No locations returned for " + file.getPath());
+      //no locations were returned for the object
+      //fall back to the superclass
+      return super.getFileBlockLocations(file, start, len);
+    }
+
     final String[] names = new String[locations.size()];
     final String[] hosts = new String[locations.size()];
     int i = 0;
@@ -213,66 +254,135 @@ public class SwiftNativeFileSystem extends FileSystem {
     };
   }
 
+  /**
+   * Create the parent directories.
+   * As an optimization, the entire hierarchy of parent
+   * directories is <i>Not</i> polled. Instead
+   * the tree is walked up from the last to the first,
+   * creating directories until one that exists is found.
+   * 
+   * This strategy means if a file is created in an existing directory,
+   * one quick poll sufficies.
+   * 
+   * There is a big assumption here: that all parent directories of an existing
+   * directory also exists. 
+   * @param path path to create.
+   * @param permission to apply to files
+   * @return true if the operation was successful
+   * @throws IOException on a problem
+   */
   @Override
   public boolean mkdirs(Path path, FsPermission permission) throws IOException {
     if (LOG.isDebugEnabled()) {
       LOG.debug("SwiftFileSystem.mkdirs: " + path);
     }
-    Path absolutePath = makeAbsolute(path);
-    //build a list of paths to create, with shortest one at the front
-    List<Path> paths = new ArrayList<Path>();
-    do {
-      paths.add(0, absolutePath);
-      absolutePath = absolutePath.getParent();
-    } while (absolutePath != null);
+    Path directory = makeAbsolute(path);
 
-    boolean result = true;
+    //build a list of paths to create
+    List<Path> paths = new ArrayList<Path>();
+    while (shouldCreate(directory)) {
+      //this directory needs creation, add to the list
+      paths.add(0, directory);
+      //now see if the parent needs to be created
+      directory = directory.getParent();
+    }
+
+    //go through the list of directories to create
     for (Path p : paths) {
-      if (p.getParent() != null) {
-        result &= mkdir(p);
+      if (isNotRoot(p)) {
+        //perform a mkdir operation without any polling of
+        //the far end first
+        forceMkdir(p);
       }
     }
-    return result;
+    
+    //if an exception was not thrown, this operation is considered
+    //a success
+    return true;
+    
+    
   }
 
+  private boolean isNotRoot(Path absolutePath) {
+    return !isRoot(absolutePath);
+  }
+  
+  private boolean isRoot(Path absolutePath) {
+    return absolutePath.getParent() == null;
+  }
+
+
   /**
-   * internal implementation of directory creation
+   * internal implementation of directory creation.
    *
    * @param path path to file
-   * @return boolean file is created
+   * @return boolean file is created; false: no need to create
    * @throws IOException if specified path is file instead of directory
    */
   private boolean mkdir(Path path) throws IOException {
-    Path absolutePath = makeAbsolute(path);
-//    if (!store.objectExists(absolutePath)) {
-//      store.createDirectory(absolutePath);
-//    }
+    Path directory = makeAbsolute(path);
+    boolean shouldCreate = shouldCreate(directory);
+    if (shouldCreate) {
+      forceMkdir(directory);
+    }
+    return shouldCreate;
+  }
 
-    //TODO: define a consistent semantic for a directory/subdirectory
-    //in the hadoop:swift bridge. Hadoop FS assumes that there
-    //are files and directories, whereas SwiftFS assumes
-    //that there are just "objects"
+  /**
+   * Should mkdir create this directory. 
+   * If the directory is root : false
+   * If the entry exists and is a directory: false
+   * If the entry exists and is a file: exception
+   * else: true
+   * @param directory path to query
+   * @return true iff the directory should be created
+   * @throws IOException IO problems
+   * @throws SwiftNotDirectoryException if the path references a file
+   */
+  private boolean shouldCreate(Path directory) throws IOException {
 
     FileStatus fileStatus;
+    boolean shouldCreate;
+    if (isRoot(directory)) {
+      //its the base dir, bail out immediately
+      return false;
+    }
     try {
-      fileStatus = getFileStatus(absolutePath);
+      //find out about the path
+      fileStatus = getFileStatus(directory);
+      
       if (!SwiftUtils.isDirectory(fileStatus)) {
-        throw new SwiftNotDirectoryException(path,
+        //if it's a file, raise an error
+        throw new SwiftNotDirectoryException(directory,
                 String.format(": can't mkdir since it is not a directory: %s",
                         fileStatus));
       } else {
+        //path exists, and it is a directory
         if (LOG.isDebugEnabled()) {
-          LOG.debug("skipping mkdir(" + path + ") as it exists already");
+          LOG.debug("skipping mkdir(" + directory + ") as it exists already");
         }
+        shouldCreate = false;
       }
     } catch (FileNotFoundException e) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Making dir '" + path + "' in Swift");
-      }
-      //file is not found: it must be created
-      store.createDirectory(absolutePath);
+      shouldCreate = true;
     }
-    return true;
+    return shouldCreate;
+  }
+
+  /**
+   * mkdir of a directory -irrespective of what was there underneath.
+   * There are no checks for the directory existing, there not
+   * being a path there, etc. etc. Those are assumed to have
+   * taken place already
+   * @param absolutePath path to create
+   * @throws IOException IO problems
+   */
+  private void forceMkdir(Path absolutePath) throws IOException {
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Making dir '" + absolutePath + "' in Swift");
+    }
+    //file is not found: it must be created
+    store.createDirectory(absolutePath);
   }
 
   /**
@@ -321,13 +431,13 @@ public class SwiftNativeFileSystem extends FileSystem {
       if (overwrite) {
         delete(file, true);
       } else {
-        throw new SwiftException("File already exists: " + file);
+        throw new SwiftPathExistsException("File already exists: " + file);
       }
     } else {
       Path parent = file.getParent();
       if (parent != null) {
         if (!mkdirs(parent)) {
-          throw new SwiftException("Mkdirs failed to create " + parent.toString());
+          throw new SwiftOperationFailedException("Mkdirs failed to create " + parent);
         }
       }
     }
@@ -397,6 +507,15 @@ public class SwiftNativeFileSystem extends FileSystem {
       //base path was not found.
       return false;
     }
+  }
+
+  /**
+   * Delete a file.
+   * This method is abstract in Hadoop 1.x; in 2.x+ it is non-abstract
+   * and deprecated
+   */
+  public boolean delete(Path f) throws IOException {
+    return delete(f, true);
   }
 
   /**
@@ -472,8 +591,8 @@ public class SwiftNativeFileSystem extends FileSystem {
 
       //look to see if there are now any children
       if (!children.isEmpty() && !recursive) {
-        //if there are unless this is a recursive operation, fail immediately
-        throw new SwiftException("Directory " + path + " is not empty.");
+        //if there are children, unless this is a recursive operation, fail immediately
+        throw new SwiftOperationFailedException("Directory " + path + " is not empty.");
       }
       //delete the children
       for (FileStatus child : children) {

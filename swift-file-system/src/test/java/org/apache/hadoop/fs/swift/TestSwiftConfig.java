@@ -28,7 +28,7 @@ import java.net.URISyntaxException;
 import static org.apache.hadoop.fs.swift.http.SwiftProtocolConstants.*;
 
 /**
- *
+ * Test the swift service-specific configuration binding features
  */
 public class TestSwiftConfig {
 

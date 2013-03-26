@@ -28,8 +28,8 @@ public class SwiftProtocolConstants {
   public static final String HEADER_AUTH_KEY = "X-Auth-Token";
   public static final int SWIFT_HTTP_PORT = 8080;
   public static final int SWIFT_HTTPS_PORT = 443;
-  public static final String HEADER_RANGE = HttpHeaders.RANGE;
-  public static final String HEADER_DESTINATION = HttpHeaders.DESTINATION;
+  public static final String HEADER_RANGE = "Range";
+  public static final String HEADER_DESTINATION = "Destination";
   public static final String HEADER_LAST_MODIFIED = "Last-Modified";
   public static final String HEADER_CONTENT_LENGTH = "Content-Length";
   public static final String SWIFT_RANGE_HEADER_FORMAT_PATTERN = "bytes=%d-%d";
@@ -82,6 +82,7 @@ public class SwiftProtocolConstants {
   public static final String DOT_TENANT = ".tenant";
   public static final String DOT_USERNAME = ".username";
   public static final String DOT_PASSWORD = ".password";
+  public static final String DOT_APIKEY = ".apikey";
   public static final String DOT_HTTP_PORT = ".http.port";
   public static final String DOT_HTTPS_PORT = ".https.port";
   public static final String DOT_REGION = ".region";
@@ -99,6 +100,7 @@ public class SwiftProtocolConstants {
   public static final String SWIFT_TENANT_PROPERTY = FS_SWIFT + DOT_TENANT;
   public static final String SWIFT_USERNAME_PROPERTY = FS_SWIFT + DOT_USERNAME;
   public static final String SWIFT_PASSWORD_PROPERTY = FS_SWIFT + DOT_PASSWORD;
+  public static final String SWIFT_APIKEY_PROPERTY = FS_SWIFT + DOT_APIKEY;
   public static final String SWIFT_HTTP_PORT_PROPERTY = FS_SWIFT + DOT_HTTP_PORT;
   public static final String SWIFT_HTTPS_PORT_PROPERTY = FS_SWIFT
           + DOT_HTTPS_PORT;
@@ -107,4 +109,6 @@ public class SwiftProtocolConstants {
 
   public static final String SWIFT_PROXY_HOST_PROPERTY = FS_SWIFT + DOT_PROXY_HOST;
   public static final String SWIFT_PROXY_PORT_PROPERTY = FS_SWIFT + DOT_PROXY_PORT;
+  public static final String HTTP_ROUTE_DEFAULT_PROXY =
+    "http.route.default-proxy";
 }

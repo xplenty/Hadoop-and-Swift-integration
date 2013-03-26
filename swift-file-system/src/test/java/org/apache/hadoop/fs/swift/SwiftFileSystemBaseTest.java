@@ -28,8 +28,9 @@ import org.apache.hadoop.fs.swift.exceptions.SwiftOperationFailedException;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystemStore;
 
-import static org.apache.hadoop.fs.swift.SwiftTestUtils.*;
+import static org.apache.hadoop.fs.swift.util.SwiftTestUtils.*;
 
+import org.apache.hadoop.fs.swift.util.SwiftTestUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -44,7 +45,6 @@ public class SwiftFileSystemBaseTest extends Assert {
   protected static final Log LOG =
           LogFactory.getLog(TestSwiftFileSystemExtendedContract.class);
   protected SwiftNativeFileSystem fs;
-  protected SwiftNativeFileSystemStore fileSystemStore;
   protected byte[] data = SwiftTestUtils.dataset(getBlockSize() * 2, 0, 255);
 
   @Before
@@ -53,14 +53,21 @@ public class SwiftFileSystemBaseTest extends Assert {
     final URI uri = getFilesystemURI();
     final Configuration conf = new Configuration();
 
-    fs = createSwiftFS(uri, conf);
-    fs.initialize(uri, conf);
+    fs = createSwiftFS();
+    try {
+      fs.initialize(uri, conf);
+    } catch (IOException e) {
+      //FS init failed, set it to null so that teardown doesn't 
+      //attempt to use it
+      fs = null;
+      throw e;
+    }
     noteAction("setup complete");
   }
 
   @After
   public void tearDown() throws Exception {
-    cleanupInTeardown(fs, "/");
+    cleanupInTeardown(fs, "/test");
   }
 
   /**
@@ -77,12 +84,9 @@ public class SwiftFileSystemBaseTest extends Assert {
     return getServiceURI(new Configuration());
   }
 
-  protected SwiftNativeFileSystem createSwiftFS(URI uri, Configuration conf) throws IOException {
-    fileSystemStore = new SwiftNativeFileSystemStore();
-    fileSystemStore.initialize(uri, conf);
-
+  protected SwiftNativeFileSystem createSwiftFS() throws IOException {
     SwiftNativeFileSystem swiftNativeFileSystem =
-            new SwiftNativeFileSystem(fileSystemStore);
+      new SwiftNativeFileSystem();
     return swiftNativeFileSystem;
   }
 
@@ -141,7 +145,7 @@ public class SwiftFileSystemBaseTest extends Assert {
    * @return the store
    */
   protected SwiftNativeFileSystemStore getStore() {
-    return fileSystemStore;
+    return fs.getStore();
   }
 
   protected void rename(Path src, Path dst, boolean renameMustSucceed,
@@ -192,7 +196,7 @@ public class SwiftFileSystemBaseTest extends Assert {
    */
   protected void renameToSuccess(Path src, Path dst,
                                  boolean srcExists, boolean dstExists)
-          throws IOException {
+      throws SwiftOperationFailedException, IOException {
     getStore().rename(src, dst);
     String outcome = getRenameOutcome(src, dst);
     assertEquals("Source " + src + "exists: " + outcome,
@@ -240,5 +244,16 @@ public class SwiftFileSystemBaseTest extends Assert {
   protected void assertDeleted(Path file, boolean recursive) throws IOException {
     SwiftTestUtils.assertDeleted(fs, file, recursive);
 
+  }
+
+  /**
+   * Assert that a value is not equal to the expected value
+   * @param message message if the two values are equal
+   * @param expected expected value
+   * @param actual actual value
+   */
+  protected void assertNotEqual(String message, int expected, int actual) {
+    assertTrue(message,
+               actual != expected);
   }
 }

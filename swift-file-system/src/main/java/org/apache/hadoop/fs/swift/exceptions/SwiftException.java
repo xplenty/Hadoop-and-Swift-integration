@@ -21,7 +21,8 @@ package org.apache.hadoop.fs.swift.exceptions;
 import java.io.IOException;
 
 /**
- * Thrown when I/O exception, interruption happens
+ * A Swift-specific exception -subclasses exist
+ * for various specific problems.
  */
 public class SwiftException extends IOException {
   public SwiftException() {

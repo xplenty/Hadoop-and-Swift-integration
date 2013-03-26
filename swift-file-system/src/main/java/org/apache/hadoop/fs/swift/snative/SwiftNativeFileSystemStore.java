@@ -143,7 +143,7 @@ public class SwiftNativeFileSystemStore {
    * @throws IOException           on a problem
    * @throws FileNotFoundException if there is nothing at the end
    */
-  public FileStatus getObjectMetadata(Path path) throws IOException {
+  public SwiftFileStatus getObjectMetadata(Path path) throws IOException {
     SwiftObjectPath objectPath = toObjectPath(path);
     final Header[] headers;
     headers = swiftRestClient.headRequest(objectPath,
@@ -266,7 +266,7 @@ public class SwiftNativeFileSystemStore {
     //this can happen if user lists file /data/files/file
     //in this case swift will return empty array
     if (fileStatusList.isEmpty()) {
-      final FileStatus objectMetadata = getObjectMetadata(getCorrectSwiftPath(path));
+      final SwiftFileStatus objectMetadata = getObjectMetadata(getCorrectSwiftPath(path));
       if (objectMetadata.isFile()) {
         files.add(objectMetadata);
       }
@@ -402,10 +402,11 @@ public class SwiftNativeFileSystemStore {
    * @param dst destination
    * @throws IOException                   IO failure
    * @throws SwiftOperationFailedException if the rename failed
-   * @throws FileNotFoundException         if the source directory is missing, or
-   *                                       the parent directory of the destination
+   * @throws FileNotFoundException if the source directory is missing, or
+   * the parent directory of the destination
    */
-  public void rename(Path src, Path dst) throws IOException {
+  public void rename(Path src, Path dst)
+    throws FileNotFoundException, SwiftOperationFailedException, IOException {
     if (LOG.isDebugEnabled()) {
       LOG.debug("mv " + src + " " + dst);
     }
@@ -491,6 +492,7 @@ public class SwiftNativeFileSystemStore {
       // #1 destination is a file: fail
       // #2 destination is a directory: create a new dir under that one
       // #3 destination doesn't exist: create a new dir with that name
+      // #3 and #4 are only allowed if the dest path is not == or under src
 
       if (destExists && !destIsDir) {
         // #1 destination is a file: fail

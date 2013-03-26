@@ -25,6 +25,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.swift.exceptions.SwiftOperationFailedException;
+import org.apache.hadoop.fs.swift.snative.SwiftFileStatus;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystemStore;
 
 import java.io.ByteArrayInputStream;
@@ -44,8 +45,8 @@ import java.util.TreeMap;
  */
 public class InMemorySwiftNativeStore extends SwiftNativeFileSystemStore {
   private static final Log LOG = LogFactory.getLog(InMemorySwiftNativeStore.class);
-  private SortedMap<String, FileStatus> metadataMap =
-          new TreeMap<String, FileStatus>();
+  private SortedMap<String, SwiftFileStatus> metadataMap =
+          new TreeMap<String, SwiftFileStatus>();
   private SortedMap<String, byte[]> dataMap = new TreeMap<String, byte[]>();
 
   @Override
@@ -70,14 +71,14 @@ public class InMemorySwiftNativeStore extends SwiftNativeFileSystemStore {
       IOUtils.closeQuietly(inputStream);
     }
     metadataMap.put(path.toUri().toString(),
-            new FileStatus(size, false, 0, 0, System.currentTimeMillis(),
+            new SwiftFileStatus(size, false, 0, 0, System.currentTimeMillis(),
                     path));
     dataMap.put(path.toUri().toString(), out.toByteArray());
   }
 
   @Override
-  public FileStatus getObjectMetadata(Path path) throws IOException {
-    FileStatus status = metadataMap.get(path.toUri().toString());
+  public SwiftFileStatus getObjectMetadata(Path path) throws IOException {
+    SwiftFileStatus status = metadataMap.get(path.toUri().toString());
     if (status == null) {
       throw new FileNotFoundException("Not found " + path.toUri());
     }
@@ -102,7 +103,7 @@ public class InMemorySwiftNativeStore extends SwiftNativeFileSystemStore {
   @Override
   public void createDirectory(Path path) {
     metadataMap.put(path.toUri().toString(),
-            new FileStatus(0, false, 0, 0, System.currentTimeMillis(),
+            new SwiftFileStatus(0, false, 0, 0, System.currentTimeMillis(),
                     path));
   }
 
@@ -129,7 +130,7 @@ public class InMemorySwiftNativeStore extends SwiftNativeFileSystemStore {
       throw new SwiftOperationFailedException("source equals dest");
     }
 
-    final FileStatus fileStatus = metadataMap.get(src.toUri().toString());
+    final SwiftFileStatus fileStatus = metadataMap.get(src.toUri().toString());
     if (fileStatus == null) {
       throw new SwiftOperationFailedException("source does not exist");
     }

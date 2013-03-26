@@ -64,4 +64,10 @@ public abstract class NativeSwiftFileSystemContractBaseTest
    */
   protected abstract SwiftNativeFileSystem createSwiftFS() throws IOException;
 
+  /**
+   * overriding to disable; test runner should mark as skipped
+   */
+  public void testMkdirsWithUmask() {
+  }
+
 }

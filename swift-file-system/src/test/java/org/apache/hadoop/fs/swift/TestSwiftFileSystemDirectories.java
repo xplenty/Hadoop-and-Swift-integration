@@ -20,13 +20,17 @@ package org.apache.hadoop.fs.swift;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.swift.snative.SwiftFileStatus;
+import org.apache.hadoop.fs.swift.util.SwiftTestUtils;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-
+/**
+ * Test swift-specific directory logic.
+ */
 public class TestSwiftFileSystemDirectories extends SwiftFileSystemBaseTest {
 
   /**
@@ -39,7 +43,7 @@ public class TestSwiftFileSystemDirectories extends SwiftFileSystemBaseTest {
   public void testZeroByteFilesAreDirectories() throws Exception {
     Path src = path("/test/testZeroByteFilesAreFiles");
     //create a zero byte file
-    SwiftTestUtils.touch(fs, src, null);
+    SwiftTestUtils.touch(fs, src);
     SwiftTestUtils.assertIsDirectory(fs, src);
   }
 
@@ -56,13 +60,14 @@ public class TestSwiftFileSystemDirectories extends SwiftFileSystemBaseTest {
     Path src = path("/test/file");
 
     //create a zero byte file
-    SwiftTestUtils.touch(fs, src, null);
+    SwiftTestUtils.touch(fs, src);
     //stat it
     FileStatus[] statuses = fs.listStatus(test);
     assertNotNull(statuses);
     assertEquals("Wrong number of elements in file status", 1, statuses.length);
-    FileStatus stat = statuses[0];
+    SwiftFileStatus stat = (SwiftFileStatus) statuses[0];
     assertTrue("isDir(): Not a directory: " + stat, stat.isDir());
+    //HDFS2
     assertTrue("isDirectory(): Not a directory: " + stat, stat.isDirectory());
     assertFalse("isFile(): declares itself a file: " + stat, stat.isFile());
   }
@@ -80,7 +85,7 @@ public class TestSwiftFileSystemDirectories extends SwiftFileSystemBaseTest {
     SwiftTestUtils.writeTextFile(fs, src, "testMultiByteFilesAreFiles", false);
     assertIsFile(src);
     FileStatus status = fs.getFileStatus(src);
-    assertFalse(status.isDirectory());
+    assertFalse(status.isDir());
   }
 
 }

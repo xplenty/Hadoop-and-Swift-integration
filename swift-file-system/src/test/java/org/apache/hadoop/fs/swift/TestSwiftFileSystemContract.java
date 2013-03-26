@@ -22,7 +22,10 @@ import junit.framework.AssertionFailedError;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.swift.exceptions.SwiftNotDirectoryException;
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem;
+import org.apache.hadoop.fs.swift.util.SwiftTestUtils;
 
 import java.io.IOException;
 import java.net.URI;
@@ -30,7 +33,13 @@ import java.net.URISyntaxException;
 
 /**
  * This is the full filesystem contract test -which requires the
- * Default config set up to point to a filesystem
+ * Default config set up to point to a filesystem.
+ * 
+ * Some of the tests override the base class tests -these
+ * are where SwiftFS does not implement those features, or
+ * when the behavior of SwiftFS does not match the normal
+ * contract -which normally means that directories and equal files
+ * are being treated as equal.
  */
 public class TestSwiftFileSystemContract
         extends NativeSwiftFileSystemContractBaseTest {
@@ -49,14 +58,43 @@ public class TestSwiftFileSystemContract
     return swiftNativeFileSystem;
   }
 
-  public void testMkdirs() throws Exception {
+  @Override
+  public void testMkdirsFailsForSubdirectoryOfExistingFile() throws Exception {
+    Path testDir = path("/test/hadoop");
+    assertFalse(fs.exists(testDir));
+    assertTrue(fs.mkdirs(testDir));
+    assertTrue(fs.exists(testDir));
+
+    Path filepath = path("/test/hadoop/file");
+    SwiftTestUtils.writeTextFile(fs, filepath, "hello, world", false);
+
+    Path testSubDir = new Path(filepath, "subdir");
+    SwiftTestUtils.assertPathDoesNotExist(fs, "subdir before mkdir", testSubDir);
+
     try {
-      super.testMkdirs();
-    } catch (AssertionFailedError e) {
-      SwiftTestUtils.downgrade("file/dir confusion", e);
+      fs.mkdirs(testSubDir);
+      fail("Should throw IOException.");
+    } catch (SwiftNotDirectoryException e) {
+      
+      // expected
+      assertEquals(filepath,e.getPath());
     }
+    //now verify that the subdir path does not exist
+    SwiftTestUtils.assertPathDoesNotExist(fs, "subdir after mkdir", testSubDir);
+
+    Path testDeepSubDir = path("/test/hadoop/file/deep/sub/dir");
+    try {
+      fs.mkdirs(testDeepSubDir);
+      fail("Should throw IOException.");
+    } catch (SwiftNotDirectoryException e) {
+      // expected
+    }
+    SwiftTestUtils.assertPathDoesNotExist(fs, "testDeepSubDir  after mkdir",
+                                          testDeepSubDir);
+
   }
 
+  @Override
   public void testWriteReadAndDeleteEmptyFile() throws Exception {
     try {
       super.testWriteReadAndDeleteEmptyFile();
@@ -65,5 +103,7 @@ public class TestSwiftFileSystemContract
     }
   }
 
-
+  public void testZeroByteFilesAreFiles() throws Exception {
+//    SwiftTestUtils.unsupported("testZeroByteFilesAreFiles");
+  }
 }

@@ -24,13 +24,15 @@ import org.junit.Test;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.fail;
-
+/**
+ * Test Swift FS concurrency logic. This isn't a very accurate test,
+ * because it is hard to consistently generate race conditions. 
+ * Consider it "best effort"
+ */
 public class TestSwiftFileSystemConcurrency extends SwiftFileSystemBaseTest {
   Exception thread1Ex, thread2Ex;
 

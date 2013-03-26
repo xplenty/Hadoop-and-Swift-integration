@@ -19,19 +19,25 @@
 package org.apache.hadoop.fs.swift;
 
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.swift.exceptions.SwiftInvalidResponseException;
 import org.junit.Test;
 
 import java.io.EOFException;
 import java.io.IOException;
 
-import static org.apache.hadoop.fs.swift.SwiftTestUtils.readBytesToString;
-import static org.apache.hadoop.fs.swift.SwiftTestUtils.writeTextFile;
+import static org.apache.hadoop.fs.swift.util.SwiftTestUtils.readBytesToString;
+import static org.apache.hadoop.fs.swift.util.SwiftTestUtils.writeTextFile;
 import static org.junit.Assert.fail;
 
+/**
+ * Test filesystem read operations
+ */
 public class TestSwiftFileSystemRead extends SwiftFileSystemBaseTest {
 
 
+  /**
+   * Read past the end of a file: expect the operation to fail
+   * @throws IOException
+   */
   @Test
   public void testOverRead() throws IOException {
     final String message = "message";
@@ -42,7 +48,7 @@ public class TestSwiftFileSystemRead extends SwiftFileSystemBaseTest {
     try {
       readBytesToString(fs, filePath, 20);
       fail("expected an exception");
-    } catch (SwiftInvalidResponseException e) {
+    } catch (EOFException e) {
       //expected
     }
   }
