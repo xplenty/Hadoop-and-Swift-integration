@@ -78,20 +78,6 @@ public final class SwiftUtils {
     return swiftObject.objectMatches("") || swiftObject.objectMatches("/");
   }
 
-  /**
-   * Query to see if the possibleChild object is a child path of the parent.
-   * The test is done by probing for the path of the first object being
-   * at the start of the second -with a trailing slash.
-   *
-   * @param parent        Parent dir
-   * @param possibleChild possible child dir
-   * @return true iff the possibleChild is under the parent directory
-   */
-  public static boolean isChildOf(SwiftObjectPath parent,
-                                  SwiftObjectPath possibleChild) {
-    return possibleChild.getObject().startsWith(parent.getObject() + "/");
-  }
-  
   public static void debug(Log log, String text, Object... args) {
     if (log.isDebugEnabled()) {
       log.debug(String.format(text, args));

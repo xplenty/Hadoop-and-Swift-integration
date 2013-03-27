@@ -428,10 +428,6 @@ public class SwiftNativeFileSystemStore {
       throw new SwiftOperationFailedException("cannot rename root dir");
     }
 
-    if (SwiftUtils.isChildOf(srcObject, destObject)) {
-      throw new SwiftOperationFailedException("cannot move a directory under itself");
-    }
-
     final FileStatus srcMetadata;
     srcMetadata = getObjectMetadata(src);
     FileStatus dstMetadata;
@@ -485,6 +481,7 @@ public class SwiftNativeFileSystemStore {
                     "cannot rename a file over one that already exists");
           } else {
             //is mv self self where self is a file. this becomes a no-op
+            LOG.debug("Renaming file onto self: no-op => success");
             return;
           }
         }
@@ -503,15 +500,11 @@ public class SwiftNativeFileSystemStore {
       // #3 destination doesn't exist: create a new dir with that name
       // #3 and #4 are only allowed if the dest path is not == or under src
 
+
       if (destExists && !destIsDir) {
         // #1 destination is a file: fail
         throw new SwiftOperationFailedException(
                 "the source is a directory, but not the destination");
-      }
-
-      if (renamingOnToSelf) {
-        //you can't rename a directory onto itself
-        throw new SwiftOperationFailedException("Destination==source -failing");
       }
       Path targetPath;
       if (destExists) {
@@ -522,7 +515,12 @@ public class SwiftNativeFileSystemStore {
         targetPath = dst;
       }
       SwiftObjectPath targetObjectPath = toObjectPath(targetPath);
-
+      //final check for any recursive operations
+      if (srcObject.isEqualToOrParentOf(targetObjectPath)) {
+        //you can't rename a directory onto itself
+        throw new SwiftOperationFailedException(
+          "cannot move a directory under itself");
+      }
       //enum the child entries and everything underneath
       List<FileStatus> fileStatuses = listDirectory(srcObject, true);
 
@@ -599,8 +597,6 @@ public class SwiftNativeFileSystemStore {
   /**
    * Copy and object then, if the copy worked, delete it.
    * If the copy failed, the source object is not deleted.
-   * No checks are made on the validity of the arguments,
-   * the assumption is that the caller has already done this.
    *
    * @param srcObject  source object path
    * @param destObject destination object path
@@ -609,7 +605,13 @@ public class SwiftNativeFileSystemStore {
   private void copyThenDeleteObject(SwiftObjectPath srcObject,
                                     SwiftObjectPath destObject) throws
           IOException {
-    LOG.debug("Copying " + srcObject + " to " + destObject);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Copying " + srcObject + " to " + destObject);
+    }
+    if (srcObject.isEqualToOrParentOf(destObject)) {
+      throw new SwiftException(
+        "Can't copy " + srcObject + " onto " + destObject);
+    }
     boolean copySucceeded = swiftRestClient.copyObject(srcObject, destObject);
     if (copySucceeded) {
       //if the copy worked delete the original
