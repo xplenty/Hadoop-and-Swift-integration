@@ -18,6 +18,10 @@
 
 package org.apache.hadoop.fs.swift.auth;
 
+/**
+ * Class that represents authentication request to Openstack Keystone.
+ * Contains basic authentication information.
+ */
 public class AuthenticationRequest {
 
   /**
@@ -26,7 +30,6 @@ public class AuthenticationRequest {
   protected String tenantName;
 
   public AuthenticationRequest() {
-    super();
   }
 
   /**

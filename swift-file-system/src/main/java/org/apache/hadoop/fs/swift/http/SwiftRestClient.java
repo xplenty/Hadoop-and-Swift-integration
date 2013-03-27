@@ -636,7 +636,7 @@ public final class SwiftRestClient {
               .concat(path.getContainer())
               .concat("/?prefix=")
               .concat(object)
-//                                       .concat("&delimiter=/")
+ //             .concat("&delimiter=/")
       ;
       uri = new URI(dataLocationURI);
     } catch (URISyntaxException e) {
@@ -679,8 +679,9 @@ public final class SwiftRestClient {
    * @throws FileNotFoundException if nothing is at the end of the URI -that is,
    *                               the directory is empty
    */
-  public byte[] listDeepObjectsInDirectory(SwiftObjectPath path,
-                                       final Header... requestHeaders) throws IOException {
+  public byte[] listDeepObjectsInDirectory(SwiftObjectPath path, boolean listDeep,
+                                       final Header... requestHeaders)
+          throws IOException {
     preRemoteCommand("listDeepObjectsInDirectory");
 
     String endpoint = getEndpointURI().toString();
@@ -702,8 +703,12 @@ public final class SwiftRestClient {
             .append(path.getContainer())
             .append("/?prefix=")
             .append(object)
-            //.append("&delimiter=/")
             .append("&format=json");
+
+    //in listing deep set param to false
+    if (listDeep == false) {
+        dataLocationURI.append("&delimiter=/");
+    }
 
     return findObjects(dataLocationURI.toString(), requestHeaders);
   }
@@ -762,8 +767,9 @@ public final class SwiftRestClient {
    * @return true if the status code was considered successful
    * @throws IOException on IO Faults
    */
-  public boolean copyObject(SwiftObjectPath src, final SwiftObjectPath dst, final Header... headers)
-          throws IOException {
+  public boolean copyObject(SwiftObjectPath src, final SwiftObjectPath dst,
+                            final Header... headers) throws IOException {
+
     preRemoteCommand("copyObject");
 
     return perform(pathToURI(src), new CopyMethodProcessor<Boolean>() {
@@ -846,7 +852,9 @@ public final class SwiftRestClient {
    * @throws IOException           IO problems
    * @throws FileNotFoundException if there is nothing at the end
    */
-  public Header[] headRequest(SwiftObjectPath path, final Header... requestHeaders) throws IOException {
+  public Header[] headRequest(SwiftObjectPath path, final Header... requestHeaders)
+          throws IOException {
+
     preRemoteCommand("headRequest");
     return perform(pathToURI(path), new HeadMethodProcessor<Header[]>() {
       @Override
@@ -866,7 +874,9 @@ public final class SwiftRestClient {
     });
   }
 
-  public int putRequest(SwiftObjectPath path, final Header... requestHeaders) throws IOException {
+  public int putRequest(SwiftObjectPath path, final Header... requestHeaders)
+          throws IOException {
+
     preRemoteCommand("putRequest");
     return perform(pathToURI(path), new PutMethodProcessor<Integer>() {
 
@@ -1230,7 +1240,11 @@ public final class SwiftRestClient {
         break;
       case SC_BAD_REQUEST:
         //bad HTTP request
-        fault =  new SwiftBadRequestException("Bad request against " + uri);
+        fault =  new SwiftBadRequestException(
+          "Bad request against " + uri,
+          statusCode,
+          method.getName(),
+          uri);
         break;
 
       case SC_REQUESTED_RANGE_NOT_SATISFIABLE:
