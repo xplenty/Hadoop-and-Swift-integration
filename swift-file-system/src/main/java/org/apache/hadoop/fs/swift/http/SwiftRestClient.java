@@ -1015,7 +1015,7 @@ public final class SwiftRestClient {
                   + "Categories: " + catList
                   + ((regionList.length() > 0) ?
                   ("regions: " + regionList)
-                                                        : "No regions");
+                  : "No regions");
           throw new SwiftInvalidResponseException(message,
                                                   SC_OK,
                                                   "authenticating",

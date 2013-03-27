@@ -298,8 +298,6 @@ public class SwiftNativeFileSystem extends FileSystem {
     //if an exception was not thrown, this operation is considered
     //a success
     return true;
-    
-    
   }
 
   private boolean isNotRoot(Path absolutePath) {
