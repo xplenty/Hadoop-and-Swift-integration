@@ -71,9 +71,10 @@ public class TestSwiftFileSystemRename extends SwiftFileSystemBaseTest {
     assertTrue(fs.exists(old));
     rename(old, newPath, true, false, true);
 
-    final FSDataInputStream open = fs.open(newPath);
+    final FSDataInputStream bobStream = fs.open(newPath);
     final byte[] bytes = new byte[512];
-    final int read = open.read(bytes);
+    final int read = bobStream.read(bytes);
+    bobStream.close();
     final byte[] buffer = new byte[read];
     System.arraycopy(bytes, 0, buffer, 0, read);
     assertEquals(new String(message), new String(buffer));
