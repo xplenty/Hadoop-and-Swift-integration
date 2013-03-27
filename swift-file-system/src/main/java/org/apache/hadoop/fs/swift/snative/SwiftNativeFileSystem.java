@@ -29,7 +29,6 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsPermission;
-import org.apache.hadoop.fs.swift.exceptions.SwiftException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftNotDirectoryException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftOperationFailedException;
 import org.apache.hadoop.fs.swift.exceptions.SwiftPathExistsException;
@@ -350,7 +349,7 @@ public class SwiftNativeFileSystem extends FileSystem {
       if (!SwiftUtils.isDirectory(fileStatus)) {
         //if it's a file, raise an error
         throw new SwiftNotDirectoryException(directory,
-                String.format(": can't mkdir since it is not a directory: %s",
+                String.format(": can't mkdir since it exists and is not a directory: %s",
                         fileStatus));
       } else {
         //path exists, and it is a directory
