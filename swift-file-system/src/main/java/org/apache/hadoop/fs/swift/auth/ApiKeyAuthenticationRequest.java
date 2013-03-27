@@ -6,9 +6,9 @@
  *  to you under the Apache License, Version 2.0 (the
  *  "License"); you may not use this file except in compliance
  *  with the License.  You may obtain a copy of the License at
- *
+ *  
  *       http://www.apache.org/licenses/LICENSE-2.0
- *
+ *  
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,8 +31,9 @@ public class ApiKeyAuthenticationRequest extends AuthenticationRequest {
   private ApiKeyCredentials apiKeyCredentials;
 
   /**
-   * @param tenantName
-   * @param passwordCredentials
+   * API key auth 
+   * @param tenantName tenant
+   * @param apiKeyCredentials credentials
    */
   public ApiKeyAuthenticationRequest(String tenantName, ApiKeyCredentials apiKeyCredentials) {
     this.tenantName = tenantName;
@@ -56,9 +57,8 @@ public class ApiKeyAuthenticationRequest extends AuthenticationRequest {
 
   @Override
   public String toString() {
-    return "AuthenticationRequest{" +
-           "tenantName='" + tenantName + '\'' +
-           ", apiKeyCredentials=" + apiKeyCredentials +
-           '}';
+    return "Auth as " +
+           "tenant '" + tenantName + "' "
+           + apiKeyCredentials;
   }
 }

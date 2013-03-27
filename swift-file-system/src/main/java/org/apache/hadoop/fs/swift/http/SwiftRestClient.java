@@ -90,24 +90,35 @@ import static org.apache.hadoop.fs.swift.http.SwiftProtocolConstants.*;
  */
 public final class SwiftRestClient {
   private static final Log LOG = LogFactory.getLog(SwiftRestClient.class);
+
+  /**
+   * Default number of attempts to retry a connect request: {@value}
+   */
   private static final int DEFAULT_RETRY_COUNT = 3;
+
+  /**
+   * Default timeout in milliseconds for connection requests: {@value}
+   */
   private static final int DEFAULT_CONNECT_TIMEOUT = 15000;
 
   /**
    * Header that says "use newest version" -ensures that
-   * the query doesn't pick up older versions by accident
+   * the query doesn't pick up older versions served by
+   * an eventually consistent filesystem (except in the special case
+   * of a network partition, at which point no guarantees about
+   * consistency can be made.
    */
   public static final Header NEWEST =
           new Header(SwiftProtocolConstants.X_NEWEST, "true");
 
   /**
-   * authentication endpoint
+   * the authentication endpoint as supplied in the configuration
    */
   private final URI authUri;
 
   /**
    * Swift region. Some OpenStack installations has more than one region.
-   * In this case user can specify region with which Hadoop will be working
+   * In this case user can specify the region with which Hadoop will be working
    */
   private final String region;
 
@@ -132,6 +143,11 @@ public final class SwiftRestClient {
   private final String apiKey;
 
   /**
+   * The authentication request used to authenticate with Swift
+   */
+  private final AuthenticationRequest authRequest;
+  
+  /**
    * The container this client is working with
    */
   private final String container;
@@ -140,14 +156,19 @@ public final class SwiftRestClient {
    * Access token (Secret)
    */
   private AccessToken token;
+  
   /**
    * Endpoint for swift operations, obtained after authentication
    */
   private URI endpointURI;
+  
   /**
-   * Where objects live
+   * URI under which objects can be found.
+   * This is set when the user is authenticated -the URI
+   * is returned in the body of the success response.
    */
   private URI objectLocationURI;
+  
   private final URI filesystemURI;
   /**
    * The name of the service provider
@@ -253,7 +274,7 @@ public final class SwiftRestClient {
     protected abstract M doCreateMethod(String uri);
 
     /**
-     * Override it to set up method before method is executed.
+     * Override port to set up the method before it is executed.
      */
     protected void setup(M method) throws IOException {
     }
@@ -261,7 +282,7 @@ public final class SwiftRestClient {
     /**
      * Override point: what are the status codes that this operation supports
      *
-     * @return the list of status codes to accept
+     * @return an array with the permitted status code(s)
      */
     protected int[] getAllowedStatusCodes() {
       return new int[]{
@@ -299,6 +320,7 @@ public final class SwiftRestClient {
      *
      * @return the list of status codes to accept
      */
+    @Override
     protected int[] getAllowedStatusCodes() {
       return new int[]{
               SC_OK,
@@ -320,6 +342,11 @@ public final class SwiftRestClient {
       return new CopyMethod(uri);
     }
 
+    /**
+     * The only allowed status code is 201:created
+     * @return an array with the permitted status code(s)
+     */
+    @Override
     protected int[] getAllowedStatusCodes() {
       return new int[]{
               SC_CREATED
@@ -393,7 +420,18 @@ public final class SwiftRestClient {
           + SWIFT_PASSWORD_PROPERTY + " or "
           + SWIFT_APIKEY_PROPERTY);
     }
-
+    //create the (reusable) authentication request
+    if (password != null) {
+      authRequest = new PasswordAuthenticationRequest(tenant,
+                                                      new PasswordCredentials(
+                                                        username,
+                                                        password));
+    } else {
+      authRequest = new ApiKeyAuthenticationRequest(tenant,
+                                                    new ApiKeyCredentials(
+                                                      username, apiKey));
+    }
+    //proxy options
     proxyHost = props.getProperty(SWIFT_PROXY_HOST_PROPERTY, null);
     proxyPort = getIntOption(props, SWIFT_PROXY_PORT_PROPERTY, 8080);
 
@@ -441,6 +479,15 @@ public final class SwiftRestClient {
   }
 
 
+  /**
+   * Get an integer option from the property object
+   * @param props property object
+   * @param key configuration
+   * @param def default value
+   * @return the value in the property file, or the default.
+   * @throws SwiftConfigurationException if the property file-supplied
+   * value cannot be parsed to an integer
+   */
   private int getIntOption(Properties props, String key, int def) throws
           SwiftConfigurationException {
     String val = props.getProperty(key, Integer.toString(def));
@@ -454,7 +501,7 @@ public final class SwiftRestClient {
   }
 
   /**
-   * Makes HTTP GET request to Swift
+   * Make an HTTP GET request to Swift to get a range of data in the object.
    *
    * @param path   path to object
    * @param offset offset from file beginning
@@ -912,19 +959,11 @@ public final class SwiftRestClient {
   public AccessToken authenticate() throws IOException {
     LOG.debug("started authentication");
     return perform(authUri, new PostMethodProcessor<AccessToken>() {
+
+
       @Override
       protected void setup(PostMethod method) throws SwiftException {
-        AuthenticationRequest authRequest = null;
-        if (password != null) {
-          authRequest = new PasswordAuthenticationRequest(tenant,
-                                                          new PasswordCredentials(
-                                                            username,
-                                                            password));
-        } else {
-          authRequest = new ApiKeyAuthenticationRequest(tenant,
-                                                        new ApiKeyCredentials(
-                                                          username, apiKey));
-        }
+
         final String data = JSONUtil.toJSON(new AuthenticationRequestWrapper(
           authRequest));
         if (LOG.isDebugEnabled()) {
@@ -964,7 +1003,7 @@ public final class SwiftRestClient {
         //initial check for failure codes leading to authentication failures
         if (method.getStatusCode() == SC_BAD_REQUEST) {
           throw new SwiftAuthenticationFailedException(
-            "Failed to authenticate against " + authUri + " as " + username);
+            authRequest.toString(), "POST", authUri, method);
         }
         final AuthenticationResponse access =
                 JSONUtil.toObject(method.getResponseBodyAsString(),
@@ -1096,8 +1135,11 @@ public final class SwiftRestClient {
         status = SC_NOT_FOUND;
       }
       if (status == SC_BAD_REQUEST) {
-        throw new SwiftBadRequestException("Bad request " +
-                "-possibly an illegal container name");
+        throw new SwiftBadRequestException(
+          "Bad request -authentication failure or bad container name?",
+          status,
+          "PUT",
+          null);
       }
       if (!isStatusCodeExpected(status,
               SC_OK,
@@ -1242,23 +1284,24 @@ public final class SwiftRestClient {
         //bad HTTP request
         fault =  new SwiftBadRequestException(
           "Bad request against " + uri,
-          statusCode,
           method.getName(),
-          uri);
+          uri,
+          method);
         break;
 
       case SC_REQUESTED_RANGE_NOT_SATISFIABLE:
-        //out of range: end of the message
+        //out of range
         fault = new EOFException(method.getStatusText());
         break;
 
 
       default:
+        //return a generic invalid HTTP response
         fault = new SwiftInvalidResponseException(
                 errorMessage,
-                statusCode,
                 method.getName(),
-                uri);
+                uri,
+                method);
     }
 
     return fault;
@@ -1424,15 +1467,10 @@ public final class SwiftRestClient {
 
       if (method.getURI().toString().equals(authUri.toString())) {
         //unauth response from the AUTH URI itself.
-        throw new SwiftAuthenticationFailedException(
-                "Authentication failed, URI or credentials are incorrect,"
-                        + " or Openstack Keystone is configured incorrectly. URL='"
-                        + authUri + "' "
-                        + "username={" + username + "} "
-                        + (password != null
-                          ? ("password length = " + password.length())
-                          : ("apikey length = " + apiKey.length()))
-        );
+        throw new SwiftAuthenticationFailedException(authRequest.toString(),
+                                                     "auth",
+                                                     authUri,
+                                                     method);
       } else {
         //any other URL: try again
         if (LOG.isDebugEnabled()) {

@@ -18,12 +18,31 @@
 
 package org.apache.hadoop.fs.swift.exceptions;
 
+import org.apache.commons.httpclient.HttpMethod;
+
+import java.net.URI;
+
 /**
  * An exception raised when an authentication request was rejected
  */
-public class SwiftAuthenticationFailedException extends SwiftException {
+public class SwiftAuthenticationFailedException extends SwiftInvalidResponseException {
 
-  public SwiftAuthenticationFailedException(String message) {
-    super(message);
+  public SwiftAuthenticationFailedException(String message,
+                                            int statusCode,
+                                            String operation,
+                                            URI uri) {
+    super(message, statusCode, operation, uri);
+  }
+
+  public SwiftAuthenticationFailedException(String message,
+                                            String operation,
+                                            URI uri,
+                                            HttpMethod method) {
+    super(message, operation, uri, method);
+  }
+
+  @Override
+  public String exceptionTitle() {
+    return "Authentication Failure";
   }
 }
