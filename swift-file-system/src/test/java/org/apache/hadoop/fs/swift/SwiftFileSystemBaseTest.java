@@ -243,7 +243,6 @@ public class SwiftFileSystemBaseTest extends Assert {
 
   protected void assertDeleted(Path file, boolean recursive) throws IOException {
     SwiftTestUtils.assertDeleted(fs, file, recursive);
-
   }
 
   /**
