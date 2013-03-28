@@ -32,21 +32,17 @@ import java.net.URI;
  */
 public class TestSwiftFileSystemBinding extends Assert {
 
+  /**
+   * Looks to make sure that the filesystem mapping for swift is defined
+   * The value itself is not verified
+   * @throws Throwable
+   */
   @Test
   public void testInConfig() throws Throwable {
     Configuration conf = new Configuration();
     String name = "fs." + SwiftNativeFileSystem.SWIFT + ".impl";
     String val = conf.get(name);
     assertNotNull("Not found in the configuration " + name, val);
-  }
-
-  @Test
-  public void testRegistration() throws Throwable {
-    Configuration conf = new Configuration();
-    URI testURI = SwiftTestUtils.getServiceURI(conf);
-    FileSystem fileSystem = FileSystem.get(testURI, conf);
-    assertEquals("wrong class", SwiftNativeFileSystem.class,
-                 fileSystem.getClass());
   }
 
 }

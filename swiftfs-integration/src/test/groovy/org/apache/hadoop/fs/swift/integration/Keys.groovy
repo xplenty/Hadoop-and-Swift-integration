@@ -27,7 +27,7 @@ interface Keys {
    * No of lines/records to generate
    */
   String KEY_TEST_LINES = "test.fs.lines";
-  int DEFAULT_TEST_LINES = 100;
+  int DEFAULT_TEST_LINES = 8192;
 
   String GENERATED_DATA_DIR = "/tmp/data/generated"
   String DATASET_CSV = "dataset.csv"
