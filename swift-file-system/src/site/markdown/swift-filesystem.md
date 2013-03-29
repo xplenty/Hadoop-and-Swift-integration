@@ -30,12 +30,12 @@ read and write data to and from instances of the OpenStack Swift object store.
 * Support of a pseudo-hierachical file system (directories, subdirectories and
   files)
 
-* Standard filesystem operations: create, delete, mkdir, ls, mv, stat
+* Standard filesystem operations: `create`, `delete`, `mkdir`, `ls`, `mv`, `stat`
 
 * Can act as a source of data in a MapReduce job, or a sink.
 
 * Support for multiple OpenStack services, and multiple containers from a
-  singleservice.
+  single service.
 
 * Supports in-cluster and remote access to Swift data.
 
@@ -46,25 +46,26 @@ read and write data to and from instances of the OpenStack Swift object store.
 * Tested against the Hadoop 3.x and 1.x branches, against multiple public
   OpenStack clusters: Rackspace US, Rackspace UK, HP Cloud.
 
-* Tested against private openstack clusters, including scalability tests of
+* Tested against private OpenStack clusters, including scalability tests of
   large file uploads.
 
 
 
-## Using
+## Using the Hadoop Swift Filesystem Client
 
 ## Concepts: services and containers
 
 OpenStack swift is an *Object Store*; also known as a *blobstore*. It stores
 arbitrary binary objects by name in a *container*. 
 
-The Hadoop Swift filesytem library adds another concept, the *service*, which
-defines which Swift blobstore hosts a continer -and how to connect to it.
+The Hadoop Swift filesystem library adds another concept, the *service*, which
+defines which Swift blobstore hosts a container -and how to connect to it.
 
 ### Containers and Objects
 
 
-Containers are created by users with accounts on the Swift filestore, and hold *objects*.
+Containers are created by users with accounts on the Swift filestore, and hold
+*objects*.
 
 * Objects can be zero bytes long, or they can contain data.
 
@@ -97,7 +98,7 @@ operation itself, objects need to be copied -then the original entry deleted.
 The Swift Filesystem is *eventually consistent*: an operation on an object may
 not be immediately visible to that client, or other clients. This is a
 consequence of the goal of the filesystem: to span a set of machines, across
-multiple datacentres, in such a way that the data can still be available when
+multiple datacenters, in such a way that the data can still be available when
 many of them fail. (In contrast, the Hadoop HDFS filesystem is *immediately
 consistent*, but it does not span datacenters.)
 
@@ -106,7 +107,7 @@ immediate consistency: after an object is deleted or overwritten, the object
 may still be visible -or the old data still retrievable. The Swift Filesystem
 client for Apache Hadoop attempts to handle this, in conjunction with the
 MapReduce engine, but there may be still be occasions when eventual consistency
-causes suprises.
+causes surprises.
 
 ### Services
 
@@ -336,7 +337,7 @@ If the host is declared, the proxy port must be set to a valid integer value.
 
 The swift filesystem JAR may not be on your classpath.
 
-If it is a remote Mapreduce job that is failing, make sure that the JAR is
+If it is a remote MapReduce job that is failing, make sure that the JAR is
 installed on the servers in the cluster -or that the job submission process
 uploads the JAR file to the distributed cache.
 
