@@ -41,6 +41,8 @@ import static org.junit.Assert.assertTrue;
  */
 public class TestSwiftFileSystemPartitionedUploads extends SwiftFileSystemBaseTest {
 
+  public static final String WRONG_PARTITION_COUNT =
+    "wrong number of partitions written";
   private URI uri;
   private Configuration conf;
   private SwiftFileSystemForFunctionalTests swiftFS;
@@ -59,17 +61,11 @@ public class TestSwiftFileSystemPartitionedUploads extends SwiftFileSystemBaseTe
     fs.initialize(uri, conf);
   }
 
-
   @Override
   protected SwiftNativeFileSystem createSwiftFS() throws IOException {
     swiftFS = new SwiftFileSystemForFunctionalTests();
     swiftFS.setPartitionSize(1024L);
     return swiftFS;
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    SwiftTestUtils.cleanupInTeardown(fs, "/test");
   }
 
   protected URI getFilesystemURI() throws URISyntaxException, IOException {
@@ -92,18 +88,18 @@ public class TestSwiftFileSystemPartitionedUploads extends SwiftFileSystemBaseTe
                                                  4096),
                                        (short) 1,
                                        1024);
-    assertEquals("wrong number of partitons written",
+    assertEquals(WRONG_PARTITION_COUNT,
                  0, swiftFS.getPartitionsWritten(out));
     //write first half
     out.write(src, 0, len / 2);
-    assertEquals("wrong number of partitons written",
+    assertEquals(WRONG_PARTITION_COUNT,
                  1, swiftFS.getPartitionsWritten(out));
     //write second half
     out.write(src, len / 2, len / 2);
-    assertEquals("wrong number of partitons written",
+    assertEquals(WRONG_PARTITION_COUNT,
                  2, swiftFS.getPartitionsWritten(out));
     out.close();
-    assertEquals("wrong number of partitons written",
+    assertEquals(WRONG_PARTITION_COUNT,
                  3, swiftFS.getPartitionsWritten(out));
 
     assertTrue("Exists", fs.exists(path));
@@ -111,8 +107,11 @@ public class TestSwiftFileSystemPartitionedUploads extends SwiftFileSystemBaseTe
 
     FSDataInputStream in = fs.open(path);
     byte[] dest = new byte[len];
-    in.readFully(0, dest);
-    in.close();
+    try {
+      in.readFully(0, dest);
+    } finally {
+      in.close();
+    }
 
     SwiftTestUtils.compareByteArrays(src, dest, len);
 
