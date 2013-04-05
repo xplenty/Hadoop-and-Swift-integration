@@ -5,7 +5,7 @@
   <groupId>org.apache.hadoop</groupId>
   <artifactId>hadoop-swift-integration</artifactId>
   <name>Swift FileSystem Integration Test</name>
-  <version>0.1-SNAPSHOT</version>
+  <version>3.0.0-SNAPSHOT</version>
   <url>http://hadoop.apache.org</url>
   <description>
     These are the tests that verify that the SwiftFS client
@@ -20,13 +20,13 @@
     <hadoop.version>3.0.0-SNAPSHOT</hadoop.version>
     <hadoop1.version>1.1.1</hadoop1.version>
 
-    <hadoop-swift.version>0.1-SNAPSHOT</hadoop-swift.version>
+    <hadoop-openstack.version>3.0.0-SNAPSHOT</hadoop-openstack.version>
     <jackson.version>1.9.7</jackson.version>
     <junit.version>4.10</junit.version>
     <log4j.version>1.2.16</log4j.version>
 
     <mockito.version>1.9.0</mockito.version>
-    <pig.version>0.10.1</pig.version>
+    <pig.version>0.11.0</pig.version>
 
     <!-- Reporting -->
     <maven.cobertura.version>2.5.2</maven.cobertura.version>
@@ -120,6 +120,11 @@
       </exclusions>
     </dependency>
     <dependency>
+      <groupId>joda-time</groupId>
+      <artifactId>joda-time</artifactId>
+      <version>2.2</version>
+    </dependency>
+    <dependency>
       <groupId>jline</groupId>
       <artifactId>jline</artifactId>
       <version>0.9.94</version>
@@ -133,7 +138,6 @@
       </exclusions>
     </dependency>
 
-<!--
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-core</artifactId>
@@ -155,8 +159,8 @@
       <artifactId>hadoop-tools</artifactId>
       <version>${hadoop1.version}</version>
     </dependency>
--->
     
+<!--
 
     <dependency>
       <groupId>org.apache.hadoop</groupId>
@@ -178,23 +182,19 @@
 
     <dependency>
       <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-openstack</artifactId>
-      <version>${hadoop.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
       <version>${hadoop.version}</version>
       <type>test-jar</type>
     </dependency>
 
+-->
 
     <dependency>
       <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-swift</artifactId>
-      <version>${hadoop-swift.version}</version>
+      <artifactId>hadoop-openstack</artifactId>
+      <version>${hadoop-openstack.version}</version>
     </dependency>
+
     <dependency>
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
