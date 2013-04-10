@@ -1,5 +1,5 @@
-SET pig.splitCombination false
-SET mapred.min.split.size 65536
+-- SET pig.splitCombination false
+-- SET mapred.min.split.size 65536
 generated = LOAD '$src/$srcfile' 
     USING PigStorage(',' , '-noschema')
     AS (line: int, gaussian: double, b: boolean, c:chararray );
