@@ -138,7 +138,7 @@
       </exclusions>
     </dependency>
 
-    <dependency>
+<!--    <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-core</artifactId>
       <version>${hadoop1.version}</version>
@@ -159,8 +159,7 @@
       <artifactId>hadoop-tools</artifactId>
       <version>${hadoop1.version}</version>
     </dependency>
-    
-<!--
+    -->
 
     <dependency>
       <groupId>org.apache.hadoop</groupId>
@@ -187,7 +186,6 @@
       <type>test-jar</type>
     </dependency>
 
--->
 
     <dependency>
       <groupId>org.apache.hadoop</groupId>
