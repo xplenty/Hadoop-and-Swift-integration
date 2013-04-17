@@ -28,10 +28,16 @@ interface Keys {
    */
   String KEY_TEST_LINES = "test.fs.lines";
   int DEFAULT_TEST_LINES = 8192;
+  String KEY_TEST_FILES = "test.fs.lines";
+  int DEFAULT_TEST_FILES = 10;
 
-  String GENERATED_DATA_DIR = "/tmp/data/generated"
+  String KEY_TEST_FILESIZE_KB = "test.fs.filesize.kb";
+  int DEFAULT_TEST_FILESIZE_KB = 10;
+
+  String GENERATED_DATA_DIR = "/tmp/data/generated/"
   String DATASET_CSV = "dataset.csv"
-  String DATASET_CSV_PATH = "/tmp/data/generated/dataset.csv"
+  String DATASET_CSV_PATH = "/tmp/data/csv/dataset.csv"
+  String DATASET_MASSIVE_PATH = "/tmp/data/massive/"
   String DESTDIR = "/tmp/data/result"
 
   public int DEFAULT_SEED = 500

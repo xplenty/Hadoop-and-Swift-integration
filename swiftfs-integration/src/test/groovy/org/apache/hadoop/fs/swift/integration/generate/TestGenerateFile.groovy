@@ -40,9 +40,8 @@ class TestGenerateFile extends IntegrationTestBase {
   @Test
   public void testMaybeGenerate() throws Throwable {
     FileSystem fs = getSrcFilesystem();
-    Path generatedDir = new Path(GENERATED_DATA_DIR);
-    Path generatedData = new Path(generatedDir, DATASET_CSV);
-    fs.mkdirs(generatedDir);
+    Path generatedData = new Path(DATASET_CSV_PATH);
+    fs.mkdirs(generatedData.getParent());
     Configuration conf = new Configuration();
     int lines = conf.getInt(KEY_TEST_LINES, DEFAULT_TEST_LINES);
     try {

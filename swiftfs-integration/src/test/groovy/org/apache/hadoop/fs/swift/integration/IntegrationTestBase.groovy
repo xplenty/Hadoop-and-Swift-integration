@@ -20,7 +20,9 @@ package org.apache.hadoop.fs.swift.integration
 
 import groovy.util.logging.Commons
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.FSDataOutputStream
 import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
 import org.apache.pig.ExecType
 import org.apache.pig.PigServer
 import org.apache.pig.data.Tuple
@@ -48,6 +50,22 @@ class IntegrationTestBase extends Assert implements Keys {
     def conf = new Configuration();
     URI serviceURI = getSrcFilesysURI(conf);
     return FileSystem.get(serviceURI, conf);
+  }
+
+  /**
+   * This method exists to work around  HADOOP-9482.
+   * It opens a file with a null permission rather than "the defaults",
+   * so skips the checks for fs
+   * @param fs
+   * @param f
+   * @param overwrite
+   * @return
+   */
+  def FSDataOutputStream createFile(FileSystem fs, Path f, boolean overwrite) {
+    def bufferSize = fs.getConf().getInt("io.file.buffer.size", 4096)
+    def repl = fs.getDefaultReplication(f)
+    def blocksize = fs.getDefaultBlockSize(f)
+    fs.create(f, null, overwrite, bufferSize, repl, blocksize, null);
   }
 
   /**

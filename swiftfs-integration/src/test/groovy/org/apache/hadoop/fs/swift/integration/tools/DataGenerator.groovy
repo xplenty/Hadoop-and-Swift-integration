@@ -25,7 +25,7 @@ import groovy.util.logging.Commons
  * for a random no. generator
  */
 @Commons
-class DataGenerator {
+class DataGenerator  extends AbstractDataGenerator{
 
   int lines
   long seed
