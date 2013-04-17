@@ -29,25 +29,34 @@ import org.apache.pig.data.Tuple
 import org.apache.pig.impl.PigContext
 import org.apache.pig.impl.util.PropertiesUtil
 import org.junit.Assert
+import org.junit.Before
 import org.junit.internal.AssumptionViolatedException
 
 @Commons
 class IntegrationTestBase extends Assert implements Keys {
 
 
+  private Configuration conf
+
   protected FileSystem bindFilesystem() {
     getSrcFilesystem();
   }
 
+  @Before
+  public void setup() {
+    conf = createConfiguration()
+  }
+
+  def Configuration createConfiguration() {
+    new Configuration()
+  }
 
   protected FileSystem getSrcFilesystem() {
-    def conf = new Configuration();
     URI serviceURI = getSrcFilesysURI(conf);
     return FileSystem.get(serviceURI, conf);
   }
 
   protected FileSystem getDestFilesystem() {
-    def conf = new Configuration();
     URI serviceURI = getSrcFilesysURI(conf);
     return FileSystem.get(serviceURI, conf);
   }
@@ -136,7 +145,7 @@ class IntegrationTestBase extends Assert implements Keys {
    * @return a map
    */
   Map<String, String> paramMap() {
-    def conf = new Configuration();
+    def conf = createConfiguration()
     URI sourceURI = getSrcFilesysURI(conf);
     URI destURI = getDestFilesysURI(conf);
     def map = [:]

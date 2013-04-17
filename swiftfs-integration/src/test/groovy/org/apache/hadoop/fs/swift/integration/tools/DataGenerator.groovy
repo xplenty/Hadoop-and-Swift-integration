@@ -50,7 +50,7 @@ class DataGenerator  extends AbstractDataGenerator{
       boolean b = boolRandom.nextBoolean()
       char c = (65 + charRandom.nextInt(64))
       String row = "${line},${g},${b},${c}\n"
-      log.info(row)
+      log.debug(row)
       out.writeBytes(row)
     }
   }

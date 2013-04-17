@@ -24,9 +24,11 @@ import org.apache.hadoop.fs.FSDataInputStream
 import org.apache.hadoop.fs.FSDataOutputStream
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.swift.http.SwiftProtocolConstants
 import org.apache.hadoop.fs.swift.integration.IntegrationTestBase
 import org.apache.hadoop.fs.swift.integration.tools.ByteGenerator
 import org.apache.hadoop.fs.swift.integration.tools.Duration
+import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem
 import org.junit.Test
 
 /**
@@ -50,21 +52,33 @@ class GenerateMassiveFilesTest extends IntegrationTestBase {
     fs.delete(dataDir, true);
     int fileindex = 0
     Path dataFile = new Path(dataDir, filename(fileindex))
-    FSDataOutputStream out = createFile(fs, dataFile, overwrite);
+    int partSize = conf.getInt(SwiftProtocolConstants.SWIFT_PARTITION_SIZE,
+                               SwiftProtocolConstants.DEFAULT_SWIFT_PARTITION_SIZE);
     ByteGenerator generator = new ByteGenerator(kb, DEFAULT_SEED);
-    Duration writeTime = new Duration()
+    log.info("Writing ${kb} KB to $dataFile via $fs")
     Duration totalTime = new Duration()
+    Duration createTime = new Duration()
+    FSDataOutputStream out = createFile(fs, dataFile, overwrite);
+    createTime.finish()
+    Duration writeTime = new Duration()
     generator.generate(out)
     writeTime.finish()
     Duration closeTime = new Duration();
     out.close();
     closeTime.finish()
     totalTime.finish()
-
-    log.info("Total time = $totalTime; write time =$writeTime; close time = $closeTime")
-    assertTrue(fs.exists(dataFile));
+    int partitionsWritten = SwiftNativeFileSystem.getPartitionsWritten(out);
+    log.info("Total time = $totalTime; create time=$createTime; write time =$writeTime; close time = $closeTime")
+    assert fs.exists(dataFile);
     def status = fs.getFileStatus(dataFile)
-    assertEquals(kb * 1024, status.len)
+    int dataWritten = kb * 1024
+    assertEquals(dataWritten, status.len)
+    
+    //now assert that the right no of partitions were written.
+
+    double expectedPartitions = (dataWritten/(1024.0 * partSize))
+    //we'd expect the expected no of partitions, maybe with one more.
+    assert partitionsWritten >= expectedPartitions;
   }
 
   def String filename(int fileindex) {

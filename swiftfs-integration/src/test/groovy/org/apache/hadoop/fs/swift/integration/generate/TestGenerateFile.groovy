@@ -36,7 +36,6 @@ import org.junit.Test
 @Commons
 class TestGenerateFile extends IntegrationTestBase {
 
-
   @Test
   public void testMaybeGenerate() throws Throwable {
     FileSystem fs = getSrcFilesystem();
@@ -44,6 +43,8 @@ class TestGenerateFile extends IntegrationTestBase {
     fs.mkdirs(generatedData.getParent());
     Configuration conf = new Configuration();
     int lines = conf.getInt(KEY_TEST_LINES, DEFAULT_TEST_LINES);
+    log.info("Writing ${lines} KB to $generatedData via $fs")
+
     try {
       boolean overwrite = true
       fs.delete(generatedData,false);
@@ -59,7 +60,7 @@ class TestGenerateFile extends IntegrationTestBase {
     FSDataInputStream instream = fs.open(generatedData)
     BufferedReader reader = new BufferedReader(new InputStreamReader(instream))
     def linesread = reader.eachLine { line, count ->
-      log.info("${count}: " + line)
+      log.debug("${count}: " + line)
       count
     }
     reader.close()
