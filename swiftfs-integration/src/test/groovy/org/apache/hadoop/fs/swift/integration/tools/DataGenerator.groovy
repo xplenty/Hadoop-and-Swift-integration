@@ -44,7 +44,7 @@ class DataGenerator  extends AbstractDataGenerator{
    * @param out an output stream that will stay open
    */
   def generate(DataOutputStream out) {
-    log.info("Generating ${lines} lines of data with seed=${seed}")
+    log.info("Generating ${lines} lines of data")
     1.upto(lines) { line ->
       double g = gaussian.nextGaussian()
       boolean b = boolRandom.nextBoolean()

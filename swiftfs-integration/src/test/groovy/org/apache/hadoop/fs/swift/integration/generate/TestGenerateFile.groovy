@@ -43,7 +43,7 @@ class TestGenerateFile extends IntegrationTestBase {
     fs.mkdirs(generatedData.getParent());
     Configuration conf = new Configuration();
     int lines = conf.getInt(KEY_TEST_LINES, DEFAULT_TEST_LINES);
-    log.info("Writing ${lines} KB to $generatedData via $fs")
+    log.info("Writing ${lines} lines to $generatedData via $fs")
 
     try {
       boolean overwrite = true

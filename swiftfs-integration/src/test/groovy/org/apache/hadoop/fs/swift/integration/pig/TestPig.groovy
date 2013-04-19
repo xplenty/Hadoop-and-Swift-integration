@@ -19,8 +19,6 @@
 package org.apache.hadoop.fs.swift.integration.pig
 
 import groovy.util.logging.Commons
-import org.apache.hadoop.fs.FileSystem
-import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.swift.integration.IntegrationTestBase
 import org.apache.pig.PigServer
 import org.apache.pig.data.Tuple
@@ -36,17 +34,7 @@ public class TestPig extends IntegrationTestBase {
 
   @Test
   public void testLoadGeneratedData() throws Throwable {
-    FileSystem fs = getSrcFilesystem();
-    skip(!fs.exists(new Path(DATASET_CSV_PATH)),
-        "No test data");
-    PigServer pig = createPigServer()
-    def paramMap = paramMap()
-    dumpMap(paramMap)
-    //rm the dest dir
-    FileSystem destFS = getDestFilesystem();
-    destFS.delete(new Path(DESTDIR), true)
-    registerPigResource(pig, "pig/loadgenerated.pig", paramMap)
-    Iterator<Tuple> iterator = pig.openIterator("result")
+    Iterator<Tuple> iterator = runBasePigJob(DATASET_CSV_PATH)
     dumpTuples(iterator, 10 )
   }
 

@@ -28,8 +28,8 @@ interface Keys {
    */
   String KEY_TEST_LINES = "test.fs.lines";
   int DEFAULT_TEST_LINES = 8192;
-  String KEY_TEST_FILES = "test.fs.lines";
-  int DEFAULT_TEST_FILES = 10;
+  String KEY_TEST_FILES = "test.fs.files";
+  int DEFAULT_TEST_FILES = 1;
 
   String KEY_TEST_FILESIZE_KB = "test.fs.filesize.kb";
   int DEFAULT_TEST_FILESIZE_KB = 10;

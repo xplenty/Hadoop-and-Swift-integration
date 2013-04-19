@@ -144,14 +144,14 @@ class IntegrationTestBase extends Assert implements Keys {
    * parameters
    * @return a map
    */
-  Map<String, String> paramMap() {
+  Map<String, String> paramMap(String srcpath) {
     def conf = createConfiguration()
     URI sourceURI = getSrcFilesysURI(conf);
     URI destURI = getDestFilesysURI(conf);
     def map = [:]
     map["src"] = sourceURI.toString();
     map["dest"] = destURI.toString();
-    map["srcfile"] = DATASET_CSV_PATH;
+    if (srcpath) map["srcfile"] = srcpath;
     map["destdir"] = DESTDIR;
     map
   }
@@ -195,4 +195,21 @@ class IntegrationTestBase extends Assert implements Keys {
     }
     pig.registerScript(stream, map, null)
   }
+
+  def Iterator<Tuple> runBasePigJob(String srcPath) {
+    FileSystem fs = getSrcFilesystem();
+    skip(!fs.exists(new Path(srcPath)),
+         "No test data");
+    PigServer pig = createPigServer()
+    def map = paramMap(srcPath)
+    dumpMap(map)
+    //rm the dest dir
+    FileSystem destFS = getDestFilesystem();
+    destFS.delete(new Path(DESTDIR), true)
+    registerPigResource(pig, "pig/loadgenerated.pig", map)
+    Iterator<Tuple> iterator = pig.openIterator("result")
+    iterator
+  }
+
+
 }

@@ -1,5 +1,7 @@
 -- SET pig.splitCombination false
--- SET mapred.min.split.size 65536
+-- SET mapred.min.split.size 104857600
+-- SET mapreduce.input.fileinputformat.split.maxsize 4294967296
+SET mapreduce.input.fileinputformat.split.minsize 104857600
 generated = LOAD '$src/$srcfile' 
     USING PigStorage(',' , '-noschema')
     AS (line: int, gaussian: double, b: boolean, c:chararray );
