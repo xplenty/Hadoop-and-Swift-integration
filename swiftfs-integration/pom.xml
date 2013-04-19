@@ -26,7 +26,7 @@
     <log4j.version>1.2.16</log4j.version>
 
     <mockito.version>1.9.0</mockito.version>
-    <pig.version>0.11.0</pig.version>
+    <pig.version>0.11.1</pig.version>
 
     <!-- Reporting -->
     <maven.cobertura.version>2.5.2</maven.cobertura.version>
@@ -101,7 +101,7 @@
       <groupId>org.apache.pig</groupId>
       <artifactId>pig</artifactId>
       <version>${pig.version}</version>
-      <scope>test</scope>
+      <classifier>h2</classifier>
       <exclusions>
         <exclusion>
           <!-- otherwise seems to drag in junit 3.8.1 via jline -->
