@@ -34,11 +34,13 @@ interface Keys {
   String KEY_TEST_FILESIZE_KB = "test.fs.filesize.kb";
   int DEFAULT_TEST_FILESIZE_KB = 10;
 
-  String GENERATED_DATA_DIR = "/tmp/data/generated/"
+  public String DATA_DIR = "/tmp/data/"
+  String GENERATED_DATA_DIR = DATA_DIR +"generated/"
   String DATASET_CSV = "dataset.csv"
-  String DATASET_CSV_PATH = "/tmp/data/csv/dataset.csv"
-  String DATASET_MASSIVE_PATH = "/tmp/data/massive/"
-  String DESTDIR = "/tmp/data/result"
+  String DATASET_CSV_PATH = DATA_DIR + "csv/dataset.csv"
+  String DATASET_MASSIVE_BIN_PATH = DATA_DIR + "massive/bin"
+  String DATASET_MASSIVE_CSV_PATH = DATA_DIR + "massive/csv"
 
+  String DESTDIR = "/tmp/data/results"
   public int DEFAULT_SEED = 500
 }

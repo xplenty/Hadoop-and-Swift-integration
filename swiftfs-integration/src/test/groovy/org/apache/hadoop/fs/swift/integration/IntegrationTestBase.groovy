@@ -174,10 +174,17 @@ class IntegrationTestBase extends Assert implements Keys {
   }
 
 
-  protected void dumpTuples(Iterator<Tuple> iterator) {
+  protected int dumpTuples(Iterator<Tuple> iterator, int limit) {
+    int count = 0;
     iterator.each { ntuple ->
-      log.info(stringify(ntuple))
+      String tstring = stringify(ntuple)
+      if(count++<limit) {
+        log.info(tstring)
+      } else {
+        log.debug(tstring)
+      }
     }
+    count
   }
 
   protected void registerPigResource(PigServer pig, String scriptResource, Map map) {

@@ -16,6 +16,8 @@
  *  limitations under the License.
  */
 
+
+
 package org.apache.hadoop.fs.swift.integration.generate
 
 import groovy.util.logging.Commons
@@ -38,7 +40,7 @@ import org.junit.Test
  * done from a JUnit test where time can be measured easily
  */
 @Commons
-class GenerateMassiveFilesTest extends IntegrationTestBase {
+class GenerateMassiveCSVFilesTest extends IntegrationTestBase {
 
 
   @Test

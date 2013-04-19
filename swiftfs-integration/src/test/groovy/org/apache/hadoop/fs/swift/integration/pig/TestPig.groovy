@@ -47,7 +47,7 @@ public class TestPig extends IntegrationTestBase {
     destFS.delete(new Path(DESTDIR), true)
     registerPigResource(pig, "pig/loadgenerated.pig", paramMap)
     Iterator<Tuple> iterator = pig.openIterator("result")
-    dumpTuples(iterator)
+    dumpTuples(iterator, 10 )
   }
 
 

@@ -65,6 +65,5 @@ class TestGenerateFile extends IntegrationTestBase {
     }
     reader.close()
     assert lines == linesread
-
   }
 }
