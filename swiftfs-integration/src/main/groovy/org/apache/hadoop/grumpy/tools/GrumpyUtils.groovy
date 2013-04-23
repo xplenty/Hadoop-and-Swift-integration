@@ -83,10 +83,10 @@ class GrumpyUtils {
   static def deleteDirectoryTree(File dir) {
       if (dir.exists()) {
           if (dir.isDirectory()) {
-              org.apache.hadoop.grumpy.tools.GrumpyUtils.log.info("Cleaning up $dir")
+              log.info("Cleaning up $dir")
               //delete the children
               dir.eachFile { file ->
-                org.apache.hadoop.grumpy.tools.GrumpyToolRunner.log.info("deleting $file")
+                log.info("deleting $file")
                 file.delete()
               }
               dir.delete()

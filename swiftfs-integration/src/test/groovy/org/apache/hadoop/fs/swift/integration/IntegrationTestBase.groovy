@@ -156,12 +156,41 @@ class IntegrationTestBase extends Assert implements Keys {
     map
   }
 
+  /**
+   * Get the URI of the source by building a new URI from the 
+   * source filesystem and the supplied path
+   * @param srcpath path in the source filesystem
+   * @return the full URI to the source
+   */
+  def URI sourceURI(String srcpath) {
+    def conf = createConfiguration()
+    URI sourceURI = getSrcFilesysURI(conf);
+    URL sourceURL = sourceURI.toURL();
+    new URL(sourceURL, srcpath);
+  }
+
+  def Path sourcePath(String srcDir) {
+    def conf = createConfiguration()
+    URI sourceURI = getSrcFilesysURI(conf);
+    Path basePath = new Path(sourceURI)
+    new Path(basePath,srcDir)
+  }
+  /**
+   * Dump a map to the log at the info level
+   * @param map map
+   */
   protected void dumpMap(Map map) {
     map.each { k, v ->
       log.info("$k='$v'")
     }
   }
 
+  /**
+   * Convert a tuple into a tabbed { "field1" "field2" ... }
+   * format
+   * @param tuple
+   * @return a strig for printing
+   */
   String stringify(Tuple t) {
     StringBuilder sb = new StringBuilder("{")
     t.getAll().each { field ->
@@ -196,7 +225,25 @@ class IntegrationTestBase extends Assert implements Keys {
     pig.registerScript(stream, map, null)
   }
 
+  /**
+   * Run the pig job anf get the "result" output
+   * @param srcPath source path
+   * @return the iterator over the results
+   */
   def Iterator<Tuple> runBasePigJob(String srcPath) {
+    String pigScript = "pig/loadgenerated.pig"
+    PigServer pig = buildPigJob(srcPath, pigScript)
+    def iterator = pig.openIterator("result")
+    iterator
+  }
+
+  /**
+   * Run a pig job
+   * @param srcPath
+   * @param pigScript
+   * @return
+   */
+  def Iterator<Tuple> buildPigJob(String srcPath, String pigScript) {
     FileSystem fs = getSrcFilesystem();
     skip(!fs.exists(new Path(srcPath)),
          "No test data");
@@ -206,9 +253,8 @@ class IntegrationTestBase extends Assert implements Keys {
     //rm the dest dir
     FileSystem destFS = getDestFilesystem();
     destFS.delete(new Path(DESTDIR), true)
-    registerPigResource(pig, "pig/loadgenerated.pig", map)
-    Iterator<Tuple> iterator = pig.openIterator("result")
-    iterator
+    registerPigResource(pig, pigScript, map)
+
   }
 
 

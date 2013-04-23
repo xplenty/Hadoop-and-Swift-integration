@@ -58,7 +58,7 @@ class GenerateManyCSVFilesTest extends IntegrationTestBase {
     int files = conf.getInt(KEY_TEST_FILES, DEFAULT_TEST_FILES);
     DataGenerator generator = new DataGenerator(lines, DEFAULT_SEED);
 
-    for (fileindex in  0..files) {
+    for (fileindex in  1..files) {
       Path dataFile = new Path(dataDir, filename(fileindex))
       log.info("Writing ${lines} KB to $dataFile via $fs")
       Duration totalTime = new Duration()
