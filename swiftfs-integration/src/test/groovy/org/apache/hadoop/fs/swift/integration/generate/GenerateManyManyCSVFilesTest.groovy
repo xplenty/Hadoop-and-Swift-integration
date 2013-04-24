@@ -24,15 +24,10 @@ package org.apache.hadoop.fs.swift.integration.generate
 
 import groovy.util.logging.Commons
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.FSDataOutputStream
-import org.apache.hadoop.fs.FileStatus
-import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.swift.http.SwiftProtocolConstants
 import org.apache.hadoop.fs.swift.integration.IntegrationTestBase
 import org.apache.hadoop.fs.swift.integration.tools.DataGenerator
-import org.apache.hadoop.fs.swift.integration.tools.Duration
-import org.apache.hadoop.fs.swift.integration.tools.DurationStats
 import org.junit.Test
 
 /**

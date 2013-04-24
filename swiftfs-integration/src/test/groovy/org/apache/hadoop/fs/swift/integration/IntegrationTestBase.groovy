@@ -25,8 +25,8 @@ import org.apache.hadoop.fs.FileStatus
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.swift.integration.tools.DataGenerator
-import org.apache.hadoop.fs.swift.integration.tools.Duration
-import org.apache.hadoop.fs.swift.integration.tools.DurationStats
+import org.apache.hadoop.fs.swift.util.Duration
+import org.apache.hadoop.fs.swift.util.DurationStats
 import org.apache.pig.ExecType
 import org.apache.pig.PigServer
 import org.apache.pig.data.Tuple
@@ -263,6 +263,7 @@ class IntegrationTestBase extends Assert implements Keys {
 
   def void generateManyFiles(DataGenerator generator, Path dataDir, int files) {
     FileSystem fs = getSrcFilesystem();
+    log.info("Generating $files in $dataDir on $fs")
     fs.mkdirs(dataDir);
     deleteRobustly(fs, dataDir, 2);
     int failures;

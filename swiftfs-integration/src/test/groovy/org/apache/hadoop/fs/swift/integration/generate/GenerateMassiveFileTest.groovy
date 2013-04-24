@@ -27,8 +27,8 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.swift.http.SwiftProtocolConstants
 import org.apache.hadoop.fs.swift.integration.IntegrationTestBase
 import org.apache.hadoop.fs.swift.integration.tools.ByteGenerator
-import org.apache.hadoop.fs.swift.integration.tools.Duration
 import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem
+import org.apache.hadoop.fs.swift.util.Duration
 import org.junit.Test
 
 /**
