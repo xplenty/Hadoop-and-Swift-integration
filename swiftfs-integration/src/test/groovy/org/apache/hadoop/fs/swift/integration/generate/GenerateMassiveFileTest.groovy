@@ -38,7 +38,7 @@ import org.junit.Test
  * done from a JUnit test where time can be measured easily
  */
 @Commons
-class GenerateMassiveFilesTest extends IntegrationTestBase {
+class GenerateMassiveFileTest extends IntegrationTestBase {
 
 
   @Test
@@ -59,14 +59,14 @@ class GenerateMassiveFilesTest extends IntegrationTestBase {
     Duration totalTime = new Duration()
     Duration createTime = new Duration()
     FSDataOutputStream out = createFile(fs, dataFile, overwrite);
-    createTime.finish()
+    createTime.finished()
     Duration writeTime = new Duration()
     generator.generate(out)
-    writeTime.finish()
+    writeTime.finished()
     Duration closeTime = new Duration();
     out.close();
-    closeTime.finish()
-    totalTime.finish()
+    closeTime.finished()
+    totalTime.finished()
     int partitionsWritten = SwiftNativeFileSystem.getPartitionsWritten(out);
     log.info("Total time = $totalTime; create time=$createTime; write time =$writeTime; close time = $closeTime")
     assert fs.exists(dataFile);
@@ -104,7 +104,7 @@ class GenerateMassiveFilesTest extends IntegrationTestBase {
     2.upto(kb) {
       instream.readFully(buffer);
     }
-    totalTime.finish()
+    totalTime.finished()
     log.info("Total time = $totalTime")
   }
 }

@@ -16,39 +16,46 @@
  *  limitations under the License.
  */
 
-package org.apache.hadoop.fs.swift.integration.tools
+package org.apache.hadoop.fs.swift.integration.tools;
 
-class Duration {
-  
-  long start_time;
-  long end_time;
-  long duration;
+public class Duration {
 
-  Duration() {
-    start()
+  private final long started;
+  private long finished;
+
+  public Duration() {
+    started = time();
+    finished = started;
   }
 
-  def start() {
-    start_time = System.currentTimeMillis();
+  private long time() {
+    return System.currentTimeMillis();
   }
-  
-  def finish() {
-    end_time = System.currentTimeMillis()
-    duration = end_time - start_time
+
+  public void finished() {
+    finished = time();
   }
-  
-  def getDurationString() {
-    long seconds = (long)(duration / 1000)
-    long minutes = (long)(seconds/60)
-    
+
+  public String getDurationString() {
+    return humanTime(value());
+  }
+
+  public static String humanTime(long time) {
+    long seconds = (long) (time / 1000);
+    long minutes = (long) (seconds / 60);
+
     return String.format("%d:%02d:%03d",
-            minutes,
-            seconds % 60,
-            duration % 1000);
+                         minutes,
+                         seconds % 60,
+                         time % 1000);
   }
 
   @Override
-  String toString() {
-    return getDurationString()
+  public String toString() {
+    return getDurationString();
+  }
+  
+  public long value() {
+    return finished -started;
   }
 }

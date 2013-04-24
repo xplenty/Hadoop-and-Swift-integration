@@ -21,8 +21,12 @@ package org.apache.hadoop.fs.swift.integration
 import groovy.util.logging.Commons
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FSDataOutputStream
+import org.apache.hadoop.fs.FileStatus
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.swift.integration.tools.DataGenerator
+import org.apache.hadoop.fs.swift.integration.tools.Duration
+import org.apache.hadoop.fs.swift.integration.tools.DurationStats
 import org.apache.pig.ExecType
 import org.apache.pig.PigServer
 import org.apache.pig.data.Tuple
@@ -257,5 +261,80 @@ class IntegrationTestBase extends Assert implements Keys {
 
   }
 
+  def void generateManyFiles(DataGenerator generator, Path dataDir, int files) {
+    FileSystem fs = getSrcFilesystem();
+    fs.mkdirs(dataDir);
+    deleteRobustly(fs, dataDir, 2);
+    int failures;
+    def stats = [:]
+    stats["write"] = new DurationStats("write");
+    stats["close"] = new DurationStats("close");
+    stats["total"] = new DurationStats("total");
+    for (fileindex in 1..files) {
+      try {
+        Path dataFile = new Path(dataDir, filename(fileindex))
+        log.info("Writing $dataFile")
+        Duration totalTime = new Duration()
+        Duration createTime = new Duration()
+        FSDataOutputStream out = createFile(fs, dataFile, true);
+        createTime.finished()
+        Duration writeTime = new Duration()
+        generator.generate(out)
+        writeTime.finished()
+        Duration closeTime = new Duration();
+        out.close();
+        closeTime.finished()
+        totalTime.finished()
+        stats["write"].add(writeTime)
+        stats["close"].add(closeTime)
+        stats["total"].add(totalTime)
+        log.info("Total time = $totalTime; create time=$createTime; write time =$writeTime; close time = $closeTime")
+      } catch (IOException ioe) {
+        log.warn("File $fileindex write failed $ioe", ioe)
+        failures++;
+      }
+    }
+    stats.each { log.info(it) }
+    log.info("Failures: $failures; success rate = ${(files-failures*1.0)/files}")
+    assert failures == 0
+    //list that many files
+    FileStatus[] statusList = fs.listStatus(dataDir)
+    assert files == statusList.length
+  }
+
+  /**
+   * Make a number of attempts to delete a directory; handles transient failures
+   * better
+   * @param fs filesystem
+   * @param dataDir dir to delete
+   * @param attempts how many attempts to make
+   * @throws IOException after failing for the given max #of attempts
+   */
+  def void deleteRobustly(FileSystem fs, Path dataDir, int attempts)
+              throws IOException {
+    boolean success = false;
+    int count=0;
+    while (!success) {
+      try {
+        fs.delete(dataDir, true)
+        success = true
+      } catch (IOException e) {
+        count++;
+        log.warn("Attempt $count failed: $e")
+        if (count > attempts) {
+          throw e
+        };
+      }
+    }
+  }
+
+  /**
+   * Generate the filename for this generation test
+   * @param fileindex index in the generation routine
+   * @return a string for the filename
+   */
+  def String filename(int fileindex) {
+    String.format("data-%05d", fileindex)
+  }
 
 }

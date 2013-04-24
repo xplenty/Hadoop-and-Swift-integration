@@ -18,22 +18,21 @@
 
 
 
+
+
 package org.apache.hadoop.fs.swift.integration.generate
 
 import groovy.util.logging.Commons
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.FSDataInputStream
 import org.apache.hadoop.fs.FSDataOutputStream
 import org.apache.hadoop.fs.FileStatus
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.swift.http.SwiftProtocolConstants
 import org.apache.hadoop.fs.swift.integration.IntegrationTestBase
-import org.apache.hadoop.fs.swift.integration.tools.ByteGenerator
 import org.apache.hadoop.fs.swift.integration.tools.DataGenerator
 import org.apache.hadoop.fs.swift.integration.tools.Duration
 import org.apache.hadoop.fs.swift.integration.tools.DurationStats
-import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem
 import org.junit.Test
 
 /**
@@ -43,15 +42,17 @@ import org.junit.Test
  * done from a JUnit test where time can be measured easily
  */
 @Commons
-class GenerateManyCSVFilesTest extends IntegrationTestBase {
+class GenerateManyManyCSVFilesTest extends IntegrationTestBase {
 
 
   @Test
-  public void testGenerateCSV() throws Throwable {
-    Path dataDir = new Path(DATASET_MASSIVE_CSV_PATH);
+  public void testGenerateManyCSV() throws Throwable {
+    Path dataDir = new Path(DATASET_MANY_CSV_PATH);
     Configuration conf = new Configuration();
-    int lines = conf.getInt("test.fs.massive.lines", DEFAULT_TEST_LINES);
-    int files = conf.getInt(KEY_TEST_FILES, DEFAULT_TEST_FILES);
+    int partSize = conf.getInt(SwiftProtocolConstants.SWIFT_PARTITION_SIZE,
+                               SwiftProtocolConstants.DEFAULT_SWIFT_PARTITION_SIZE);
+    int lines = conf.getInt("test.fs.many.lines", 10);
+    int files = conf.getInt(KEY_TEST_MANY_FILES, DEFAULT_TEST_MANY_FILES);
     log.info("Writing ${lines} lines to $dataDir")
 
     DataGenerator generator = new DataGenerator(lines, DEFAULT_SEED);
@@ -61,6 +62,5 @@ class GenerateManyCSVFilesTest extends IntegrationTestBase {
   def String filename(int fileindex) {
     String.format("data-%04d.csv", fileindex)
   }
-
 
 }

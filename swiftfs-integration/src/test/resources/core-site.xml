@@ -43,6 +43,16 @@
     <value>simple</value>
   </property>
 
+  <property>
+    <name>fs.swift.connect.timeout</name>
+    <value>1000</value>
+  </property>
+
+  <!-- cut back the retries as we log more locally-->
+  <property>
+    <name>fs.swift.connect.retry.count</name>
+    <value>1</value>
+  </property>
 
   <!--
   To run these tests.

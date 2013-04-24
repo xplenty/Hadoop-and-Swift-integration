@@ -30,6 +30,8 @@ interface Keys {
   int DEFAULT_TEST_LINES = 8192;
   String KEY_TEST_FILES = "test.fs.files";
   int DEFAULT_TEST_FILES = 1;
+  String KEY_TEST_MANY_FILES = "test.fs.many.files";
+  int DEFAULT_TEST_MANY_FILES = 2048;
 
   String KEY_TEST_FILESIZE_KB = "test.fs.filesize.kb";
   int DEFAULT_TEST_FILESIZE_KB = 10;
@@ -39,6 +41,7 @@ interface Keys {
   String DATASET_CSV = "dataset.csv"
   String DATASET_CSV_PATH = DATA_DIR + "csv/dataset.csv"
   String DATASET_MASSIVE_BIN_PATH = DATA_DIR + "massive/bin"
+  String DATASET_MANY_CSV_PATH = DATA_DIR + "many/csv"
   String DATASET_MASSIVE_CSV_PATH = DATA_DIR + "massive/csv"
 
   String DESTDIR = "/tmp/data/results"

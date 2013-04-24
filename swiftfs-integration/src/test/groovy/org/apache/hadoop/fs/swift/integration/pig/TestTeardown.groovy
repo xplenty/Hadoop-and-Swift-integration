@@ -29,7 +29,7 @@ class TestTeardown extends IntegrationTestBase {
   @Test
   public void testPurgeTempDirectories() throws Throwable {
     def destFS = getDestFilesystem()
-    def tmp = new Path("/tmp/data/results")
+    def tmp = new Path("/swift")
     destFilesystem.mkdirs(tmp)
     destFS.delete(tmp, true)
     assert !destFilesystem.exists(tmp)
