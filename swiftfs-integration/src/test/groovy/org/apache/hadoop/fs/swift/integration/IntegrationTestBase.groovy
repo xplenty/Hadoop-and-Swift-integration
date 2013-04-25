@@ -240,6 +240,7 @@ class IntegrationTestBase extends Assert implements Keys {
   def Iterator<Tuple> runBasePigJob(String srcPath) {
     String pigScript = "pig/loadgenerated.pig"
     PigServer pig = buildPigJob(srcPath, pigScript)
+    assert pig !=null
     def iterator = pig.openIterator("result")
     iterator
   }
@@ -250,7 +251,7 @@ class IntegrationTestBase extends Assert implements Keys {
    * @param pigScript
    * @return
    */
-  def Iterator<Tuple> buildPigJob(String srcPath, String pigScript) {
+  def PigServer buildPigJob(String srcPath, String pigScript) {
     FileSystem fs = getSrcFilesystem();
     skip(!fs.exists(new Path(srcPath)),
          "No test data");
@@ -261,6 +262,7 @@ class IntegrationTestBase extends Assert implements Keys {
     FileSystem destFS = getDestFilesystem();
     destFS.delete(new Path(DESTDIR), true)
     registerPigResource(pig, pigScript, map)
+    pig
   }
 
   /**
@@ -274,11 +276,8 @@ class IntegrationTestBase extends Assert implements Keys {
   def void generateManyFiles(DataGenerator generator, Path dataDir, int files) {
     FileSystem fs = getSrcFilesystem();
     int sleepTime = conf.getInt(KEY_SLEEP_INTERVAl, DEFAULT_SLEEP_INTERVAL);
-    int throttleTime = conf.getInt(SwiftProtocolConstants.SWIFT_THROTTLE_DELAY,
-                                   SwiftProtocolConstants.DEFAULT_THROTTLE_DELAY);
     log.info("Generating $files in $dataDir on $fs" +
-             " with sleep of $sleepTime" +
-             " and $SwiftProtocolConstants.SWIFT_THROTTLE_DELAY = $throttleTime")
+             " with sleep of $sleepTime")
     fs.mkdirs(dataDir);
     deleteRobustly(fs, dataDir, 2);
     int failures;
