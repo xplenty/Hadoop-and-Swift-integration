@@ -24,6 +24,7 @@ import org.apache.hadoop.fs.FSDataOutputStream
 import org.apache.hadoop.fs.FileStatus
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.swift.http.SwiftProtocolConstants
 import org.apache.hadoop.fs.swift.integration.tools.DataGenerator
 import org.apache.hadoop.fs.swift.util.Duration
 import org.apache.hadoop.fs.swift.util.DurationStats
@@ -155,7 +156,9 @@ class IntegrationTestBase extends Assert implements Keys {
     def map = [:]
     map["src"] = sourceURI.toString();
     map["dest"] = destURI.toString();
-    if (srcpath) map["srcfile"] = srcpath;
+    if (srcpath) {
+      map["srcfile"] = srcpath
+    };
     map["destdir"] = DESTDIR;
     map
   }
@@ -258,12 +261,24 @@ class IntegrationTestBase extends Assert implements Keys {
     FileSystem destFS = getDestFilesystem();
     destFS.delete(new Path(DESTDIR), true)
     registerPigResource(pig, pigScript, map)
-
   }
 
+  /**
+   * Generate lots of files, with a given generator.
+   * A sleep time is picked up from the sleep interval in the configuration;
+   * this is to avoid throttling from some services
+   * @param generator generator to create the files
+   * @param dataDir destination directory
+   * @param files files to create
+   */
   def void generateManyFiles(DataGenerator generator, Path dataDir, int files) {
     FileSystem fs = getSrcFilesystem();
-    log.info("Generating $files in $dataDir on $fs")
+    int sleepTime = conf.getInt(KEY_SLEEP_INTERVAl, DEFAULT_SLEEP_INTERVAL);
+    int throttleTime = conf.getInt(SwiftProtocolConstants.SWIFT_THROTTLE_DELAY,
+                                   SwiftProtocolConstants.DEFAULT_THROTTLE_DELAY);
+    log.info("Generating $files in $dataDir on $fs" +
+             " with sleep of $sleepTime" +
+             " and $SwiftProtocolConstants.SWIFT_THROTTLE_DELAY = $throttleTime")
     fs.mkdirs(dataDir);
     deleteRobustly(fs, dataDir, 2);
     int failures;
@@ -289,7 +304,9 @@ class IntegrationTestBase extends Assert implements Keys {
         stats["write"].add(writeTime)
         stats["close"].add(closeTime)
         stats["total"].add(totalTime)
-        log.info("Total time = $totalTime; create time=$createTime; write time =$writeTime; close time = $closeTime")
+        log.info("Total time = $totalTime; create time=$createTime;" +
+                 " write time =$writeTime; close time = $closeTime")
+        Thread.sleep(sleepTime);
       } catch (IOException ioe) {
         log.warn("File $fileindex write failed $ioe", ioe)
         failures++;

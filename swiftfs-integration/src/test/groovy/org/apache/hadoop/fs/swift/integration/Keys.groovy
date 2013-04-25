@@ -31,12 +31,12 @@ interface Keys {
   String KEY_TEST_FILES = "test.fs.files";
   int DEFAULT_TEST_FILES = 1;
   String KEY_TEST_MANY_FILES = "test.fs.many.files";
-  int DEFAULT_TEST_MANY_FILES = 2048;
+  int DEFAULT_TEST_MANY_FILES = 512;
 
   String KEY_TEST_FILESIZE_KB = "test.fs.filesize.kb";
   int DEFAULT_TEST_FILESIZE_KB = 10;
 
-  public String DATA_DIR = "/tmp/data/"
+  String DATA_DIR = "/tmp/data/"
   String GENERATED_DATA_DIR = DATA_DIR +"generated/"
   String DATASET_CSV = "dataset.csv"
   String DATASET_CSV_PATH = DATA_DIR + "csv/dataset.csv"
@@ -45,5 +45,9 @@ interface Keys {
   String DATASET_MASSIVE_CSV_PATH = DATA_DIR + "massive/csv"
 
   String DESTDIR = "/tmp/data/results"
-  public int DEFAULT_SEED = 500
+  int DEFAULT_SEED = 500
+
+  String KEY_SLEEP_INTERVAl = "test.fs.sleep.interval"
+  int DEFAULT_SLEEP_INTERVAL = 1500
+
 }
