@@ -31,10 +31,7 @@ import org.apache.hadoop.fs.swift.integration.tools.DataGenerator
 import org.junit.Test
 
 /**
- * This is an action to create a massive set of new files from 
- * a JUnit test case. This isn't the optimal way to do so
- * (hint: an MR job), but it means it can be 
- * done from a JUnit test where time can be measured easily
+ * create lots and lots of small cvs files
  */
 @Commons
 class GenerateManyManyCSVFilesTest extends IntegrationTestBase {
@@ -46,8 +43,8 @@ class GenerateManyManyCSVFilesTest extends IntegrationTestBase {
     Configuration conf = new Configuration();
     int partSize = conf.getInt(SwiftProtocolConstants.SWIFT_PARTITION_SIZE,
                                SwiftProtocolConstants.DEFAULT_SWIFT_PARTITION_SIZE);
-    int lines = conf.getInt("test.fs.many.lines", 10);
-    int files = conf.getInt(KEY_TEST_MANY_FILES, DEFAULT_TEST_MANY_FILES);
+    int lines = conf.getInt(KEY_TEST_MANY_MANY_LINES, DEFAULT_TEST_MANY_MANY_LINES);
+    int files = conf.getInt(KEY_TEST_MANY_MANY_FILES, DEFAULT_TEST_MANY_MANY_FILES);
     log.info("Writing ${lines} lines to $dataDir")
 
     DataGenerator generator = new DataGenerator(lines, DEFAULT_SEED);

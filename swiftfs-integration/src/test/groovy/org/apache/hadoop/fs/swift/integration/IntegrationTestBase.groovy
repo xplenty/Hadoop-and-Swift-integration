@@ -272,22 +272,31 @@ class IntegrationTestBase extends Assert implements Keys {
    * @param generator generator to create the files
    * @param dataDir destination directory
    * @param files files to create
+   * @return a list of the paths created
    */
-  def void generateManyFiles(DataGenerator generator, Path dataDir, int files) {
+  def generateManyFiles(DataGenerator generator, Path dataDir, int files) {
     FileSystem fs = getSrcFilesystem();
     int sleepTime = conf.getInt(KEY_SLEEP_INTERVAl, DEFAULT_SLEEP_INTERVAL);
     log.info("Generating $files in $dataDir on $fs" +
              " with sleep of $sleepTime")
-    fs.mkdirs(dataDir);
-    deleteRobustly(fs, dataDir, 2);
+    log.info("Deleting existing data")
+    Duration deletion=new Duration()
+    deleteRobustly(fs, dataDir, 2)
+    deletion.finished();
+    log.info("Deletion time: $deletion")
+    log.info("creating data directory")
+    fs.mkdirs(dataDir)
+    log.info("Starting file creation")
     int failures;
     def stats = [:]
-    stats["write"] = new DurationStats("write");
-    stats["close"] = new DurationStats("close");
-    stats["total"] = new DurationStats("total");
+    stats["write"] = new DurationStats("write")
+    stats["close"] = new DurationStats("close")
+    stats["total"] = new DurationStats("total")
+    def paths = []
     for (fileindex in 1..files) {
       try {
         Path dataFile = new Path(dataDir, filename(fileindex))
+        paths.add(dataFile)
         log.info("Writing $dataFile")
         Duration totalTime = new Duration()
         Duration createTime = new Duration()
@@ -317,6 +326,7 @@ class IntegrationTestBase extends Assert implements Keys {
     //list that many files
     FileStatus[] statusList = fs.listStatus(dataDir)
     assert files == statusList.length
+    return paths
   }
 
   /**

@@ -21,13 +21,10 @@ package org.apache.hadoop.fs.swift.integration.generate
 import groovy.util.logging.Commons
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FSDataInputStream
-import org.apache.hadoop.fs.FSDataOutputStream
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
-import org.apache.hadoop.fs.swift.exceptions.SwiftPathExistsException
 import org.apache.hadoop.fs.swift.integration.IntegrationTestBase
 import org.apache.hadoop.fs.swift.integration.tools.DataGenerator
-import org.apache.hadoop.fs.swift.util.SwiftTestUtils
 import org.junit.Test
 
 /**
@@ -45,19 +42,13 @@ class TestGenerateFile extends IntegrationTestBase {
     int lines = conf.getInt(KEY_TEST_LINES, DEFAULT_TEST_LINES);
     log.info("Writing ${lines} lines to $generatedData via $fs")
 
-    try {
-      boolean overwrite = true
-      fs.delete(generatedData,false);
-      FSDataOutputStream out = fs.create(generatedData, overwrite);
-      DataGenerator generator = new DataGenerator(lines, DEFAULT_SEED);
-      generator.generate(out)
-      out.close();
-    } catch (SwiftPathExistsException e) {
-      SwiftTestUtils.downgrade("Destination file ${generatedData} exists", e);
-    }
+
+    DataGenerator generator = new DataGenerator(lines, DEFAULT_SEED);
+    def paths = generateManyFiles(generator, generatedData, 1)
 
     //now read it back in
-    FSDataInputStream instream = fs.open(generatedData)
+    def filepath = paths[0]
+    FSDataInputStream instream = fs.open(filepath)
     BufferedReader reader = new BufferedReader(new InputStreamReader(instream))
     def linesread = reader.eachLine { line, count ->
       log.debug("${count}: " + line)
@@ -65,5 +56,9 @@ class TestGenerateFile extends IntegrationTestBase {
     }
     reader.close()
     assert lines == linesread
+  }
+
+  def String filename(int fileindex) {
+    String.format("data-%04d.csv", fileindex)
   }
 }

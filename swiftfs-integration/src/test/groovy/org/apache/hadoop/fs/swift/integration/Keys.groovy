@@ -30,12 +30,15 @@ interface Keys {
   int DEFAULT_TEST_LINES = 8192;
   String KEY_TEST_FILES = "test.fs.files";
   int DEFAULT_TEST_FILES = 1;
-  String KEY_TEST_MANY_FILES = "test.fs.many.files";
-  int DEFAULT_TEST_MANY_FILES = 512;
+  String KEY_TEST_MANY_MANY_FILES = "test.fs.many.files";
+  int DEFAULT_TEST_MANY_MANY_FILES = 512;
+  String KEY_TEST_MANY_MANY_LINES = "test.fs.many.many.lines"
+  int DEFAULT_TEST_MANY_MANY_LINES = 10;
 
   String KEY_TEST_FILESIZE_KB = "test.fs.filesize.kb";
   int DEFAULT_TEST_FILESIZE_KB = 10;
 
+  String KEY_TEST_MASSIVE_LINES = "test.fs.massive.lines";
   String DATA_DIR = "/tmp/data/"
   String GENERATED_DATA_DIR = DATA_DIR +"generated/"
   String DATASET_CSV = "dataset.csv"

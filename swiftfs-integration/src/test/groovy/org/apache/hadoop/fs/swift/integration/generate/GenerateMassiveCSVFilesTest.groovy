@@ -34,14 +34,14 @@ import org.junit.Test
  * done from a JUnit test where time can be measured easily
  */
 @Commons
-class GenerateManyCSVFilesTest extends IntegrationTestBase {
+class GenerateMassiveCSVFilesTest extends IntegrationTestBase {
 
 
   @Test
   public void testGenerateCSV() throws Throwable {
     Path dataDir = new Path(DATASET_MASSIVE_CSV_PATH);
     Configuration conf = new Configuration();
-    int lines = conf.getInt("test.fs.massive.lines", DEFAULT_TEST_LINES);
+    int lines = conf.getInt(KEY_TEST_MASSIVE_LINES, DEFAULT_TEST_LINES);
     int files = conf.getInt(KEY_TEST_FILES, DEFAULT_TEST_FILES);
     log.info("Writing ${lines} lines to $dataDir")
 
