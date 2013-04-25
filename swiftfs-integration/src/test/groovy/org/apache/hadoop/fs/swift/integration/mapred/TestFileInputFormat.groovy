@@ -35,7 +35,8 @@ class TestFileInputFormat extends IntegrationTestBase {
     //run though
     def expectedFiles = expectedFileCount(conf)
     def (expectedMin, expectedMax) = expectedBlocksizeRange(conf)
-    assert expectedFiles < 0 || statuses.size() == expectedFiles
+    int listedFileCount = statuses.size()
+    assert expectedFiles < 0 || listedFileCount == expectedFiles
     statuses.eachWithIndex { FileStatus file, int index ->
       log.info("At [$index]: $file")
       long blockSize = file.getBlockSize();
