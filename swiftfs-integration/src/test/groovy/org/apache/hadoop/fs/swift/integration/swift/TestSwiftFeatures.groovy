@@ -57,7 +57,7 @@ class TestSwiftFeatures extends IntegrationTestBase {
     SwiftNativeFileSystemStore store = fs.getStore()
     int size = fsconf.getInt(SwiftProtocolConstants.SWIFT_BLOCKSIZE, 0)
     assert size != 0
-    assert size == store.getPartsizeKB();
+    assert size*1024 == store.getBlocksize();
   }
 
   def SwiftNativeFileSystem getSwiftFS() {
