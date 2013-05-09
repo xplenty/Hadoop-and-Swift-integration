@@ -53,4 +53,8 @@ interface Keys {
   String KEY_SLEEP_INTERVAl = "test.fs.sleep.interval"
   int DEFAULT_SLEEP_INTERVAL = 1500
 
+  String RECORD_IO_DIR = Keys.GENERATED_DATA_DIR + "recordIO"
+  String KEY_TEST_RECORD_LINES = "test.fs.record.lines";
+  int DEFAULT_TEST_RECORD_LINES = 8192;
+
 }

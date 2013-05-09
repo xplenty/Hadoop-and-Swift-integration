@@ -26,7 +26,7 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat
 /**
  * Makes some of the superclasses data public, to aid testing
  */
-class DebugTextInputFormat extends TextInputFormat {
+class DebugTextApi2InputFormat extends TextInputFormat {
   
   @Override
   def List<FileStatus> listStatus(JobContext job) throws IOException {

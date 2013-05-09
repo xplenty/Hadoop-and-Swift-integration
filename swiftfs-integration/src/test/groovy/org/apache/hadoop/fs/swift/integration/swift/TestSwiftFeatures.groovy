@@ -42,7 +42,7 @@ class TestSwiftFeatures extends IntegrationTestBase {
 
   @Test
   public void testPartionInfoWorking() throws Throwable {
-    FileSystem fs = getSwiftFS()
+    SwiftNativeFileSystem fs = getSwiftFS()
     Configuration fsconf = fs.getConf();
     SwiftNativeFileSystemStore store = fs.getStore()
     int partSize = fsconf.getInt(SwiftProtocolConstants.SWIFT_PARTITION_SIZE, 0)
@@ -60,11 +60,6 @@ class TestSwiftFeatures extends IntegrationTestBase {
     assert size*1024 == store.getBlocksize();
   }
 
-  def SwiftNativeFileSystem getSwiftFS() {
-    FileSystem fs = getDestFilesystem();
-    Assume.assumeTrue(fs instanceof SwiftNativeFileSystem)
-    (SwiftNativeFileSystem)fs;
-  }
 
 
 }

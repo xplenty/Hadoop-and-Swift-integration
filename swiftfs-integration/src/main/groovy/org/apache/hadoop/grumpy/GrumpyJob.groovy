@@ -229,7 +229,16 @@ class GrumpyJob extends Job {
       terminator.unregister()
     }
   }
-  /**
+
+  @Override
+  String toString() {
+    try {
+      return super.toString()
+    } catch (IllegalStateException) {
+      return "Grumpy job not running "
+    }
+  }
+/**
    * Create a basic job with the given M & R classes. 
    * The Groovy JAR is added as another needed JAR; the mapClass is set as the main jar of the job
    * @param name job name

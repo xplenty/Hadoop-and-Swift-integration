@@ -24,16 +24,19 @@ import org.apache.hadoop.fs.FSDataOutputStream
 import org.apache.hadoop.fs.FileStatus
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
-import org.apache.hadoop.fs.swift.http.SwiftProtocolConstants
 import org.apache.hadoop.fs.swift.integration.tools.DataGenerator
+import org.apache.hadoop.fs.swift.snative.SwiftNativeFileSystem
 import org.apache.hadoop.fs.swift.util.Duration
 import org.apache.hadoop.fs.swift.util.DurationStats
+import org.apache.hadoop.mapred.JobConf
 import org.apache.pig.ExecType
 import org.apache.pig.PigServer
 import org.apache.pig.data.Tuple
 import org.apache.pig.impl.PigContext
 import org.apache.pig.impl.util.PropertiesUtil
+import org.junit.After
 import org.junit.Assert
+import org.junit.Assume
 import org.junit.Before
 import org.junit.internal.AssumptionViolatedException
 
@@ -52,8 +55,17 @@ class IntegrationTestBase extends Assert implements Keys {
     conf = createConfiguration()
   }
 
-  def Configuration createConfiguration() {
-    new Configuration()
+  @After
+  public  void teardown() {
+    FileSystem fs = getDestFilesystem()
+    if (fs instanceof SwiftNativeFileSystem) {
+      SwiftNativeFileSystem sfs = (SwiftNativeFileSystem) fs
+      sfs.getOperationStatistics().each { log.info(it) }
+    }
+  }
+  
+  def JobConf createConfiguration() {
+    new JobConf()
   }
 
   protected FileSystem getSrcFilesystem() {
@@ -66,6 +78,18 @@ class IntegrationTestBase extends Assert implements Keys {
     return FileSystem.get(serviceURI, conf);
   }
 
+  protected Path getSrcPath(String dir) {
+    def srcFS = getSrcFilesystem();
+    srcFS.makeQualified(new Path(dir))
+  }
+
+
+  def SwiftNativeFileSystem getSwiftFS() {
+    FileSystem fs = getDestFilesystem();
+    Assume.assumeTrue(fs instanceof SwiftNativeFileSystem)
+    (SwiftNativeFileSystem) fs;
+  }
+  
   /**
    * This method exists to work around  HADOOP-9482.
    * It opens a file with a null permission rather than "the defaults",
@@ -104,6 +128,10 @@ class IntegrationTestBase extends Assert implements Keys {
   protected URI getSrcFilesysURI(Configuration conf) {
     getServiceURI(conf, Keys.KEY_TEST_FS);
   }
+  
+  def getJT(Configuration conf) {
+    conf.get("mapred.job.tracker");
+  }
 
   protected URI getDestFilesysURI(Configuration conf) {
     getSrcFilesysURI(conf)
@@ -136,8 +164,18 @@ class IntegrationTestBase extends Assert implements Keys {
    * @return
    */
   protected PigServer createPigServer() {
+    //MAPREDUCE;
+    def conf = createConfiguration()
+    String jt = getJT(conf)
+    ExecType execType = jt ? ExecType.MAPREDUCE: ExecType.LOCAL;
+    if (execType == ExecType.MAPREDUCE) {
+      log.info("Connecting to JT at $jt")
+    } else {
+      log.info("Local run")
+    }
+    log.info("Filesystem ${getSrcFilesysURI(conf)}")
     Properties properties = PropertiesUtil.loadDefaultProperties()
-    PigContext context = new PigContext(ExecType.LOCAL,
+    PigContext context = new PigContext(execType,
                                         properties)
     PigServer pig = new PigServer(context);
     pig
