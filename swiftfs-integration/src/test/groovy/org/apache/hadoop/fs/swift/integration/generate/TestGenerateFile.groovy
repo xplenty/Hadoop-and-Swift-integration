@@ -37,7 +37,6 @@ class TestGenerateFile extends IntegrationTestBase {
   public void testMaybeGenerate() throws Throwable {
     FileSystem fs = getSrcFilesystem();
     Path generatedData = new Path(DATASET_CSV_PATH);
-    fs.mkdirs(generatedData.getParent());
     Configuration conf = new Configuration();
     int lines = conf.getInt(KEY_TEST_LINES, DEFAULT_TEST_LINES);
     log.info("Writing ${lines} lines to $generatedData via $fs")
@@ -48,6 +47,12 @@ class TestGenerateFile extends IntegrationTestBase {
 
     //now read it back in
     def filepath = paths[0]
+    def stat = fs.getFileStatus(filepath)
+    log.info("Created file $filepath : $stat" )
+    assert stat.len > 0
+    
+    //next enum files in dir
+    
     FSDataInputStream instream = fs.open(filepath)
     BufferedReader reader = new BufferedReader(new InputStreamReader(instream))
     def linesread = reader.eachLine { line, count ->

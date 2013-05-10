@@ -5,6 +5,7 @@ import org.apache.hadoop.fs.BlockLocation
 import org.apache.hadoop.fs.FileStatus
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.swift.integration.IntegrationTestBase
+import org.apache.hadoop.fs.swift.util.SwiftTestUtils
 import org.apache.hadoop.grumpy.GrumpyJob
 import org.apache.hadoop.mapred.InputSplit
 import org.apache.hadoop.mapred.JobConf
@@ -30,19 +31,24 @@ class TestFileInputFormat extends IntegrationTestBase {
     long minSplitSize = fif.getMinSplitSize(job)
     long formatMinSplitSize = fif.getFormatMinSplitSize()
     long minSize = Math.max(formatMinSplitSize, minSplitSize);
+    String ls = SwiftTestUtils.ls(fs, src)
     List<FileStatus> statuses = fif.listStatus(job)
     //run though
     def expectedFiles = expectedFileCount(conf)
     def (expectedMin, expectedMax) = expectedBlocksizeRange(conf)
     int listedFileCount = statuses.size()
     assert expectedFiles < 0 || listedFileCount == expectedFiles
+    
     statuses.eachWithIndex { FileStatus file, int index ->
       log.info("At [$index]: $file")
       long blockSize = file.getBlockSize();
 
       assert blockSize > expectedMin
       Path path = file.getPath();
+      
+      FileStatus stat = fs.getFileStatus(path)
       long length = file.getLen();
+      assert stat.getLen() == file.getLen()
       assert file.getLen() > 0
       BlockLocation[] blkLocations = fs.getFileBlockLocations(file, 0, length);
       assert blkLocations.size() > 0

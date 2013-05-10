@@ -41,8 +41,7 @@ interface Keys {
   String KEY_TEST_MASSIVE_LINES = "test.fs.massive.lines";
   String DATA_DIR = "/tmp/data/"
   String GENERATED_DATA_DIR = DATA_DIR +"generated/"
-  String DATASET_CSV = "dataset.csv"
-  String DATASET_CSV_PATH = DATA_DIR + "csv/dataset.csv"
+  String DATASET_CSV_PATH = DATA_DIR + "csv/TestGenerateFile"
   String DATASET_MASSIVE_BIN_PATH = DATA_DIR + "massive/bin"
   String DATASET_MANY_CSV_PATH = DATA_DIR + "many/csv"
   String DATASET_MASSIVE_CSV_PATH = DATA_DIR + "massive/csv"
