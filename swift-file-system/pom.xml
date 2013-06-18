@@ -19,7 +19,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <commons.lang.version>2.6</commons.lang.version>
         <commons.io.version>2.3</commons.io.version>
-        <hadoop.version>3.0.0-SNAPSHOT</hadoop.version>
+        <hadoop.version>0.22.0</hadoop.version>
         <httpcomponents.version>4.2.3</httpcomponents.version>
         <jackson.version>1.9.7</jackson.version>
         <junit.version>4.10</junit.version>
@@ -80,13 +80,18 @@
             <artifactId>hadoop-common</artifactId>
             <version>${hadoop.version}</version>
         </dependency>
-         <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-common</artifactId>
-          <version>${hadoop.version}</version>
-          <scope>test</scope>
-        <type>test-jar</type>
-        </dependency>
+        <!-- <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>${hadoop.version}</version>
+            <scope>test</scope>
+            <type>test-jar</type>
+        </dependency> -->
+		<dependency>
+			<groupId>org.apache.hadoop</groupId>
+			<artifactId>hadoop-common-test</artifactId>
+			<version>${hadoop.version}</version>
+		</dependency>
         <dependency>
             <groupId>org.codehaus.jackson</groupId>
             <artifactId>jackson-mapper-asl</artifactId>

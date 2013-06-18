@@ -138,6 +138,11 @@ public final class SwiftRestClient {
   private final String apiKey;
 
   /**
+   * should use xstorage
+   */
+  private final boolean useXStorage;
+
+  /**
    * The container this client is working with
    */
   private final String container;
@@ -383,6 +388,7 @@ public final class SwiftRestClient {
     String isPubProp = props.getProperty(SWIFT_PUBLIC_PROPERTY, "false");
     usePublicURL = "true".equals(isPubProp);
     retryCount = getIntOption(props, SWIFT_RETRY_COUNT, DEFAULT_RETRY_COUNT);
+    useXStorage = getBooleanOption(props, SWIFT_USE_XSTORAGE_PROPERTY, false);
     connectTimeout = getIntOption(props, SWIFT_CONNECTION_TIMEOUT,
                                   DEFAULT_CONNECT_TIMEOUT);
     
@@ -450,6 +456,23 @@ public final class SwiftRestClient {
                                        + " : "+val, e);
     }
   }
+
+  /**
+   * Get a boolean option from the property object
+   *
+   * @param props property object
+   * @param key   configuration
+   * @param def   default value
+   * @return the value in the property file, or the default.
+   * @throws SwiftConfigurationException if the property file-supplied
+   *                                     value cannot be parsed to an integer
+   */
+  private boolean getBooleanOption(Properties props, String key, boolean def) throws
+          SwiftConfigurationException {
+    String val = props.getProperty(key, Boolean.toString(def));
+    return Boolean.parseBoolean(val);
+  }
+  
   /**
    * This is something that needs to be looked at, as it is
    * setting the static state of the http client classes.
@@ -872,6 +895,8 @@ public final class SwiftRestClient {
    */
   public AccessToken authenticate() throws IOException {
     LOG.debug("started authentication");
+    if (useXStorage)
+    	return authenticateXStorage();
     return perform(authUri, new PostMethodProcessor<AccessToken>() {
       @Override
       protected void setup(PostMethod method) throws SwiftException {
@@ -1013,6 +1038,87 @@ public final class SwiftRestClient {
         return accessToken;
       }
     });
+  }
+  
+  public AccessToken authenticateXStorage() throws IOException {
+	   
+	    final PasswordCredentials cred = new PasswordCredentials( username, password);
+
+	    LOG.debug("started authentication");
+	    return perform(authUri, new GetMethodProcessor<AccessToken>() {
+
+
+	      @Override
+	      protected void setup(GetMethod method) throws SwiftException {
+
+	    	  for (Header h : getXStorageHeaders(cred))
+	    		  method.setRequestHeader(h);
+	      }
+
+	      /**
+	       * specification says any of the 2xxs are OK, so list all
+	       * the standard ones
+	       * @return a set of 2XX status codes.
+	       */
+	      @Override
+	      protected int[] getAllowedStatusCodes() {
+	        return new int[]{
+	                SC_OK,
+	                SC_BAD_REQUEST,
+	                SC_CREATED,
+	                SC_ACCEPTED,
+	                SC_NON_AUTHORITATIVE_INFORMATION,
+	                SC_NO_CONTENT,
+	                SC_RESET_CONTENT,
+	                SC_PARTIAL_CONTENT,
+	                SC_MULTI_STATUS,
+	                SC_UNAUTHORIZED //if request unauthorized, try another method
+	        };
+	      }
+
+	      @Override
+	      public AccessToken extractResult(GetMethod method) throws IOException {
+	        //initial check for failure codes leading to authentication failures
+	        if (method.getStatusCode() == SC_BAD_REQUEST) {
+	          throw new SwiftInvalidResponseException(
+	        		  cred.toString(), SC_BAD_REQUEST, "GET", authUri);
+	        }
+	        Header authHeader = method.getResponseHeader(SwiftProtocolConstants.HEADER_AUTH_KEY);
+	        Header storageUrlHeader = method.getResponseHeader(SwiftProtocolConstants.HEADER_STORAGE_URL_KEY);
+
+	        if (authHeader == null || storageUrlHeader == null)
+		          throw new SwiftInvalidResponseException(
+		        		  cred.toString(), method.getStatusCode(), "GET", authUri);
+	        
+	        URI objectLocation;
+	        URI endpointURI;
+			try { 
+				endpointURI= new URI(storageUrlHeader.getValue());
+				objectLocation = new URI(storageUrlHeader.getValue());
+			} catch (URISyntaxException e) {
+		          throw new SwiftInvalidResponseException(
+		        		  cred.toString(), method.getStatusCode(), "GET", authUri);				
+			}
+	        AccessToken accessToken = new AccessToken();
+	        accessToken.setId(authHeader.getValue());
+	        
+	        setAuthDetails(endpointURI, objectLocation, accessToken);
+
+	        if (LOG.isDebugEnabled()) {
+	          LOG.debug("authenticated against " + endpointURI);
+	        }
+	        createDefaultContainer();
+	        return accessToken;
+	      }
+	    });
+	  }
+  
+  
+  protected Header[] getXStorageHeaders(PasswordCredentials cred){
+	  return new Header[]{
+			  new Header("X-Storage-User", cred.getUsername()), 
+			  new Header("X-Storage-Pass", cred.getPassword())
+			  };	  
   }
 
   /**

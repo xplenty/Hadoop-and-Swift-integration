@@ -152,6 +152,8 @@ public final class RestClientBindings {
     copy(conf, prefix + DOT_HTTP_PORT, props, SWIFT_HTTP_PORT_PROPERTY, false);
     copy(conf, prefix +
                DOT_HTTPS_PORT, props, SWIFT_HTTPS_PORT_PROPERTY, false);
+    copy(conf, prefix +
+            DOT_USE_XSTORAGE, props, SWIFT_USE_XSTORAGE_PROPERTY, false);
 
     //boolean value
     boolean isPublicURL = conf.getBoolean(prefix + DOT_PUBLIC, false);

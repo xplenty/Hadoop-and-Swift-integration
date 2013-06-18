@@ -58,4 +58,5 @@ public class PasswordAuthenticationRequest extends AuthenticationRequest {
            ", passwordCredentials=" + passwordCredentials +
            '}';
   }
+  
 }
