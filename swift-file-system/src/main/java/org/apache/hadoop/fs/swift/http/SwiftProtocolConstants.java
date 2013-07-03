@@ -95,7 +95,7 @@ public class SwiftProtocolConstants {
   public static final String DOT_REGION = ".region";
   public static final String DOT_PROXY_HOST = ".proxy.host";
   public static final String DOT_PROXY_PORT = ".proxy.port";
-  public static final String DOT_AUTHENTICATION_METHOD = ".authenticationMethod";
+  public static final String DOT_AUTHENTICATION_METHOD = ".auth.method";
   /**
    * flag to say use public URL
    */

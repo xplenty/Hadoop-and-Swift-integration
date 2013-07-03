@@ -388,7 +388,7 @@ public final class SwiftRestClient {
     String isPubProp = props.getProperty(SWIFT_PUBLIC_PROPERTY, "false");
     usePublicURL = "true".equals(isPubProp);
     retryCount = getIntOption(props, SWIFT_RETRY_COUNT, DEFAULT_RETRY_COUNT);
-    authenticationMethod = getAuthenticationMethodOption(props, SWIFT_AUTHENTICATION_METHOD_PROPERTY, AuthenticationMethod.Keystone);	//Default is Keystone authentication
+    authenticationMethod = getAuthenticationMethodOption(props, SWIFT_AUTHENTICATION_METHOD_PROPERTY, AuthenticationMethod.keystone);	//Default is Keystone authentication
     connectTimeout = getIntOption(props, SWIFT_CONNECTION_TIMEOUT,
                                   DEFAULT_CONNECT_TIMEOUT);
     
@@ -895,7 +895,7 @@ public final class SwiftRestClient {
    */
   public AccessToken authenticate() throws IOException {
     LOG.debug("started authentication");
-    if (authenticationMethod == AuthenticationMethod.WSAuth)
+    if (authenticationMethod == AuthenticationMethod.wsauth)
     	return authenticateXStorage();
     return perform(authUri, new PostMethodProcessor<AccessToken>() {
       @Override
