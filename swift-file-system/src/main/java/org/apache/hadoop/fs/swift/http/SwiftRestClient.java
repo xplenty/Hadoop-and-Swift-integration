@@ -140,7 +140,7 @@ public final class SwiftRestClient {
   /**
    * should use xstorage
    */
-  private final boolean useXStorage;
+  private final AuthenticationMethod authenticationMethod;
 
   /**
    * The container this client is working with
@@ -388,7 +388,7 @@ public final class SwiftRestClient {
     String isPubProp = props.getProperty(SWIFT_PUBLIC_PROPERTY, "false");
     usePublicURL = "true".equals(isPubProp);
     retryCount = getIntOption(props, SWIFT_RETRY_COUNT, DEFAULT_RETRY_COUNT);
-    useXStorage = getBooleanOption(props, SWIFT_USE_XSTORAGE_PROPERTY, false);
+    authenticationMethod = getAuthenticationMethodOption(props, SWIFT_AUTHENTICATION_METHOD_PROPERTY, AuthenticationMethod.Keystone);	//Default is Keystone authentication
     connectTimeout = getIntOption(props, SWIFT_CONNECTION_TIMEOUT,
                                   DEFAULT_CONNECT_TIMEOUT);
     
@@ -458,7 +458,7 @@ public final class SwiftRestClient {
   }
 
   /**
-   * Get a boolean option from the property object
+   * Get a AuthenticationMethod option from the property object
    *
    * @param props property object
    * @param key   configuration
@@ -467,10 +467,10 @@ public final class SwiftRestClient {
    * @throws SwiftConfigurationException if the property file-supplied
    *                                     value cannot be parsed to an integer
    */
-  private boolean getBooleanOption(Properties props, String key, boolean def) throws
+  private AuthenticationMethod getAuthenticationMethodOption(Properties props, String key, AuthenticationMethod def) throws
           SwiftConfigurationException {
-    String val = props.getProperty(key, Boolean.toString(def));
-    return Boolean.parseBoolean(val);
+    String val = props.getProperty(key, def.toString());
+    return AuthenticationMethod.valueOf(val);
   }
   
   /**
@@ -895,7 +895,7 @@ public final class SwiftRestClient {
    */
   public AccessToken authenticate() throws IOException {
     LOG.debug("started authentication");
-    if (useXStorage)
+    if (authenticationMethod == AuthenticationMethod.WSAuth)
     	return authenticateXStorage();
     return perform(authUri, new PostMethodProcessor<AccessToken>() {
       @Override
@@ -1084,7 +1084,7 @@ public final class SwiftRestClient {
 	        		  cred.toString(), SC_BAD_REQUEST, "GET", authUri);
 	        }
 	        Header authHeader = method.getResponseHeader(SwiftProtocolConstants.HEADER_AUTH_KEY);
-	        Header storageUrlHeader = method.getResponseHeader(SwiftProtocolConstants.HEADER_STORAGE_URL_KEY);
+	        Header storageUrlHeader = method.getResponseHeader(SwiftProtocolConstants.HEADER_WSAUTH_URL_KEY);
 
 	        if (authHeader == null || storageUrlHeader == null)
 		          throw new SwiftInvalidResponseException(

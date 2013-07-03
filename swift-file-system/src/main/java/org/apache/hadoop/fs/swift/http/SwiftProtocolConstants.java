@@ -30,9 +30,9 @@ import org.apache.hadoop.classification.InterfaceStability;
 @InterfaceStability.Evolving
 public class SwiftProtocolConstants {
   public static final String HEADER_AUTH_KEY = "X-Auth-Token";
-  public static final String HEADER_STORAGE_URL_KEY = "X-Storage-Url";
-  public static final String HEADER_STORAGE_USER_KEY = "X-Storage-User";
-  public static final String HEADER_STORAGE_PASS_KEY = "X-Storage-Pass";
+  public static final String HEADER_WSAUTH_URL_KEY = "X-Storage-Url";
+  public static final String HEADER_WSAUTH_USER_KEY = "X-Storage-User";
+  public static final String HEADER_WSAUTH_PASS_KEY = "X-Storage-Pass";
   public static final int SWIFT_HTTP_PORT = 8080;
   public static final int SWIFT_HTTPS_PORT = 443;
   public static final String HEADER_RANGE = "Range";
@@ -95,7 +95,7 @@ public class SwiftProtocolConstants {
   public static final String DOT_REGION = ".region";
   public static final String DOT_PROXY_HOST = ".proxy.host";
   public static final String DOT_PROXY_PORT = ".proxy.port";
-  public static final String DOT_USE_XSTORAGE = ".useXstorage";
+  public static final String DOT_AUTHENTICATION_METHOD = ".authenticationMethod";
   /**
    * flag to say use public URL
    */
@@ -111,7 +111,7 @@ public class SwiftProtocolConstants {
   public static final String SWIFT_APIKEY_PROPERTY = FS_SWIFT + DOT_APIKEY;
   public static final String SWIFT_HTTP_PORT_PROPERTY = FS_SWIFT + DOT_HTTP_PORT;
   public static final String SWIFT_HTTPS_PORT_PROPERTY = FS_SWIFT + DOT_HTTPS_PORT;
-  public static final String SWIFT_USE_XSTORAGE_PROPERTY = FS_SWIFT + DOT_USE_XSTORAGE;
+  public static final String SWIFT_AUTHENTICATION_METHOD_PROPERTY = FS_SWIFT + DOT_AUTHENTICATION_METHOD;
   public static final String SWIFT_REGION_PROPERTY = FS_SWIFT + DOT_REGION;
   public static final String SWIFT_PUBLIC_PROPERTY = FS_SWIFT + DOT_PUBLIC;
 
