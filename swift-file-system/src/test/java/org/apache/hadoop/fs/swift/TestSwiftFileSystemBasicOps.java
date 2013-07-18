@@ -384,5 +384,16 @@ public class TestSwiftFileSystemBasicOps {
       // expected
     }
   }
+  
+  @Test
+  public void testReadFile() throws IOException{
+	  SwiftNativeFileSystem fs = createInitedFS();
+	    Path path = new Path("/naf/swift_test/1/part-m-00000");
+	    try {
+	      String result = readBytesToString(fs, path, 300);
+	      System.out.println(result);
+	    } finally {
+	    }
+  }
 
 }

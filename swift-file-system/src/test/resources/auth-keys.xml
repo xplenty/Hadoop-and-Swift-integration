@@ -1,0 +1,31 @@
+<configuration>
+
+    <property>
+        <name>test.fs.swift.name</name>
+        <value>swift://TestContainer.test/TestContainer/object1</value>
+    </property>
+    <property>
+        <name>fs.swift.service.test.auth.url</name>
+        <value>https://data.iad1.attstorage.com/auth/v1.0</value>
+    </property>
+    <property>
+        <name>fs.swift.service.test.username</name>
+        <value>xplenty:xplentyadmin</value>
+    </property>
+    <property>
+        <name>fs.swift.service.test.password</name>
+        <value>8br0g3ggrp5</value>
+    </property>
+    <property>
+        <name>fs.swift.service.test.http.port</name>
+        <value>8080</value>
+    </property>
+    <property>
+        <name>fs.swift.service.test.https.port</name>
+        <value>443</value>
+    </property>
+    <property>
+        <name>fs.swift.service.test.auth.method</name>
+        <value>swauth</value>
+    </property>
+</configuration>

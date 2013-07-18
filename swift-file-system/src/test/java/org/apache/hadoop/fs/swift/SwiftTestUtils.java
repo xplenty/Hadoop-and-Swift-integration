@@ -250,7 +250,7 @@ public class SwiftTestUtils {
    * @param b byte
    * @return the printable character string
    */
-  public static String toChar(byte b) {
+  public static String toChar(byte b) {	  
     if (b >= 0x20) {
       return Character.toString((char) b);
     } else {

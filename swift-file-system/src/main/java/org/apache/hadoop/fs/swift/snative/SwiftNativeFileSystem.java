@@ -211,6 +211,9 @@ public class SwiftNativeFileSystem extends FileSystem {
     } else {
       locations = store.getObjectLocation(file.getPath());
     }
+    
+    if (listOfFileBlocks.length > 0 && locations.size() == 0)
+    	return super.getFileBlockLocations(file, start,len);
 
     final String[] names = new String[locations.size()];
     final String[] hosts = new String[locations.size()];

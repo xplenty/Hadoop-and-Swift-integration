@@ -895,7 +895,7 @@ public final class SwiftRestClient {
    */
   public AccessToken authenticate() throws IOException {
     LOG.debug("started authentication");
-    if (authenticationMethod == AuthenticationMethod.wsauth)
+    if (authenticationMethod == AuthenticationMethod.swauth)
     	return authenticateXStorage();
     return perform(authUri, new PostMethodProcessor<AccessToken>() {
       @Override
