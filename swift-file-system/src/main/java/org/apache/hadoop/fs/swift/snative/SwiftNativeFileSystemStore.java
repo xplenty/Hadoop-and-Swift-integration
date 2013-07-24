@@ -353,9 +353,9 @@ public class SwiftNativeFileSystemStore {
    */
   public void rename(Path src, Path dst)
     throws FileNotFoundException, SwiftOperationFailedException, IOException {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("mv " + src + " " + dst);
-    }
+    //if (LOG.isDebugEnabled()) {
+      LOG.info("mv " + src + " " + dst);
+    //}
     boolean renamingOnToSelf = src.equals(dst);
 
     SwiftObjectPath srcObject = toObjectPath(src);
@@ -547,7 +547,7 @@ public class SwiftNativeFileSystemStore {
   private void copyThenDeleteObject(SwiftObjectPath srcObject,
                                       SwiftObjectPath destObject) throws
                                                                   IOException {
-    LOG.debug("Copying " + srcObject + " to " + destObject);
+    LOG.info("Copying " + srcObject + " to " + destObject);
     boolean copySucceeded = swiftRestClient.copyObject(srcObject, destObject);
     if (copySucceeded) {
       //if the copy worked delete the original

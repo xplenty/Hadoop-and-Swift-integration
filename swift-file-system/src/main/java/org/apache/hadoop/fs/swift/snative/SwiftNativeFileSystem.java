@@ -178,55 +178,55 @@ public class SwiftNativeFileSystem extends FileSystem {
     }
   }
 
-  /**
-   * Return an array containing hostnames, offset and size of
-   * portions of the given file.  For a nonexistent
-   * file or regions, null will be returned.
-   * <p/>
-   * This call is most helpful with DFS, where it returns
-   * hostnames of machines that contain the given file.
-   * <p/>
-   * The FileSystem will simply return an elt containing 'localhost'.
-   */
-  @Override
-  public BlockLocation[] getFileBlockLocations(FileStatus file,
-                                               long start,
-                                               long len) throws IOException {
-//    return super.getFileBlockLocations(file, start, len);
-    // Check if requested file in Swift is more than 5Gb. In this case
-    // each block has its own location -which may be determinable
-    // from the Swift client API, depending on the remote server
-    final FileStatus[] listOfFileBlocks = store.listSubPaths(file.getPath(),
-                                                             false,
-                                                             true);
-    List<URI> locations = new ArrayList<URI>();
-    if (listOfFileBlocks.length > 1) {
-      for (FileStatus fileStatus : listOfFileBlocks) {
-        if (SwiftObjectPath.fromPath(uri, fileStatus.getPath())
-                .equals(SwiftObjectPath.fromPath(uri, file.getPath()))) {
-          continue;
-        }
-        locations.addAll(store.getObjectLocation(fileStatus.getPath()));
-      }
-    } else {
-      locations = store.getObjectLocation(file.getPath());
-    }
-    
-    if (listOfFileBlocks.length > 0 && locations.size() == 0)
-    	return super.getFileBlockLocations(file, start,len);
-
-    final String[] names = new String[locations.size()];
-    final String[] hosts = new String[locations.size()];
-    int i = 0;
-    for (URI location : locations) {
-      hosts[i] = location.getHost();
-      names[i] = location.getAuthority();
-      i++;
-    }
-    return new BlockLocation[]{
-            new BlockLocation(names, hosts, 0, file.getLen())
-    };
-  }
+//  /**
+//   * Return an array containing hostnames, offset and size of
+//   * portions of the given file.  For a nonexistent
+//   * file or regions, null will be returned.
+//   * <p/>
+//   * This call is most helpful with DFS, where it returns
+//   * hostnames of machines that contain the given file.
+//   * <p/>
+//   * The FileSystem will simply return an elt containing 'localhost'.
+//   */
+//  @Override
+//  public BlockLocation[] getFileBlockLocations(FileStatus file,
+//                                               long start,
+//                                               long len) throws IOException {
+////    return super.getFileBlockLocations(file, start, len);
+//    // Check if requested file in Swift is more than 5Gb. In this case
+//    // each block has its own location -which may be determinable
+//    // from the Swift client API, depending on the remote server
+//    final FileStatus[] listOfFileBlocks = store.listSubPaths(file.getPath(),
+//                                                             false,
+//                                                             true);
+//    List<URI> locations = new ArrayList<URI>();
+//    if (listOfFileBlocks.length > 1) {
+//      for (FileStatus fileStatus : listOfFileBlocks) {
+//        if (SwiftObjectPath.fromPath(uri, fileStatus.getPath())
+//                .equals(SwiftObjectPath.fromPath(uri, file.getPath()))) {
+//          continue;
+//        }
+//        locations.addAll(store.getObjectLocation(fileStatus.getPath()));
+//      }
+//    } else {
+//      locations = store.getObjectLocation(file.getPath());
+//    }
+//    
+//    if (listOfFileBlocks.length > 0 && locations.size() == 0)
+//    	return super.getFileBlockLocations(file, start,len);
+//
+//    final String[] names = new String[locations.size()];
+//    final String[] hosts = new String[locations.size()];
+//    int i = 0;
+//    for (URI location : locations) {
+//      hosts[i] = location.getHost();
+//      names[i] = location.getAuthority();
+//      i++;
+//    }
+//    return new BlockLocation[]{
+//            new BlockLocation(names, hosts, 0, file.getLen())
+//    };
+//  }
 
   @Override
   public boolean mkdirs(Path path, FsPermission permission) throws IOException {
