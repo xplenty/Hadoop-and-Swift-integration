@@ -146,15 +146,32 @@ public class SwiftNativeFileSystemStore {
    */
   public FileStatus getObjectMetadata(Path path) throws IOException {
     SwiftObjectPath objectPath = toObjectPath(path);
-    final Header[] headers;
-    headers = swiftRestClient.headRequest(objectPath,
+    Header[] headers;
+    boolean isDir = false;
+    boolean foundSubPath = false;
+    try {
+    	headers = swiftRestClient.headRequest(objectPath,
             SwiftRestClient.NEWEST);
+    } catch (FileNotFoundException e){
+    	int tmpLength = 0;
+    	try {
+    		tmpLength = swiftRestClient.listObjectsInDirectory(objectPath, SwiftRestClient.NEWEST).length;
+    	} catch (Throwable e2) {    		
+    	}
+    	if (tmpLength > 0){
+        	foundSubPath = true;
+    		isDir = true;
+    		headers = new Header[0]; 
+    	}
+    	else{
+    		throw e;
+    	}
+    }
     //no headers is treated as a missing file
-    if (headers.length == 0) {
+    if (!foundSubPath &&headers.length == 0) {
       throw new FileNotFoundException("Not Found " + path.toUri());
     }
 
-    boolean isDir = false;
     long length = 0;
     long lastModified = System.currentTimeMillis();
     for (Header header : headers) {
