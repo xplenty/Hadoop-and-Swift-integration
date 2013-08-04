@@ -178,7 +178,7 @@ public class SwiftNativeFileSystemStore {
     }
 
     Path correctSwiftPath = getCorrectSwiftPath(path);
-    return new SwiftFileStatus(length, isDir, 0, 0L, lastModified, correctSwiftPath);
+    return new SwiftFileStatus(length, isDir, 0, 32L * 1024L * 1024L, lastModified, correctSwiftPath);	//Block size changed, was 0L
   }
 
 
