@@ -82,6 +82,18 @@ public class SwiftNativeFileSystemStore {
             + swiftRestClient;
   }
 
+  
+  /**
+   * Get the default blocksize of this (bound) filesystem
+   *
+   * @return the blocksize returned for all FileStatus queries,
+   *         which is used by the MapReduce splitter.
+   */
+  public long getBlocksize() {
+    return swiftRestClient.getBlocksize();
+  }
+  
+  
   /**
    * Upload a file
    *
@@ -178,7 +190,7 @@ public class SwiftNativeFileSystemStore {
     }
 
     Path correctSwiftPath = getCorrectSwiftPath(path);
-    return new SwiftFileStatus(length, isDir, 0, 32L * 1024L * 1024L, lastModified, correctSwiftPath);	//Block size changed, was 0L
+    return new SwiftFileStatus(length, isDir, 0, getBlocksize(), lastModified, correctSwiftPath);
   }
 
 
