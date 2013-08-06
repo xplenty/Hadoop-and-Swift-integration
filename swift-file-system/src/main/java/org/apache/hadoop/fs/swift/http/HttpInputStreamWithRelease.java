@@ -141,7 +141,8 @@ public class HttpInputStreamWithRelease extends InputStream {
 
   @Override
   public int available() throws IOException {
-    assumeNotReleased();
+    if (released)
+    	return 0;
     try {
       return inStream.available();
     } catch (IOException e) {
@@ -152,7 +153,8 @@ public class HttpInputStreamWithRelease extends InputStream {
 
   @Override
   public int read() throws IOException {
-    assumeNotReleased();
+	    if (released)
+	    	return -1;
     int read = 0;
     try {
       read = inStream.read();
@@ -168,7 +170,8 @@ public class HttpInputStreamWithRelease extends InputStream {
 
   @Override
   public int read(byte[] b, int off, int len) throws IOException {
-    assumeNotReleased();
+	    if (released)
+	    	return -1;
     int read;
     try {
       read = inStream.read(b, off, len);
