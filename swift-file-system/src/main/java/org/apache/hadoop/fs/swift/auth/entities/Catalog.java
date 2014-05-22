@@ -20,9 +20,12 @@ package org.apache.hadoop.fs.swift.auth.entities;
 
 import java.util.List;
 
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
+
 /**
  * Describes Openstack Swift REST endpoints
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Catalog {
   /**
    * List of valid swift endpoints

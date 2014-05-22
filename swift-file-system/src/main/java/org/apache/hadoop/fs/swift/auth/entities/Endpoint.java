@@ -20,9 +20,12 @@ package org.apache.hadoop.fs.swift.auth.entities;
 
 import java.net.URI;
 
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
+
 /**
  * Openstack Swift endpoint description
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Endpoint {
 
   /**

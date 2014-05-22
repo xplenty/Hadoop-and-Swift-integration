@@ -28,185 +28,196 @@ import java.io.InputStream;
 import java.net.URI;
 
 /**
- * This replaces the input stream release class from JetS3t and AWS;
- * # Failures in the constructor are relayed up instead of simply logged.
- * # it is set up to be more robust at teardown
- * # release logic is thread safe
- * Note that the thread safety of the inner stream contains no thread
- * safety guarantees -this stream is not to be read across streams.
- * The thread safety logic here is to ensure that even if somebody ignores
- * that rule, the release code does not get entered twice -and that
- * any release in one thread is picked up by read operations in all others.
+ * This replaces the input stream release class from JetS3t and AWS; # Failures
+ * in the constructor are relayed up instead of simply logged. # it is set up to
+ * be more robust at teardown # release logic is thread safe Note that the
+ * thread safety of the inner stream contains no thread safety guarantees -this
+ * stream is not to be read across streams. The thread safety logic here is to
+ * ensure that even if somebody ignores that rule, the release code does not get
+ * entered twice -and that any release in one thread is picked up by read
+ * operations in all others.
  */
 public class HttpInputStreamWithRelease extends InputStream {
 
-  private static final Log LOG =
-    LogFactory.getLog(HttpInputStreamWithRelease.class);
-  private final URI uri;
-  private HttpMethod method;
-  //flag to say the stream is released -volatile so that read operations
-  //pick it up even while unsynchronized.
-  private volatile boolean released;
-  //volatile flag to verify that data is consumed.
-  private volatile boolean dataConsumed;
-  private InputStream inStream;
+	private static final Log LOG = LogFactory
+			.getLog(HttpInputStreamWithRelease.class);
+	private final URI uri;
+	private HttpMethod method;
+	// flag to say the stream is released -volatile so that read operations
+	// pick it up even while unsynchronized.
+	private volatile boolean released;
+	// volatile flag to verify that data is consumed.
+	private volatile boolean dataConsumed;
+	private InputStream inStream;
 
-  public HttpInputStreamWithRelease(URI uri, HttpMethod method) throws
-                                                                IOException {
-    this.uri = uri;
-    this.method = method;
-    if (method == null) {
-      throw new NullPointerException("Null 'method' parameter ");
-    }
-    try {
-      inStream = method.getResponseBodyAsStream();
-    } catch (IOException e) {
-      inStream = new ByteArrayInputStream(new byte[]{});
-      throw releaseAndRethrow("getResponseBodyAsStream() in constructor", e);
-    }
-  }
+	public HttpInputStreamWithRelease(URI uri, HttpMethod method)
+			throws IOException {
+		this.uri = uri;
+		this.method = method;
+		if (method == null) {
+			throw new NullPointerException("Null 'method' parameter ");
+		}
+		try {
+			inStream = method.getResponseBodyAsStream();
+		} catch (IOException e) {
+			inStream = new ByteArrayInputStream(new byte[] {});
+			throw releaseAndRethrow("getResponseBodyAsStream() in constructor",
+					e);
+		}
+	}
 
-  @Override
-  public void close() throws IOException {
-    release("close()", null);
-  }
+	@Override
+	public void close() throws IOException {
+		release("close()", null);
+	}
 
-  /**
-   * Release logic
-   * @param reason reason for release (used in debug messages)
-   * @param ex exception that is a cause -null for non-exceptional releases
-   * @return true if the release took place here
-   * @throws IOException if the abort or close operations failed.
-   */
-  private synchronized boolean release(String reason, Exception ex) throws
-                                                                   IOException {
-    if (!released) {
-      try {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Releasing connection to " + uri + ":  " + reason, ex);
-        }
-        if (method != null) {
-          if (!dataConsumed) {
-            method.abort();
-          }
-          method.releaseConnection();
-        }
-        if (inStream != null) {
-          //this guard may seem un-needed, but a stack trace seen
-          //on the JetS3t predecessor implied that it
-          //is useful
-          inStream.close();
-        }
-        return true;
-      } finally {
-        //if something went wrong here, we do not want the release() operation
-        //to try and do anything in advance.
-        released = true;
-        dataConsumed = true;
-      }
-    } else {
-      return false;
-    }
-  }
+	/**
+	 * Release logic
+	 * 
+	 * @param reason
+	 *            reason for release (used in debug messages)
+	 * @param ex
+	 *            exception that is a cause -null for non-exceptional releases
+	 * @return true if the release took place here
+	 * @throws IOException
+	 *             if the abort or close operations failed.
+	 */
+	private synchronized boolean release(String reason, Exception ex)
+			throws IOException {
+		if (!released) {
+			try {
+				if (LOG.isDebugEnabled()) {
+					LOG.debug(
+							"Releasing connection to " + uri + ":  " + reason,
+							ex);
+				}
+				if (method != null) {
+					if (!dataConsumed) {
+						method.abort();
+					}
+					method.releaseConnection();
+				}
+				if (inStream != null) {
+					// this guard may seem un-needed, but a stack trace seen
+					// on the JetS3t predecessor implied that it
+					// is useful
+					inStream.close();
+				}
+				return true;
+			} finally {
+				// if something went wrong here, we do not want the release()
+				// operation
+				// to try and do anything in advance.
+				released = true;
+				dataConsumed = true;
+			}
+		} else {
+			return false;
+		}
+	}
 
-  /**
-   * Release the method, using the exception as a cause
-   * @param operation operation that failed
-   * @param ex the exception which triggered it.
-   * @return the exception to throw
-   */
-  private IOException releaseAndRethrow(String operation, IOException ex) {
-    try {
-      release(operation, ex);
-    } catch (IOException ioe) {
-      LOG.debug("Exception during release", ioe);
-      //make this the exception if there was none before
-      if (ex == null) {
-        ex = ioe;
-      }
-    }
-    return ex;
-  }
+	/**
+	 * Release the method, using the exception as a cause
+	 * 
+	 * @param operation
+	 *            operation that failed
+	 * @param ex
+	 *            the exception which triggered it.
+	 * @return the exception to throw
+	 */
+	private IOException releaseAndRethrow(String operation, IOException ex) {
+		try {
+			release(operation, ex);
+		} catch (IOException ioe) {
+			LOG.debug("Exception during release", ioe);
+			// make this the exception if there was none before
+			if (ex == null) {
+				ex = ioe;
+			}
+		}
+		return ex;
+	}
 
-  /**
-   * Assume that the connection is not released: throws an exception if it is
-   * @throws IOException
-   */
-  private void assumeNotReleased() throws IOException {
-    if (released) {
-      throw new IOException(
-        "Operation failed as connection is closed to " + uri);
-    }
-  }
+	/**
+	 * Assume that the connection is not released: throws an exception if it is
+	 * 
+	 * @throws IOException
+	 */
+	private void assumeNotReleased() throws IOException {
+		if (released) {
+			throw new IOException(
+					"Operation failed as connection is closed to " + uri);
+		}
+	}
 
-  @Override
-  public int available() throws IOException {
-    if (released)
-    	return 0;
-    try {
-      return inStream.available();
-    } catch (IOException e) {
-      throw releaseAndRethrow("available()", e);
-    }
-  }
+	@Override
+	public int available() throws IOException {
+		if (released)
+			return 0;
+		try {
+			return inStream.available();
+		} catch (IOException e) {
+			throw releaseAndRethrow("available()", e);
+		}
+	}
 
+	@Override
+	public int read() throws IOException {
+		if (released)
+			return -1;
+		int read = 0;
+		try {
+			read = inStream.read();
+		} catch (IOException e) {
+			throw releaseAndRethrow("read()", e);
+		}
+		if (read < 0) {
+			dataConsumed = true;
+			release("read() -all data consumed", null);
+		}
+		return read;
+	}
 
-  @Override
-  public int read() throws IOException {
-	    if (released)
-	    	return -1;
-    int read = 0;
-    try {
-      read = inStream.read();
-    } catch (IOException e) {
-      throw releaseAndRethrow("read()", e);
-    }
-    if (read < 0) {
-      dataConsumed = true;
-      release("read() -all data consumed", null);
-    }
-    return read;
-  }
+	@Override
+	public int read(byte[] b, int off, int len) throws IOException {
+		if (released)
+			return -1;
+		int read;
+		try {
+			read = inStream.read(b, off, len);
+		} catch (IOException e) {
+			throw releaseAndRethrow("read(b, off, " + len + ")", e);
+		}
+		if (read < 0) {
+			dataConsumed = true;
+			release("read() -all data consumed", null);
+		}
+		return read;
+	}
 
-  @Override
-  public int read(byte[] b, int off, int len) throws IOException {
-	    if (released)
-	    	return -1;
-    int read;
-    try {
-      read = inStream.read(b, off, len);
-    } catch (IOException e) {
-      throw releaseAndRethrow("read(b, off, " + len + ")", e);
-    }
-    if (read < 0) {
-      dataConsumed = true;
-      release("read() -all data consumed", null);
-    }
-    return read;
-  }
+	/**
+	 * Finalizer does release the stream, but also logs at WARN level including
+	 * the URI at fault
+	 * 
+	 * @throws IOException
+	 *             if so
+	 */
+	@Override
+	protected void finalize() {
+		try {
+			if (release("finalize()", null)) {
+				LOG.warn("input stream of " + uri
+						+ " not closed properly -cleaned up in finalize()");
+			}
+		} catch (Exception e) {
+			// swallow anything that failed here
+			LOG.warn("Exception while releasing " + uri + "in finalizer", e);
+		}
+	}
 
-  /**
-   * Finalizer does release the stream, but also logs at WARN level
-   * including the URI at fault
-   * @throws IOException if so
-   */
-  @Override
-  protected void finalize() {
-    try {
-      if (release("finalize()", null)) {
-        LOG.warn("input stream of " + uri
-                 + " not closed properly -cleaned up in finalize()");
-      }
-    } catch (Exception e) {
-      //swallow anything that failed here
-      LOG.warn("Exception while releasing " + uri + "in finalizer",
-               e);
-    }
-  }
-
-  @Override
-  public String toString() {
-    return "HttpInputStreamWithRelease working with " + uri
-      +" released=" + released;
-  }
+	@Override
+	public String toString() {
+		return "HttpInputStreamWithRelease working with " + uri + " released="
+				+ released;
+	}
 }

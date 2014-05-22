@@ -18,10 +18,13 @@
 
 package org.apache.hadoop.fs.swift.auth.entities;
 
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
+
 /**
  * Access token representation of Openstack Keystone authentication.
  * Class holds token id, tenant and expiration time.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AccessToken {
   /**
    * token expiration time

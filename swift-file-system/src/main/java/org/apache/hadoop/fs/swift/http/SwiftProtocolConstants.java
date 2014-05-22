@@ -30,9 +30,11 @@ import org.apache.hadoop.classification.InterfaceStability;
 @InterfaceStability.Evolving
 public class SwiftProtocolConstants {
   public static final String HEADER_AUTH_KEY = "X-Auth-Token";
-  public static final String HEADER_WSAUTH_URL_KEY = "X-Storage-Url";
-  public static final String HEADER_WSAUTH_USER_KEY = "X-Storage-User";
-  public static final String HEADER_WSAUTH_PASS_KEY = "X-Storage-Pass";
+  public static final String HEADER_SWAUTH_URL_KEY = "X-Storage-Url";
+  public static final String HEADER_SWAUTH_USER_KEY = "X-Storage-User";
+  public static final String HEADER_SWAUTH_PASS_KEY = "X-Storage-Pass";
+  public static final String HEADER_SWAUTH_USER_KEY_2 = "X-Auth-User";
+  public static final String HEADER_SWAUTH_PASS_KEY_2 = "X-Auth-Key";
   public static final int SWIFT_HTTP_PORT = 8080;
   public static final int SWIFT_HTTPS_PORT = 443;
   public static final String HEADER_RANGE = "Range";

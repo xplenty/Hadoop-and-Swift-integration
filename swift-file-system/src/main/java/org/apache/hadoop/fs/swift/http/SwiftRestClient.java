@@ -739,7 +739,11 @@ public final class SwiftRestClient {
                                      .append(path.getContainer());
     maybeAppendPrefix(dataLocationURI1, object);
     StringBuilder dataLocationURI = dataLocationURI1;
-    dataLocationURI.append("&delimiter=/");
+    if (dataLocationURI.indexOf("?") < 0)
+    	dataLocationURI.append('?');
+    else
+    	dataLocationURI.append('&');
+    dataLocationURI.append("delimiter=/");
     return findObjects(dataLocationURI.toString(), requestHeaders);
   }
 
@@ -1122,7 +1126,7 @@ public final class SwiftRestClient {
 	        		  cred.toString(), SC_BAD_REQUEST, "GET", authUri);
 	        }
 	        Header authHeader = method.getResponseHeader(SwiftProtocolConstants.HEADER_AUTH_KEY);
-	        Header storageUrlHeader = method.getResponseHeader(SwiftProtocolConstants.HEADER_WSAUTH_URL_KEY);
+	        Header storageUrlHeader = method.getResponseHeader(SwiftProtocolConstants.HEADER_SWAUTH_URL_KEY);
 
 	        if (authHeader == null || storageUrlHeader == null)
 		          throw new SwiftInvalidResponseException(
@@ -1154,8 +1158,10 @@ public final class SwiftRestClient {
   
   protected Header[] getXStorageHeaders(PasswordCredentials cred){
 	  return new Header[]{
-			  new Header("X-Storage-User", cred.getUsername()), 
-			  new Header("X-Storage-Pass", cred.getPassword())
+			  new Header(SwiftProtocolConstants.HEADER_SWAUTH_USER_KEY, cred.getUsername()), 
+			  new Header(SwiftProtocolConstants.HEADER_SWAUTH_PASS_KEY, cred.getPassword()),
+			  new Header(SwiftProtocolConstants.HEADER_SWAUTH_USER_KEY_2, cred.getUsername()), 
+			  new Header(SwiftProtocolConstants.HEADER_SWAUTH_PASS_KEY_2, cred.getPassword())
 			  };	  
   }
 

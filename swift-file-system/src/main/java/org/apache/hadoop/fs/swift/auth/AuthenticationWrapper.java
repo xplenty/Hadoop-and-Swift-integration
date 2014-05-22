@@ -18,10 +18,13 @@
 
 package org.apache.hadoop.fs.swift.auth;
 
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
+
 /**
  * This class is used for correct hierarchy mapping of
  * Keystone authentication model and java code
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AuthenticationWrapper {
 
   /**

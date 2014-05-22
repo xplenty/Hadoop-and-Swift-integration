@@ -2,19 +2,23 @@
 
     <property>
         <name>test.fs.swift.name</name>
-        <value>swift://TestContainer.test/TestContainer/object1</value>
+        <value>swift://test.test/t1</value>
     </property>
     <property>
         <name>fs.swift.service.test.auth.url</name>
-        <value>https://data.iad1.attstorage.com/auth/v1.0</value>
+        <value>http://213.57.126.117:5000/v2.0/tokens</value>
     </property>
     <property>
         <name>fs.swift.service.test.username</name>
-        <value>xplenty:xplentyadmin</value>
+        <value>mlnx4</value>
     </property>
     <property>
         <name>fs.swift.service.test.password</name>
-        <value>8br0g3ggrp5</value>
+        <value>x9vy7fr</value>
+    </property>
+    <property>
+        <name>fs.swift.service.test.tenant</name>
+        <value>mlnx</value>
     </property>
     <property>
         <name>fs.swift.service.test.http.port</name>
@@ -26,6 +30,10 @@
     </property>
     <property>
         <name>fs.swift.service.test.auth.method</name>
-        <value>swauth</value>
+        <value>keystone</value>
+    </property>
+    <property>
+        <name>fs.swift.service.test.public</name>
+        <value>true</value>
     </property>
 </configuration>
